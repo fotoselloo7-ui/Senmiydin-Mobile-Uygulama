@@ -10,11 +10,22 @@ class PostComment extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['user_id', 'body'];
+    protected $fillable = ['user_id', 'body', 'parent_id'];
 
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /** The top-level comment this reply belongs to (replies never point at other replies). */
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    public function replies(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(self::class, 'parent_id')->orderBy('post_comments.id');
     }
 
     public function post(): BelongsTo

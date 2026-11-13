@@ -24,7 +24,7 @@ class SystemController
             'app_store_url' => 'sometimes|nullable|url:https|max:250', 'play_store_url' => 'sometimes|nullable|url:https|max:250',
             'web_cta' => 'sometimes|required|string|max:120', 'web_announcement' => 'sometimes|nullable|string|max:300',
             'maintenance_message' => 'sometimes|required|string|max:200',
-            'minimum_age' => 'sometimes|integer|between:18,25', 'max_post_photos' => 'sometimes|integer|between:1,10',
+            'minimum_age' => 'sometimes|integer|between:16,25', 'max_post_photos' => 'sometimes|integer|between:1,10',
             'location_history_days' => 'sometimes|integer|between:1,30',
             'moderation_banned_words' => 'sometimes|nullable|string|max:4000',
             'moderation_blocked_domains' => 'sometimes|nullable|string|max:4000',

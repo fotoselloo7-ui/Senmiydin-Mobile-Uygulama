@@ -316,15 +316,15 @@ void main() {
     expect(find.text('Tekrar deniyorum'), findsOneWidget);
   });
 
-  testWidgets('Own notes can be deleted, expired or removed notes explain themselves, load errors retry', (tester) async {
+  testWidgets('Own notes are taken off the map (kept in the archive), expired or removed notes explain themselves, load errors retry', (tester) async {
     var online = false;
-    var deleted = false;
+    var archived = false;
     final store = await connected((request) async {
       final path = request.url.path;
       if (path.endsWith('/auth/login')) return ok({'token': 't', 'user': account()});
-      if (path.endsWith('/map-notes/1') && request.method == 'DELETE') {
-        deleted = true;
-        return ok(null);
+      if (path.endsWith('/map-notes/1/archive') && request.method == 'POST') {
+        archived = true;
+        return ok({...noteJson(mine: true, anonymous: true), 'state': 'archived'});
       }
       if (path.endsWith('/map-notes/1')) {
         if (!online) return http.Response('<html>boom</html>', 500);
@@ -346,12 +346,13 @@ void main() {
     expect(find.text('Şikâyet Et'), findsNothing);
     expect(find.text('Not sahibi olarak yanıtlarsın; kimliğin görünmez.'), findsOneWidget);
     expect(find.text('Anonim yanıt'), findsNothing, reason: 'The owner of an anonymous note cannot unmask themselves.');
-    await tester.tap(find.byKey(const Key('delete-map-note')));
+    expect(find.byKey(const Key('delete-map-note')), findsNothing, reason: 'Permanent delete lives in the archive, not on a public letter.');
+    await tester.tap(find.byKey(const Key('archive-map-note')));
     await tester.pumpAndSettle();
-    expect(find.text('Notu silmek istiyor musun?'), findsOneWidget);
-    await tester.tap(find.widgetWithText(FilledButton, 'Notu Sil'));
+    expect(find.text('Mektubu haritadan kaldıralım mı?'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Haritadan Kaldır'));
     await tester.pumpAndSettle();
-    expect(deleted, true);
+    expect(archived, true);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpWidget(host(store, const MapNoteDetailPage(2)));

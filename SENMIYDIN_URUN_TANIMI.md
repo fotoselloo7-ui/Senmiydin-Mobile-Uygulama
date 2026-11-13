@@ -844,4 +844,47 @@ Referansların dışında yeni bir görsel kimlik oluşturulmamalıdır.
 - **Admin.** Harita Notları alanı: kimlik, yazar, anonim mi, şehir, metin önizleme, yanıt sayısı, oluşturma / bitiş zamanı, aktif / süresi dolmuş / kaldırılmış durumu, şikâyetler; detay, not ve yanıt kaldırma / geri açma, işlem günlüğü.
 - **Tasarım.** Harita Notu pini marka moru / lila outline zarf ikonudur (emoji yok), birden çok not varsa sayı rozeti taşır; normal paylaşım pini mavi konum pini olarak kalır. Mektup yüzeyi çok hafif sıcak beyaz, ~22 yarıçap, ince lila sınır, yumuşak gölge, lacivert metin; yeni font veya tema yoktur. Harita altlığı (OSM) boyanmaz.
 
-**Bu sürümde yoktur:** Ana Sayfa'da "Yakınında yeni notlar var" modülü, yanıta yanıt, not / yanıt düzenleme, süre seçimi, özel not sohbeti.
+**Bu sürümde yoktur:** yanıta yanıt, not / yanıt düzenleme, süre seçimi, özel not sohbeti.
+
+
+## 30. Takip Akışı
+
+- **Ana Sayfa sekmeleri:** Akış · **Takip** · Yakın · Popüler (mevcut yatay sekme davranışı; 320–430 px'te taşmaz).
+- **Backend:** `GET /feed?following=1` aynı Post sorgusunu yeniden kullanır (şehir, görünürlük, engel, askıya alma, silinmiş, sayfalama kuralları aynen geçerlidir) ve yalnız kullanıcının takip ettiği kişilerin gönderilerini döner.
+- **Anonim gizliliği:** Takip akışı **anonim gönderileri göstermez** (`is_anonymous = false`). Kısa bir takip listesinde anonim gönderiler yazarı ele verirdi. Anonim gönderiler Akış / Yakın / Popüler içinde anonim olarak görünmeye devam eder. Karar testle korunur.
+- **Boş durum:** "Henüz kimseyi takip etmiyorsun." + kısa açıklama + "İnsanları Keşfet" (mevcut `/search`). Takip edilen kimse yoksa "Takip ettiklerin henüz bir şey paylaşmadı." gösterilir. Yeni keşif ekranı yoktur.
+- Popüler algoritması takip veya ilgi alanı ile manipüle edilmez.
+
+## 31. Yorum Yanıtları
+
+- **Tek seviye:** ana yorum → yanıtlar. Yanıtın yanıtı, sonsuz iç içe yapı **yoktur**. `post_comments.parent_id` (nullable); sunucu `parent_id` olarak başka bir yanıtı, başka bir yazının yorumunu veya görünmeyen bir yorumu reddeder (422 / 404).
+- **Sıralama:** ana yorumlar mevcut davranışla (yeniden eskiye); bir ana yorumun yanıtları **eskiden yeniye** (konuşma okunur). Liste ilk 3 yanıtı gömer; "N yanıt daha" ile tamamı `GET /posts/{post}/comments/{comment}/replies` üzerinden yüklenir.
+- **Arayüz:** her ana yorumun altında küçük "Yanıtla"; composer `@kullanıcıadı ` ile başlar ("Yanıtlanıyor" şeridi, iptal düğmesi). Hashtag / mention ağı yoktur; yalnız konuşma bağlamı.
+- **Bildirim `comment_reply`:** "Yorumuna bir cevap geldi." yalnız cevaplanan yorumun sahibine; kendi yorumuna cevap, engel ilişkisi, silinmiş / modere hedef için bildirim yok (güvenli "kullanılamıyor"). Yazı sahibi aynı zamanda ana yorum sahibiyse tek anlamlı bildirim; yanıtlar için ayrıca genel "comment" bildirimi üretilmez. Tercih mevcut "Yorumlar" kategorisiyle yönetilir.
+- **Silme / moderasyon:** ana yorum silinir veya modere edilirse tüm başlık herkese kapanır (yetim yanıt yok, yorum sayısına girmez). Yanıt silme yalnız sahibine açıktır. Rapor mevcut `comment` hedefini kullanır; ContentGuard yanıtlara da uygulanır; engel iki yönlüdür.
+
+## 32. Mektuplarım
+
+- **Drawer:** tek satır "Mektuplarım" (outline zarf, marka moru vurgu).
+- **Ekran:** `Aktif` · `Arşiv`. Aktif: hâlâ herkese açık 7 günlük notlar (önizleme, yaklaşık bölge, cevap sayısı, mektubun gerçek tarihi, "N gün kaldı"). Arşiv: süresi dolan veya kullanıcının haritadan kaldırdığı notlar; **yalnız sahibine görünür**, başka kullanıcı göremez.
+- **"Haritadan Kaldır"** (`POST /map-notes/{id}/archive`): herkese açık görünürlük kapanır, mektup Arşiv'de kalır. **"Kalıcı Sil"** (`DELETE /map-notes/{id}`): metin, yanıtlar ve kişisel erişim silinir (raporlanmış notlar moderasyon penceresi boyunca yumuşak silinir). Hesap silme her şeyi kaldırmaya devam eder.
+- **Saklama:** herkese açık 7 gün değişmez. Sahibinin özel arşivi, kullanıcı kalıcı silene veya hesabı silene kadar korunur; `map-notes:purge` artık süresi dolmuş notları **silmez**, yalnız kalıcı silinmiş / moderasyonla kaldırılmış satırları denetim penceresi (30 gün) sonrası temizler. Moderasyon / denetim saklaması ile kullanıcı arşivi ayrı kavramlardır.
+- **"Tekrar Paylaş"** (`POST /map-notes/{id}/repost`): arşivdeki kendi mektubunu aynı yaklaşık noktaya **yeni bir yayın** olarak bırakır: `created_at` / `expires_at` yeni 7 gün; `occurred_at` (mektubun gerçek tarihi) **değişmez** ve kartta "Tekrar paylaşıldı" notuyla gösterilir. Eski yanıtlar yeni herkese açık başlığa taşınmaz (yalnız sahibin arşivinde kalır). Aynı anda tek canlı yayın; yeniden "yakınında" bildirimi gönderilmez.
+
+## 33. Yakındaki Yeni Mektuplar
+
+- **Ana Sayfa:** küçük, düşük yükseklikli kart "Yakınında N yeni mektup var · Haritada keşfet". Yalnız: harita notları açık, kullanıcının yakın zamanlı konumu varsa ve gerçekten **açılmamış** yakın aktif not varsa görünür; 0 ise veya konum yoksa **hiç kart yok**. Tıklayınca Harita → Notlar modunda açılır.
+- **"Yeni" tanımı:** kullanıcı not detayını gerçekten açana kadar okunmamıştır (`map_note_reads`, `POST /map-notes/{id}/read`, idempotent). Haritada işaretin görünür olması okundu sayılmaz; kendi notu hiç izlenmez.
+- **Gizlilik:** okuma kaydı başka kullanıcıya ve not sahibine **asla** görünmez (kim okudu listesi, görüntülenme sayısı yoktur).
+- **Rozet:** Harita → Notlar sekmesinde kullanıcıya özel küçük "N yeni" rozeti. Engelli / kaldırılmış / süresi dolmuş notlar sayıma girmez.
+- **Yönetim:** Modül Ayarları'nda "Yakınında yeni mektuplar" anahtarı kartı kapatır; Harita Notları özelliğinin kendisi etkilenmez.
+
+## 34. Discovery Ranking Principles
+
+- Dating değil: "Ne arıyorsun?", "Sevgili ara", uyum yüzdesi, eşleşme oranı, "perfect match" **yoktur**; herkese açık profile tercih chip'i eklenmez.
+- Yakındaki İnsanlar'da mesafe (herkese gösterilen 100 m adımı), gizlilik, engel, etkinlik ve şehir uygunluğu ana kuraldır. Aynı mesafe adımındaki kişiler arasında **düşük ağırlıklı, iç** bir sinyal sıralamayı değiştirir: ortak ilgi alanı (en çok 3) ve karşılıklı uyumlu mevcut `connections` tercihi (1). Zorunlu filtre değildir: farklı tercih seçen biri kaybolmaz. Sinyal hiçbir yanıtta görünmez.
+- Popüler algoritması takip / ilgi alanı ile değiştirilmez.
+
+## 35. Yaş / Mağaza Hazırlığı
+
+Üretim minimum yaşı **18** olarak kalır; değer tek yapılandırmadır (`config/mobile.php` → `MINIMUM_AGE`, panelde 16–25) ve backend doğrulaması, `/app-config`, Flutter tarih seçici / metinleri birlikte güncellenir. 16–17 desteği için yaş bandı güvenlik planı, Apple yaş derecelendirme beyanı ve Google Play hedef kitle notları `docs/AGE_AND_STORE_READINESS.md` içindedir. Doğum tarihini yalnız 18 → 16 yapmak kabul edilmez; 13–15 kapsam dışıdır.

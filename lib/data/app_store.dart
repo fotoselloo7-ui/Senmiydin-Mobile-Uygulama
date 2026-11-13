@@ -44,6 +44,7 @@ class AppStore extends ChangeNotifier {
 
   CommunicationApi? communication;
   MapNotesApi? mapNotes;
+
   /// Bumped when a note is created or removed so the map reloads its envelope markers.
   int mapNotesVersion = 0;
   PushClient? push;
@@ -51,6 +52,16 @@ class AppStore extends ChangeNotifier {
   bool _loadingUnread = false;
   bool _loadingHomeConfig = false;
   bool nearbyModuleEnabled = true, featuredModuleEnabled = true;
+
+  /// Small Home card "Yakınında N yeni mektup var" (admin module switch) and the private unread-near-me summary.
+  bool nearbyNotesEnabled = true;
+  MapNoteUnread nearbyUnread = const MapNoteUnread(0, locationRequired: true);
+
+  /// Set by the Home card so the map opens straight in its Notlar view.
+  bool openMapInNotes = false;
+
+  /// Server-side minimum registration age (single config value); null until /app-config answered.
+  int minimumAge = 18;
   String? maintenanceNotice;
   VersionPolicy? versionPolicy;
   (String, String)? homeAnnouncement;
@@ -79,6 +90,8 @@ class AppStore extends ChangeNotifier {
       if (_disposed || _account?.id != accountId) return;
       final nearby = data['nearby_enabled'] != false;
       final featured = data['featured_enabled'] != false;
+      final notesModule = data['nearby_notes_enabled'] != false;
+      minimumAge = (data['minimum_age'] as num?)?.toInt() ?? minimumAge;
       final maintenance = data['maintenance_message'] as String?;
       final item = data['announcement'] as Map<String, dynamic>?;
       final announcement = item == null
@@ -86,6 +99,7 @@ class AppStore extends ChangeNotifier {
           : (item['title'] as String, item['body'] as String);
       if (nearby != nearbyModuleEnabled ||
           featured != featuredModuleEnabled ||
+          notesModule != nearbyNotesEnabled ||
           maintenance != maintenanceNotice ||
           announcement != homeAnnouncement ||
           policy?.latest != versionPolicy?.latest ||
@@ -93,15 +107,67 @@ class AppStore extends ChangeNotifier {
           policy?.url != versionPolicy?.url) {
         nearbyModuleEnabled = nearby;
         featuredModuleEnabled = featured;
+        nearbyNotesEnabled = notesModule;
         maintenanceNotice = maintenance;
         versionPolicy = policy;
         homeAnnouncement = announcement;
         notifyListeners();
       }
+      unawaited(refreshNearbyUnread());
     } on ApiFailure {
       // Configuration is refreshed on the next foreground poll.
     } finally {
       _loadingHomeConfig = false;
+    }
+  }
+
+  /// Public config read (no account needed): the registration age gate, owned by the server.
+  Future<void> loadMinimumAge() async {
+    final api = _api;
+    if (api == null) return;
+    try {
+      final data = await api.send('GET', 'app-config') as Map<String, dynamic>;
+      final age = (data['minimum_age'] as num?)?.toInt();
+      if (age != null && age != minimumAge && !_disposed) {
+        minimumAge = age;
+        notifyListeners();
+      }
+    } catch (_) {
+      // The last known value (default 18) stays; the server still validates the date of birth.
+    }
+  }
+
+  /// Private count of active letters near the user that were never opened. No location (or the module off) means nothing is shown.
+  Future<void> refreshNearbyUnread() async {
+    if (!authenticated || mapNotes == null || !nearbyNotesEnabled) {
+      return;
+    }
+    // The server decides: without a recent location (no permission, or none shared yet) it answers location_required and no card is shown.
+    final accountId = _account?.id;
+    try {
+      final result = await mapNotes!.unread();
+      if (_disposed || _account?.id != accountId) return;
+      _setUnread(result);
+    } on ApiFailure {
+      // Shown again after the next poll.
+    }
+  }
+
+  void _setUnread(MapNoteUnread value) {
+    if (value.count != nearbyUnread.count ||
+        value.locationRequired != nearbyUnread.locationRequired ||
+        value.enabled != nearbyUnread.enabled) {
+      nearbyUnread = value;
+      notifyListeners();
+    }
+  }
+
+  /// The reader really opened a letter's detail page (never just saw its marker): idempotent, private.
+  Future<void> markMapNoteRead(int id) async {
+    try {
+      _setUnread(await mapNotes!.markRead(id));
+    } on ApiFailure {
+      // Reading is best-effort; the count is corrected on the next refresh.
     }
   }
 
@@ -305,6 +371,7 @@ class AppStore extends ChangeNotifier {
   void mapNotesChanged() {
     mapNotesVersion++;
     notifyListeners();
+    unawaited(refreshNearbyUnread());
   }
 
   final _remotePosts = <String, Post>{};
@@ -496,6 +563,12 @@ class AppStore extends ChangeNotifier {
       id: json['id'].toString(),
       time: socialTime(json['created_at'] as String),
       mine: json['mine'] == true,
+      parentId: json['parent_id']?.toString(),
+      replyCount: (json['reply_count'] as num?)?.toInt() ?? 0,
+      replies: [
+        for (final reply in (json['replies'] as List?) ?? const [])
+          _socialComment(reply as Map<String, dynamic>),
+      ],
     );
   }
 
@@ -515,6 +588,8 @@ class AppStore extends ChangeNotifier {
       'Popüler' => 'popular',
       _ => 'new',
     };
+    // "Takip": the same feed query narrowed to the people the viewer follows (server-side).
+    final following = current.sort == 'Takip';
     final content = switch (current.content) {
       'Fotoğraflı' => 'photo',
       'Yazılı' => 'text',
@@ -532,6 +607,7 @@ class AppStore extends ChangeNotifier {
       query: {
         'city_id': '$selectedCity',
         'sort': sort,
+        if (following) 'following': '1',
         if (this.location?.synced != true || this.location?.allowed != true)
           'use_location': '0',
         if (radius != null) 'radius': '$radius',
@@ -652,11 +728,21 @@ class AppStore extends ChangeNotifier {
   Future<SocialPage<Comment>> loadComments(String id, int page) async =>
       (await _social!.page('posts/$id/comments', page)).map(_socialComment);
 
-  Future<void> writeComment(Post post, String text) async {
+  /// Every reply of one top-level comment, oldest first (conversation order).
+  Future<SocialPage<Comment>> loadReplies(
+    String postId,
+    String commentId,
+    int page,
+  ) async => (await _social!.page(
+    'posts/$postId/comments/$commentId/replies',
+    page,
+  )).map(_socialComment);
+
+  Future<void> writeComment(Post post, String text, {Comment? parent}) async {
     await _social!.object(
       'POST',
       'posts/${post.id}/comments',
-      body: {'body': text.trim()},
+      body: {'body': text.trim(), 'parent_id': ?parent?.id},
     );
     post.commentCount++;
     commentsVersion++;
@@ -685,16 +771,31 @@ class AppStore extends ChangeNotifier {
     page,
   )).map(_rememberPerson);
 
+  /// Whether the signed-in user follows anybody (decides which Takip empty state is honest). Only asked when that feed is empty.
+  Future<bool> followsAnyone() async {
+    if (!connected) return me.followingCount > 0;
+    final page = await loadConnections(me.handle, 'following', 1);
+    return page.items.isNotEmpty;
+  }
+
   Future<void> toggleFollow(Person person) async {
     if (!_socialWrites.add(person.id)) return;
     try {
+      final wasFollowing = person.isFollowing;
       _rememberPerson(
         await _social!.object(
-          person.isFollowing ? 'DELETE' : 'POST',
+          wasFollowing ? 'DELETE' : 'POST',
           'users/${person.handle}/follow',
         ),
       );
+      // Keep the own "following" count honest so the Takip empty state and a fresh Takip feed agree.
+      final mine = _accountPerson;
+      if (mine != null && person.isFollowing != wasFollowing) {
+        mine.followingCount = (mine.followingCount + (wasFollowing ? -1 : 1))
+            .clamp(0, 1 << 30);
+      }
       followsVersion++;
+      postsVersion++;
       notifyListeners();
     } finally {
       _socialWrites.remove(person.id);
@@ -895,6 +996,9 @@ class AppStore extends ChangeNotifier {
     _socialWrites.clear();
     unreadMessages = unreadNotifications = 0;
     nearbyModuleEnabled = featuredModuleEnabled = true;
+    nearbyNotesEnabled = true;
+    nearbyUnread = const MapNoteUnread(0, locationRequired: true);
+    openMapInNotes = false;
     maintenanceNotice = null;
     versionPolicy = null;
     homeAnnouncement = null;

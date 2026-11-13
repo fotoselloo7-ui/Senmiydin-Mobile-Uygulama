@@ -103,4 +103,20 @@ Ayrı ürün modülü; ayrıntılı karar metni SENMIYDIN_URUN_TANIMI.md §29. A
 | Ölü ayar: `encounter_suggestions` | **PARTIAL → COMPLETE** | Önceden kaydediliyor ama eşleştiricide kullanılmıyordu. Artık kapalıysa güçlü otomatik öneri üretilmez; manuel @kullanıcıadı encounter etkilenmez (`test_encounter_suggestions_switch_...`) |
 | Ölü ayar: `city_discovery` | **PARTIAL → COMPLETE** | Artık kapalıysa otomatik yakın / rota önerisi üretilmez; Harita, Nearby ve manuel şehir etkilenmez, GPS kill-switch değildir (`test_city_discovery_switch_...`) |
 | Harita düzeni: kısa OSM atfı (`© OpenStreetMap`, sol üst hap, tıklanabilir), CTA / konum butonu aralığı, tüm OSM haritalarında ortak atıf | COMPLETE | `lib/widgets/map_attribution.dart`; widget testleri 320 / 360 / 390 / 430 px; Pixel 6a `map-attribution-layout-*.png` |
-| Ana Sayfa "Yakınında yeni notlar" modülü | NOT_REQUIRED_FOR_V1 | Bu görevde bilinçli olarak eklenmedi |
+| Ana Sayfa "Yakınında N yeni mektup var" kartı | COMPLETE | Aşağıdaki "Sosyal derinlik" bölümü |
+
+## Sosyal derinlik — 14 Kasım 2026
+
+Gerçek backend → API → Flutter → kullanıcı akışı olarak incelendi; yalnız gerçek eksikler tamamlandı.
+
+| Alan | İlk durum | Son durum | Kanıt |
+|---|---|---|---|
+| Takip akışı | Takip var ama ana akışta karşılığı zayıf | **COMPLETE** — Takip sekmesi, anonim hariç, boş durum | `SocialEngagementTest` (3), `test/social_engagement_test.dart` (320 / 390 / 430), Pixel `following-feed*.png` |
+| Yorum yanıtları | Düz yorum | **COMPLETE** — tek seviye, `parent_id`, Yanıtla, `comment_reply` bildirimi | `SocialEngagementTest` (5), Pixel `comment-replies.png` |
+| Mektuplarım (Aktif / Arşiv, Haritadan Kaldır, Kalıcı Sil, Tekrar Paylaş) | "Sil" herkese açık içeriği yok ediyordu, 30. günde fiziksel silme | **COMPLETE** — özel arşiv, orijinal tarih korunur, yeni 7 gün | `SocialEngagementTest` (4) + `MapNotesTest`, Pixel `my-letters-*.png` |
+| Yakındaki yeni mektuplar (Ana Sayfa kartı, rozet, okuma kaydı) | Yoktu | **COMPLETE** — okunmamış sayımı, gizli okuma, yönetim anahtarı | `SocialEngagementTest` (2), Pixel `nearby-new-letters-home.png` |
+| Discovery ranking (ilgi alanı, connections) | `connections` yalnız saklanıyordu | **COMPLETE** — düşük ağırlıklı iç sinyal, filtre değil, görünmez | `test_nearby_ranking_...` |
+| Minimum yaş merkezileştirme | Flutter'da sabit "18" | **COMPLETE** — tek yapılandırma; üretim değeri 18 | `test_minimum_age_is_one_config_value...`, Flutter yaş testi |
+| 16+ readiness / mağaza beyanları | Yoktu | **DOCUMENTED** (uygulama planı; kod 16'ya hazır, güvenli teen modeli değil) | `docs/AGE_AND_STORE_READINESS.md` |
+| Destek e-postası / mağaza URL'leri / operatör bilgisi | — | **EXTERNAL** (sahte değer üretilmedi) | — |
+| Block / report / moderasyon / drawer / Home modülleri / interests | Çalışıyor | Korundu; yanıtlar, arşiv ve takip akışı bu katmanları aşamaz | mevcut + yeni testler |

@@ -80,7 +80,10 @@ class MapNotePin extends StatelessWidget {
                   right: 0,
                   child: Container(
                     constraints: const BoxConstraints(minWidth: 20),
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 1,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.brandPurple,
                       borderRadius: BorderRadius.circular(AppShape.pill),
@@ -271,20 +274,27 @@ class MapNoteLetter extends StatelessWidget {
                                 ),
                         ),
                         const SizedBox(height: 2),
+                        // The letter's real date (a re-publication never rewrites it).
                         Text(
-                          mapNoteTime(note.createdAt),
+                          mapNoteTime(note.occurredAt),
                           style: AppTypography.metadata,
                         ),
+                        if (note.republished)
+                          Text(
+                            'Tekrar paylaşıldı',
+                            key: const Key('republished-mark'),
+                            style: AppTypography.metadata.copyWith(
+                              color: AppColors.brandPurple,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                       ],
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-              Text(
-                note.body,
-                style: AppTypography.body.copyWith(height: 1.55),
-              ),
+              Text(note.body, style: AppTypography.body.copyWith(height: 1.55)),
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -337,12 +347,7 @@ class MapNoteLetter extends StatelessWidget {
 
 /// One reply in the single-level thread (oldest first).
 class MapNoteReplyTile extends StatelessWidget {
-  const MapNoteReplyTile(
-    this.reply, {
-    super.key,
-    this.onDelete,
-    this.onReport,
-  });
+  const MapNoteReplyTile(this.reply, {super.key, this.onDelete, this.onReport});
   final MapNoteReplyItem reply;
   final VoidCallback? onDelete;
   final VoidCallback? onReport;
@@ -381,9 +386,15 @@ class MapNoteReplyTile extends StatelessWidget {
                     value == 'delete' ? onDelete?.call() : onReport?.call(),
                 itemBuilder: (_) => [
                   if (reply.mine)
-                    const PopupMenuItem(value: 'delete', child: Text('Yanıtı Sil'))
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Text('Yanıtı Sil'),
+                    )
                   else
-                    const PopupMenuItem(value: 'report', child: Text('Şikâyet Et')),
+                    const PopupMenuItem(
+                      value: 'report',
+                      child: Text('Şikâyet Et'),
+                    ),
                 ],
               ),
           ],
@@ -391,7 +402,10 @@ class MapNoteReplyTile extends StatelessWidget {
         const SizedBox(height: 2),
         Padding(
           padding: const EdgeInsets.only(right: 10),
-          child: Text(mapNoteTime(reply.createdAt), style: AppTypography.metadata),
+          child: Text(
+            mapNoteTime(reply.createdAt),
+            style: AppTypography.metadata,
+          ),
         ),
         const SizedBox(height: 6),
         Padding(
@@ -401,4 +415,124 @@ class MapNoteReplyTile extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// A compact "Mektuplarım" card: preview, approximate area, replies, the letter's real date and what is left of its public days.
+class MyLetterCard extends StatelessWidget {
+  const MyLetterCard(this.note, {super.key, this.onTap});
+  final MapNoteItem note;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = switch (note.state) {
+      'active' => note.remaining(),
+      'archived' => 'Haritadan kaldırıldı',
+      _ => 'Süresi doldu',
+    };
+    return Container(
+      decoration: BoxDecoration(
+        color: mapNotePaper,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.borderLilac.withValues(alpha: .8)),
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        borderRadius: BorderRadius.circular(20),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          key: ValueKey('my-letter-${note.id}'),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const AppIconBox(
+                      icon: Icons.mail_outline_rounded,
+                      size: AppDimensions.iconSM,
+                      containerSize: AppDimensions.iconContainerSM,
+                      color: AppColors.brandPurple,
+                      backgroundColor: AppColors.surfaceLilac,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        note.body,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.body.copyWith(height: 1.45),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.location_on_outlined,
+                      size: 15,
+                      color: AppColors.brandLilac,
+                    ),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        note.placeLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.metadata,
+                      ),
+                    ),
+                    Text(
+                      ' · ${note.replyCount} cevap',
+                      style: AppTypography.metadata,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        // The real date of the letter; a re-publication keeps it.
+                        mapNoteTime(note.occurredAt, withYear: true),
+                        key: ValueKey('my-letter-date-${note.id}'),
+                        style: AppTypography.metadata,
+                      ),
+                    ),
+                    Text(
+                      status,
+                      key: ValueKey('my-letter-status-${note.id}'),
+                      style: AppTypography.metadata.copyWith(
+                        color: note.isActive
+                            ? AppColors.brandPurple
+                            : AppColors.muted,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+                if (note.republished || note.hasLiveRepost)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      note.hasLiveRepost
+                          ? 'Tekrar paylaşıldı · haritada'
+                          : 'Tekrar paylaşıldı',
+                      style: AppTypography.metadata.copyWith(
+                        color: AppColors.brandPurple,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

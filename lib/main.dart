@@ -242,6 +242,8 @@ class _SenMiydinAppState extends State<SenMiydinApp> {
         _ => MapNotePointPage(arg as String),
       },
       '/map-note' => MapNoteDetailPage(int.parse('$arg')),
+      '/my-letters' => const MyLettersPage(),
+      '/my-letter' => MapNoteDetailPage(int.parse('$arg'), mine: true),
       '/map-note-compose' => switch (arg) {
         (LatLng center, double zoom) => MapNoteComposePage(
           center: center,

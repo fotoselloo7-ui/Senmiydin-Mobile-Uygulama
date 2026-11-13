@@ -23,8 +23,9 @@ class InboxController extends Controller
         $announcements = DB::table('announcements')->whereIn('id', collect($page->items())->pluck('announcement_id')->filter()->all())
             ->get(['id', 'title', 'body'])->keyBy('id');
         $available = \App\Notifications\Targets::available($request->user(), $page->items());
+        $replyPosts = \App\Notifications\Targets::replyPosts($request->user(), $page->items());
         return ApiResponse::ok(['items' => collect($page->items())->map(fn ($item) =>
-            $this->resource($item, $actors->get($item->actor_id), $announcements->get($item->announcement_id), $available[$item->id])),
+            $this->resource($item, $actors->get($item->actor_id), $announcements->get($item->announcement_id), $available[$item->id], $replyPosts)),
             'next_page' => $page->hasMorePages() ? $page->currentPage() + 1 : null]);
     }
 
@@ -33,14 +34,18 @@ class InboxController extends Controller
         $item = Inbox::query($request->user()->id, includePushOnly: true)->where('id', $notification)->firstOrFail();
         return ApiResponse::ok($this->resource($item, User::with('city')->where('account_status', 'active')->find($item->actor_id),
             $item->announcement_id ? DB::table('announcements')->find($item->announcement_id) : null,
-            \App\Notifications\Targets::available($request->user(), [$item])[$item->id]));
+            \App\Notifications\Targets::available($request->user(), [$item])[$item->id],
+            \App\Notifications\Targets::replyPosts($request->user(), [$item])));
     }
 
-    private function resource(object $item, ?User $actor, ?object $announcement, bool $available): array
+    private function resource(object $item, ?User $actor, ?object $announcement, bool $available, array $replyPosts = []): array
     {
         [$route, $message] = Inbox::TYPES[$item->type];
         if (!$available) $announcement = null;
-        return ['id' => $item->id, 'type' => $item->type, 'route' => $route, 'entity_id' => $item->entity_id, 'available' => $available,
+        return ['id' => $item->id, 'type' => $item->type, 'route' => $route,
+            // comment_reply stores the reply id internally; the app always opens the post.
+            'entity_id' => $item->type === 'comment_reply' ? ($replyPosts[$item->entity_id] ?? $item->entity_id) : $item->entity_id,
+            'available' => $available,
             // Location-derived and map-note notifications never carry another account's identity (replies may be anonymous).
             'actor' => $actor && ! in_array($item->type, ['nearby_activity', 'map_note_nearby', 'map_note_reply'], true) ? new PublicUserResource($actor) : null,
             'text' => $announcement?->title ?? $message,

@@ -39,6 +39,7 @@ final class EraseAccount
             ]);
             // Map notes and replies leave public view immediately; the rows are purged by the retention lifecycle.
             DB::table('map_notes')->where('user_id', $id)->update(['body' => '', 'content_hash' => null, 'place_label' => null, 'deleted_at' => now(), 'updated_at' => now()]);
+            DB::table('map_note_reads')->where('user_id', $id)->delete();
             DB::table('map_note_replies')->where('user_id', $id)->update(['body' => '', 'content_hash' => null, 'deleted_at' => now(), 'updated_at' => now()]);
             DB::table('post_comments')->where('user_id', $id)->update(['body' => '', 'content_hash' => null, 'deleted_at' => now(), 'updated_at' => now()]);
             DB::table('messages')->where('sender_id', $id)->update(['body' => '', 'image_path' => null, 'deleted_at' => now(), 'updated_at' => now()]);

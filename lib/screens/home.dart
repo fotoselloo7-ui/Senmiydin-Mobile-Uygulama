@@ -125,7 +125,10 @@ class _HomeShellState extends State<HomeShell> {
                           : null,
                       smallSize: 8,
                       backgroundColor: AppColors.encounterPink,
-                      child: const Icon(Icons.notifications_none_rounded, size: 24),
+                      child: const Icon(
+                        Icons.notifications_none_rounded,
+                        size: 24,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 4),
@@ -218,9 +221,7 @@ class AppBottomNav extends StatelessWidget {
                           borderRadius: BorderRadius.circular(25),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.primary.withValues(
-                                alpha: .32,
-                              ),
+                              color: AppColors.primary.withValues(alpha: .32),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -267,9 +268,7 @@ class AppBottomNav extends StatelessWidget {
                                 : Icons.person_outline_rounded,
                           ][i],
                           size: 23,
-                          color: active
-                              ? AppColors.primary
-                              : AppColors.muted,
+                          color: active ? AppColors.primary : AppColors.muted,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -283,9 +282,7 @@ class AppBottomNav extends StatelessWidget {
                           fontWeight: active
                               ? FontWeight.w800
                               : FontWeight.w600,
-                          color: active
-                              ? AppColors.primary
-                              : AppColors.muted,
+                          color: active ? AppColors.primary : AppColors.muted,
                         ),
                       ),
                     ],
@@ -294,6 +291,73 @@ class AppBottomNav extends StatelessWidget {
               ),
             );
           }),
+        ),
+      ),
+    ),
+  );
+}
+
+/// Compact Home module: only when the user has unopened letters left near them (never an empty / begging card).
+class _NearbyLettersCard extends StatelessWidget {
+  const _NearbyLettersCard({required this.count, required this.onTap});
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: 'Yakınında $count yeni mektup var. Haritada keşfet.',
+    child: Material(
+      color: AppColors.surfaceLilac,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppShape.rounded,
+        side: const BorderSide(color: AppColors.borderLilac),
+      ),
+      child: InkWell(
+        key: const Key('nearby-letters-card'),
+        borderRadius: AppShape.rounded,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          child: Row(
+            children: [
+              const AppIconBox(
+                icon: Icons.mail_outline_rounded,
+                size: AppDimensions.iconSM,
+                containerSize: AppDimensions.iconContainerSM,
+                color: AppColors.brandPurple,
+                backgroundColor: Colors.white,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Yakınında $count yeni mektup var',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.body.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.navy,
+                      ),
+                    ),
+                    Text(
+                      'Haritada keşfet',
+                      style: AppTypography.metadata.copyWith(
+                        color: AppColors.brandPurple,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.brandPurple,
+              ),
+            ],
+          ),
         ),
       ),
     ),
@@ -387,6 +451,19 @@ class HomeContent extends StatelessWidget {
                       prominent: false,
                     ),
                   ),
+                if (store.connected &&
+                    store.nearbyNotesEnabled &&
+                    store.nearbyUnread.visible)
+                  Padding(
+                    padding: const EdgeInsets.only(top: Space.sm),
+                    child: _NearbyLettersCard(
+                      count: store.nearbyUnread.count,
+                      onTap: () {
+                        store.openMapInNotes = true;
+                        onMap();
+                      },
+                    ),
+                  ),
                 const SizedBox(height: Space.sm),
                 if (store.nearbyModuleEnabled) ...[
                   SectionHeader(
@@ -420,9 +497,7 @@ class HomeContent extends StatelessWidget {
                       posts,
                       store.nearbyPeople
                           .where((person) => person.id != store.me.id)
-                          .map(
-                            (person) => (person, person.distanceLabel),
-                          )
+                          .map((person) => (person, person.distanceLabel))
                           .toList(),
                       null,
                       null,
@@ -528,7 +603,30 @@ class HomeContent extends StatelessWidget {
               ],
             ),
           ),
-          if (posts.isEmpty && footer == null)
+          if (posts.isEmpty && footer == null && store.filter.sort == 'Takip')
+            SliverToBoxAdapter(
+              child: FutureBuilder<bool>(
+                key: ValueKey(store.followsVersion),
+                future: store.followsAnyone(),
+                builder: (context, snapshot) {
+                  final following = snapshot.data ?? false;
+                  return EmptyState(
+                    following
+                        ? 'Takip ettiklerin henüz bir şey paylaşmadı.'
+                        : 'Henüz kimseyi takip etmiyorsun.',
+                    following
+                        ? 'Yeni paylaşımları burada görünecek. Anonim paylaşımlar Takip akışında yer almaz.'
+                        : 'İlgini çeken insanları takip et; paylaşımları şehrinin akışından ayrı olarak burada görünsün.',
+                    action: SecondaryButton(
+                      'İnsanları Keşfet',
+                      icon: Icons.search_rounded,
+                      onPressed: () => openPage(context, '/search'),
+                    ),
+                  );
+                },
+              ),
+            )
+          else if (posts.isEmpty && footer == null)
             SliverToBoxAdapter(
               child: EmptyState(
                 store.connected &&
@@ -586,7 +684,10 @@ class HomeContent extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: AppColors.surfaceBlue,
-                  border: Border.all(color: const Color(0xFFD6E4F7), width: 1.5),
+                  border: Border.all(
+                    color: const Color(0xFFD6E4F7),
+                    width: 1.5,
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: AppColors.primary.withValues(alpha: .12),
@@ -619,14 +720,16 @@ class HomeContent extends StatelessWidget {
             : [if (!p.anonymous) store.person(p.authorId)];
         for (final person in participants) {
           if (seen.add(person.id) && !store.blocked.contains(person.id)) {
-            final double distKm = (p.distanceMeters != null && p.distanceMeters! > 0)
+            final double distKm =
+                (p.distanceMeters != null && p.distanceMeters! > 0)
                 ? p.distanceMeters! / 1000.0
                 : (p.distance > 0
-                    ? p.distance
-                    : (person.distance > 0
-                        ? person.distance
-                        : (0.4 + (list.length * 0.4))));
-            final distStr = '${distKm.toStringAsFixed(1).replaceAll('.', ',')} km';
+                      ? p.distance
+                      : (person.distance > 0
+                            ? person.distance
+                            : (0.4 + (list.length * 0.4))));
+            final distStr =
+                '${distKm.toStringAsFixed(1).replaceAll('.', ',')} km';
             list.add((person, distStr, distKm));
           }
         }
@@ -639,7 +742,8 @@ class HomeContent extends StatelessWidget {
             final distKm = person.distance > 0
                 ? person.distance
                 : (0.4 + (list.length * 0.4));
-            final distStr = '${distKm.toStringAsFixed(1).replaceAll('.', ',')} km';
+            final distStr =
+                '${distKm.toStringAsFixed(1).replaceAll('.', ',')} km';
             list.add((person, distStr, distKm));
           }
         }
@@ -652,7 +756,8 @@ class HomeContent extends StatelessWidget {
             final distKm = person.distance > 0
                 ? person.distance
                 : (0.4 + (list.length * 0.4));
-            final distStr = '${distKm.toStringAsFixed(1).replaceAll('.', ',')} km';
+            final distStr =
+                '${distKm.toStringAsFixed(1).replaceAll('.', ',')} km';
             list.add((person, distStr, distKm));
           }
         }
@@ -786,6 +891,7 @@ class _FeedControls extends StatelessWidget {
           children: [
             for (final (idx, entry) in [
               ('Akış', Icons.format_list_bulleted_rounded, 'Yeni'),
+              ('Takip', Icons.people_outline_rounded, 'Takip'),
               ('Yakın', Icons.location_on_rounded, 'En yakın'),
               ('Popüler', Icons.local_fire_department_rounded, 'Popüler'),
             ].indexed) ...[

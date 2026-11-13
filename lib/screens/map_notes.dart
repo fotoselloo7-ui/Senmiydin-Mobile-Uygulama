@@ -40,7 +40,8 @@ class _MapNotePointPageState extends State<MapNotePointPage> {
         id: (note) => note.id,
         fetch: (page) async {
           final result = await store.mapNotes!.point(widget.group, page);
-          if (mounted && (result.count != count || result.placeLabel != place)) {
+          if (mounted &&
+              (result.count != count || result.placeLabel != place)) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
                 setState(() {
@@ -97,8 +98,11 @@ class _MapNotePointPageState extends State<MapNotePointPage> {
 
 /// A single letter with its public reply thread (oldest first) and the reply composer.
 class MapNoteDetailPage extends StatefulWidget {
-  const MapNoteDetailPage(this.noteId, {super.key});
+  const MapNoteDetailPage(this.noteId, {super.key, this.mine = false});
   final int noteId;
+
+  /// Opened from Mektuplarım: the owner's private view (also for archived letters and their old thread).
+  final bool mine;
   @override
   State<MapNoteDetailPage> createState() => _MapNoteDetailPageState();
 }
@@ -115,6 +119,7 @@ class _MapNoteDetailPageState extends State<MapNoteDetailPage>
   bool sending = false;
   String? sendError;
   String requestId = const Uuid().v4();
+  String repostRequestId = const Uuid().v4();
 
   bool started = false;
 
@@ -141,8 +146,15 @@ class _MapNoteDetailPageState extends State<MapNoteDetailPage>
       });
     }
     try {
-      final detail = await StoreScope.of(context).mapNotes!.detail(widget.noteId);
+      final store = StoreScope.of(context);
+      final detail = widget.mine
+          ? await store.mapNotes!.mineDetail(widget.noteId)
+          : await store.mapNotes!.detail(widget.noteId);
       if (!mounted) return;
+      // Opening the detail is the only thing that counts as reading (never a marker coming into view).
+      if (!widget.mine && !detail.note.mine) {
+        unawaited(store.markMapNoteRead(detail.note.id));
+      }
       setState(() {
         note = detail.note;
         replies
@@ -172,9 +184,8 @@ class _MapNoteDetailPageState extends State<MapNoteDetailPage>
     if (page == null || loadingMore) return;
     setState(() => loadingMore = true);
     try {
-      final result = await StoreScope.of(
-        context,
-      ).mapNotes!.replies(widget.noteId, page);
+      final result = await StoreScope.of(context).mapNotes!
+          .replies(widget.noteId, page);
       if (!mounted) return;
       setState(() {
         final seen = replies.map((r) => r.id).toSet();
@@ -236,14 +247,50 @@ class _MapNoteDetailPageState extends State<MapNoteDetailPage>
 
   bool ownerOfAnonymous(MapNoteItem item) => item.mine && item.anonymous;
 
+  /// "Haritadan Kaldır": the letter leaves the public map but stays in Mektuplarım → Arşiv.
+  Future<void> archiveNote(MapNoteItem item) async {
+    final store = StoreScope.of(context);
+    final confirmed = await confirmAction(
+      context,
+      title: 'Mektubu haritadan kaldıralım mı?',
+      message: 'Mektup herkese kapanır ve Mektuplarım → Arşiv’e taşınır. İstediğin zaman tekrar paylaşabilirsin.',
+      action: 'Haritadan Kaldır',
+    );
+    if (!confirmed || !mounted) return;
+    runAccountAction(() async {
+      await store.mapNotes!.archive(item.id);
+      store.mapNotesChanged();
+      if (!mounted) return;
+      toast(context, 'Mektup haritadan kaldırıldı. Mektuplarım → Arşiv’de.');
+      if (widget.mine) {
+        await load();
+      } else {
+        Navigator.pop(context, true);
+      }
+    });
+  }
+
+  /// "Tekrar Paylaş": a new public publication with a fresh 7 days; the letter's real date stays.
+  Future<void> repostNote(MapNoteItem item) async {
+    final store = StoreScope.of(context);
+    runAccountAction(() async {
+      await store.mapNotes!.repost(item.id, requestId: repostRequestId);
+      repostRequestId = const Uuid().v4();
+      store.mapNotesChanged();
+      if (!mounted) return;
+      toast(context, 'Mektubun yeniden haritada. Yeni 7 günü başladı.');
+      await load();
+    });
+  }
+
+  /// "Kalıcı Sil": letter, replies and every personal access are erased.
   Future<void> deleteNote(MapNoteItem item) async {
     final store = StoreScope.of(context);
     final confirmed = await confirmAction(
       context,
-      title: 'Notu silmek istiyor musun?',
-      message:
-          'Not haritadan kalkar ve yanıtlarıyla birlikte herkese kapanır. Bu işlem geri alınamaz.',
-      action: 'Notu Sil',
+      title: 'Mektup kalıcı olarak silinsin mi?',
+      message: 'Mektup, yanıtları ve arşivdeki kaydı tamamen silinir. Bu işlem geri alınamaz.',
+      action: 'Kalıcı Sil',
     );
     if (!confirmed || !mounted) return;
     runAccountAction(() async {
@@ -251,7 +298,7 @@ class _MapNoteDetailPageState extends State<MapNoteDetailPage>
       store.mapNotesChanged();
       if (mounted) {
         Navigator.pop(context, true);
-        toast(context, 'Notun kaldırıldı.');
+        toast(context, 'Mektup kalıcı olarak silindi.');
       }
     });
   }
@@ -312,7 +359,42 @@ class _MapNoteDetailPageState extends State<MapNoteDetailPage>
                         MapNoteLetter(
                           item,
                           actions: [
-                            if (item.mine)
+                            if (item.mine && item.isActive)
+                              TextButton.icon(
+                                key: const Key('archive-map-note'),
+                                onPressed: busy
+                                    ? null
+                                    : () => archiveNote(item),
+                                icon: const Icon(
+                                  Icons.visibility_off_outlined,
+                                  size: 18,
+                                ),
+                                label: const Text('Haritadan Kaldır'),
+                              )
+                            else if (item.mine) ...[
+                              if (item.canRepost)
+                                TextButton.icon(
+                                  key: const Key('repost-map-note'),
+                                  onPressed: busy
+                                      ? null
+                                      : () => repostNote(item),
+                                  icon: const Icon(
+                                    Icons.refresh_rounded,
+                                    size: 18,
+                                  ),
+                                  label: const Text('Tekrar Paylaş'),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: AppColors.brandPurple,
+                                  ),
+                                )
+                              else if (item.hasLiveRepost)
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 10),
+                                  child: Text(
+                                    'Tekrar paylaşıldı · haritada',
+                                    style: AppTypography.metadata,
+                                  ),
+                                ),
                               TextButton.icon(
                                 key: const Key('delete-map-note'),
                                 onPressed: busy ? null : () => deleteNote(item),
@@ -320,12 +402,12 @@ class _MapNoteDetailPageState extends State<MapNoteDetailPage>
                                   Icons.delete_outline_rounded,
                                   size: 18,
                                 ),
-                                label: const Text('Notu Sil'),
+                                label: const Text('Kalıcı Sil'),
                                 style: TextButton.styleFrom(
                                   foregroundColor: AppColors.danger,
                                 ),
-                              )
-                            else
+                              ),
+                            ] else
                               TextButton.icon(
                                 key: const Key('report-map-note'),
                                 onPressed: () => openPage(
@@ -351,8 +433,10 @@ class _MapNoteDetailPageState extends State<MapNoteDetailPage>
                         ),
                         const SizedBox(height: Space.sm),
                         if (replies.isEmpty)
-                          const InfoNote(
-                            'Bu nota ilk yanıtı sen yazabilirsin. Yanıtlar herkese açıktır.',
+                          InfoNote(
+                            item.canReply
+                                ? 'Bu nota ilk yanıtı sen yazabilirsin. Yanıtlar herkese açıktır.'
+                                : 'Bu mektuba henüz yanıt gelmemiş.',
                           ),
                         for (final reply in replies)
                           MapNoteReplyTile(
@@ -525,7 +609,10 @@ class _MapNoteComposePageState extends State<MapNoteComposePage>
       if (mounted) {
         setState(() {
           sending = false;
-          error = failure.errors['latitude'] ?? failure.errors['body'] ?? failure.detail;
+          error =
+              failure.errors['latitude'] ??
+              failure.errors['body'] ??
+              failure.detail;
         });
       }
     } catch (_) {
@@ -581,7 +668,8 @@ class _MapNoteComposePageState extends State<MapNoteComposePage>
             ChoicePills(
               options: const ['Açık not', 'Anonim not'],
               value: anonymous ? 'Anonim not' : 'Açık not',
-              onChanged: (value) => setState(() => anonymous = value == 'Anonim not'),
+              onChanged: (value) =>
+                  setState(() => anonymous = value == 'Anonim not'),
             ),
             Padding(
               padding: const EdgeInsets.only(top: 6, bottom: Space.md),
@@ -592,7 +680,10 @@ class _MapNoteComposePageState extends State<MapNoteComposePage>
                 style: AppTypography.metadata,
               ),
             ),
-            const SectionHeader('Yaklaşık yer', icon: Icons.location_on_outlined),
+            const SectionHeader(
+              'Yaklaşık yer',
+              icon: Icons.location_on_outlined,
+            ),
             const Text(
               'Haritayı kaydırarak mor noktayı notun yerine getir. Not, seçtiğin noktaya yakın yaklaşık bir bölgeye bırakılır; kesin adres paylaşılmaz.',
               style: AppTypography.metadata,
@@ -609,7 +700,8 @@ class _MapNoteComposePageState extends State<MapNoteComposePage>
                       mapController: controller,
                       options: MapOptions(
                         initialCenter: picked,
-                        initialZoom: widget.zoom ?? (widget.center == null ? 5 : 14),
+                        initialZoom:
+                            widget.zoom ?? (widget.center == null ? 5 : 14),
                         minZoom: 4,
                         maxZoom: 17,
                         backgroundColor: AppColors.pale,
@@ -649,10 +741,15 @@ class _MapNoteComposePageState extends State<MapNoteComposePage>
                             decoration: BoxDecoration(
                               color: AppColors.brandPurple,
                               shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2.5),
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 2.5,
+                              ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppColors.brandPurple.withValues(alpha: .35),
+                                  color: AppColors.brandPurple.withValues(
+                                    alpha: .35,
+                                  ),
                                   blurRadius: 6,
                                 ),
                               ],
@@ -683,6 +780,87 @@ class _MapNoteComposePageState extends State<MapNoteComposePage>
             const SizedBox(height: Space.xl),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// "Mektuplarım": the owner's own letters. Aktif = still public (7 days), Arşiv = expired or taken off the map (private).
+class MyLettersPage extends StatefulWidget {
+  const MyLettersPage({super.key});
+  @override
+  State<MyLettersPage> createState() => _MyLettersPageState();
+}
+
+class _MyLettersPageState extends State<MyLettersPage> {
+  String scope = 'Aktif';
+
+  @override
+  Widget build(BuildContext context) {
+    final store = StoreScope.of(context);
+    final archive = scope == 'Arşiv';
+    return AppPage(
+      title: 'Mektuplarım',
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(Space.lg, Space.sm, Space.lg, 0),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: ChoicePills(
+                options: const ['Aktif', 'Arşiv'],
+                value: scope,
+                onChanged: (value) => setState(() => scope = value),
+              ),
+            ),
+          ),
+          Expanded(
+            child: PagedContent<MapNoteItem>(
+              key: ValueKey((scope, store.mapNotesVersion)),
+              fetch: (page) =>
+                  store.mapNotes!.mine(archive ? 'archive' : 'active', page),
+              id: (note) => note.id,
+              builder: (context, notes, footer, refresh) => RefreshIndicator(
+                onRefresh: refresh,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: Space.page,
+                  children: [
+                    Text(
+                      archive
+                          ? 'Süresi dolan veya haritadan kaldırdığın mektuplar burada yalnızca sana görünür.'
+                          : 'Haritada herkese açık olan mektupların. Her biri bırakıldıktan 7 gün sonra haritadan kalkar.',
+                      style: AppTypography.metadata,
+                    ),
+                    const SizedBox(height: Space.md),
+                    if (notes.isEmpty && footer == null)
+                      EmptyState(
+                        archive
+                            ? 'Arşivin henüz boş.'
+                            : 'Haritada aktif mektubun yok.',
+                        archive
+                            ? 'Süresi dolan mektupların burada saklanır; istediğinde tekrar paylaşabilirsin.'
+                            : 'Haritada bir yere not bıraktığında burada görünür.',
+                        icon: Icons.mail_outline_rounded,
+                      ),
+                    for (final note in notes)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: Space.md),
+                        child: MyLetterCard(
+                          note,
+                          onTap: () async {
+                            await openPage(context, '/my-letter', '${note.id}');
+                            if (context.mounted) store.mapNotesChanged();
+                          },
+                        ),
+                      ),
+                    ?footer,
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

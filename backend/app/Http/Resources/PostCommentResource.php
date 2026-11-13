@@ -15,7 +15,13 @@ class PostCommentResource extends JsonResource
                 ? null : new PublicUserResource($this->author),
             'mine' => $this->user_id === $request->user()->id,
             'body' => $this->body,
+            'parent_id' => $this->parent_id,
             'created_at' => $this->created_at->toISOString(),
+            ...($this->parent_id === null ? [
+                'reply_count' => (int) ($this->reply_total ?? 0),
+                'replies' => $this->relationLoaded('replies')
+                    ? self::collection($this->replies->each(fn ($reply) => $reply->setRelation('post', $this->post)))->resolve($request) : [],
+            ] : []),
         ];
     }
 }

@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../core/brand_assets.dart';
@@ -19,11 +20,7 @@ import 'common.dart';
 /// - Dynamic selected state (soft lilac background with 4px left purple bar).
 /// - Footer with brand tagline and origami paper plane + dashed heart trail.
 class AppDrawer extends StatelessWidget {
-  const AppDrawer({
-    super.key,
-    this.currentRoute,
-    this.onProfile,
-  });
+  const AppDrawer({super.key, this.currentRoute, this.onProfile});
 
   /// Currently active route name (e.g. '/home', '/encounters').
   /// Only matches if an actual secondary route is active. If opened from home,
@@ -38,6 +35,12 @@ class AppDrawer extends StatelessWidget {
       title: 'Karşılaşmalarım',
       icon: Icons.favorite_border_rounded,
       route: '/encounters',
+      isBrandAccent: true,
+    ),
+    _DrawerItemDef(
+      title: 'Mektuplarım',
+      icon: Icons.mail_outline_rounded,
+      route: '/my-letters',
       isBrandAccent: true,
     ),
     _DrawerItemDef(
@@ -80,9 +83,7 @@ class AppDrawer extends StatelessWidget {
       elevation: 16,
       shadowColor: AppColors.navy.withValues(alpha: 0.16),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.horizontal(
-          right: Radius.circular(32),
-        ),
+        borderRadius: BorderRadius.horizontal(right: Radius.circular(32)),
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
@@ -93,18 +94,14 @@ class AppDrawer extends StatelessWidget {
             right: 0,
             width: width * 0.65,
             height: 220,
-            child: const CustomPaint(
-              painter: _TopWavePainter(),
-            ),
+            child: const CustomPaint(painter: _TopWavePainter()),
           ),
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
             height: 80,
-            child: const CustomPaint(
-              painter: _BottomWavePainter(),
-            ),
+            child: const CustomPaint(painter: _BottomWavePainter()),
           ),
 
           // Main drawer content
@@ -128,7 +125,10 @@ class AppDrawer extends StatelessWidget {
 
                 // 2. Profile Card
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
                   child: _DrawerProfileCard(
                     user: store.me,
                     onTap: () {
@@ -155,7 +155,10 @@ class AppDrawer extends StatelessWidget {
                         for (int i = 0; i < _menuItems.length; i++) ...[
                           if (i == 3 || i == 5)
                             const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 8,
+                              ),
                               child: Divider(
                                 height: 1,
                                 thickness: 1,
@@ -165,7 +168,8 @@ class AppDrawer extends StatelessWidget {
                           _DrawerMenuItem(
                             def: _menuItems[i],
                             isSelected: currentRoute == _menuItems[i].route,
-                            badgeCount: _menuItems[i].hasBadge && store.connected
+                            badgeCount:
+                                _menuItems[i].hasBadge && store.connected
                                 ? store.unreadNotifications
                                 : 0,
                             onTap: () {
@@ -256,10 +260,7 @@ class _DrawerItemDef {
 
 /// Floating profile card inside the drawer with subtle gradient border and halo.
 class _DrawerProfileCard extends StatelessWidget {
-  const _DrawerProfileCard({
-    required this.user,
-    required this.onTap,
-  });
+  const _DrawerProfileCard({required this.user, required this.onTap});
 
   final dynamic user;
   final VoidCallback onTap;
@@ -280,16 +281,10 @@ class _DrawerProfileCard extends StatelessWidget {
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  Colors.white,
-                  Color(0xFFF9F7FD),
-                ],
+                colors: [Colors.white, Color(0xFFF9F7FD)],
               ),
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(
-                color: const Color(0xFFEBE6F8),
-                width: 1.2,
-              ),
+              border: Border.all(color: const Color(0xFFEBE6F8), width: 1.2),
               boxShadow: [
                 BoxShadow(
                   color: const Color(0xFF7C20D4).withValues(alpha: 0.08),
@@ -322,12 +317,7 @@ class _DrawerProfileCard extends StatelessWidget {
                       color: Colors.white,
                     ),
                     padding: const EdgeInsets.all(1.5),
-                    child: ClipOval(
-                      child: Avatar(
-                        user,
-                        size: 50,
-                      ),
-                    ),
+                    child: ClipOval(child: Avatar(user, size: 50)),
                   ),
                 ),
 
@@ -455,7 +445,9 @@ class _DrawerMenuItem extends StatelessWidget {
             child: Ink(
               height: 52,
               decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFFF6EFFF) : Colors.transparent,
+                color: isSelected
+                    ? const Color(0xFFF6EFFF)
+                    : Colors.transparent,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
@@ -491,8 +483,8 @@ class _DrawerMenuItem extends StatelessWidget {
                         color: isSelected
                             ? activePurple
                             : (def.isBrandAccent
-                                ? const Color(0xFF6B21A8)
-                                : const Color(0xFF334155)),
+                                  ? const Color(0xFF6B21A8)
+                                  : const Color(0xFF334155)),
                       ),
                     ),
                   ),
@@ -506,7 +498,9 @@ class _DrawerMenuItem extends StatelessWidget {
                       style: TextStyle(
                         fontFamily: 'NunitoSans',
                         fontSize: 15,
-                        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                        fontWeight: isSelected
+                            ? FontWeight.w800
+                            : FontWeight.w600,
                         color: isSelected ? activeTextPurple : AppColors.navy,
                         letterSpacing: -0.1,
                       ),
@@ -517,7 +511,10 @@ class _DrawerMenuItem extends StatelessWidget {
                   if (badgeCount > 0)
                     Container(
                       margin: const EdgeInsets.only(right: 14),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.encounterPink,
                         borderRadius: BorderRadius.circular(12),
@@ -585,10 +582,7 @@ class _TopWavePainter extends CustomPainter {
       ..shader = const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomRight,
-        colors: [
-          Color(0x28C084FC),
-          Color(0x1038BDF8),
-        ],
+        colors: [Color(0x28C084FC), Color(0x1038BDF8)],
       ).createShader(Rect.fromLTWH(0, 0, w, h));
 
     canvas.drawPath(path2, paint2);
@@ -619,10 +613,7 @@ class _BottomWavePainter extends CustomPainter {
       ..shader = const LinearGradient(
         begin: Alignment.bottomLeft,
         end: Alignment.topRight,
-        colors: [
-          Color(0x3838BDF8),
-          Color(0x18BAE6FD),
-        ],
+        colors: [Color(0x3838BDF8), Color(0x18BAE6FD)],
       ).createShader(Rect.fromLTWH(0, 0, w, h));
 
     canvas.drawPath(cyanPath, cyanPaint);
@@ -639,10 +630,7 @@ class _BottomWavePainter extends CustomPainter {
       ..shader = const LinearGradient(
         begin: Alignment.bottomCenter,
         end: Alignment.topRight,
-        colors: [
-          Color(0x32A855F7),
-          Color(0x18C084FC),
-        ],
+        colors: [Color(0x32A855F7), Color(0x18C084FC)],
       ).createShader(Rect.fromLTWH(0, 0, w, h));
 
     canvas.drawPath(lilacPath, lilacPaint);
@@ -704,10 +692,7 @@ class _HeartTrailPaperPlanePainter extends CustomPainter {
       ..lineTo(0, -9)
       ..lineTo(4, 0)
       ..close();
-    canvas.drawPath(
-      topWing,
-      Paint()..color = const Color(0xFFA855F7),
-    );
+    canvas.drawPath(topWing, Paint()..color = const Color(0xFFA855F7));
 
     // Main wing facet (vibrant brand purple)
     final mainWing = Path()
@@ -715,10 +700,7 @@ class _HeartTrailPaperPlanePainter extends CustomPainter {
       ..lineTo(0, 9)
       ..lineTo(4, 0)
       ..close();
-    canvas.drawPath(
-      mainWing,
-      Paint()..color = const Color(0xFF9333EA),
-    );
+    canvas.drawPath(mainWing, Paint()..color = const Color(0xFF9333EA));
 
     // Center fold underbelly crease (deeper purple)
     final crease = Path()
@@ -726,10 +708,7 @@ class _HeartTrailPaperPlanePainter extends CustomPainter {
       ..lineTo(1, 4)
       ..lineTo(9, 0)
       ..close();
-    canvas.drawPath(
-      crease,
-      Paint()..color = const Color(0xFF7E22CE),
-    );
+    canvas.drawPath(crease, Paint()..color = const Color(0xFF7E22CE));
 
     canvas.restore();
   }

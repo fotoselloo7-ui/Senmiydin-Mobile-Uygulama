@@ -60,10 +60,20 @@ class Comment {
     this.time = 'Az önce',
     this.id,
     this.mine = false,
-  });
+    this.parentId,
+    this.replyCount = 0,
+    List<Comment>? replies,
+  }) : replies = replies ?? [];
   final String? id;
   final bool mine;
   final String authorId, text, time;
+
+  /// Set only on replies: the top-level comment they answer (replies never answer replies).
+  final String? parentId;
+
+  /// Top-level comments only: how many replies exist and the (oldest-first) ones loaded so far.
+  int replyCount;
+  List<Comment> replies;
 }
 
 class Post {

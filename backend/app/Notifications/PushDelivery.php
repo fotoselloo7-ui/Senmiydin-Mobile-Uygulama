@@ -20,13 +20,15 @@ class PushDelivery
         }
         $user = User::where('account_status', 'active')->find($row->user_id);
         if ($row->type === 'location_match' && !$user?->location_history_enabled) return;
-        $category = str_starts_with($row->type, 'encounter_') ? 'encounter' : $row->type;
+        $category = str_starts_with($row->type, 'encounter_') ? 'encounter' : ($row->type === 'comment_reply' ? 'comment' : $row->type);
         if (! $user || ! (($user->push_preferences ?? []) + Inbox::DEFAULTS)[$category]) {
             return;
         }
         [$route, $message] = Inbox::TYPES[$row->type];
         $payload = [
-            'type' => $row->type, 'route' => $route, 'entity_id' => (string) $row->entity_id,
+            // comment_reply stores the reply id internally; a tap always opens the post.
+            'type' => $row->type, 'route' => $route,
+            'entity_id' => (string) ($row->type === 'comment_reply' ? (DB::table('post_comments')->where('id', $row->entity_id)->value('post_id') ?? $row->entity_id) : $row->entity_id),
             'notification_id' => (string) $id, 'recipient_id' => (string) $row->user_id,
         ];
         $devices = DB::table('user_devices')->where('user_id', $user->id)->where('is_active', true)

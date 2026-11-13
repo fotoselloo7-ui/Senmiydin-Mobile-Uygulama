@@ -19,7 +19,7 @@ final class Settings
         'maintenance_mode' => 'Bakım modu', 'maintenance_message' => 'Bakım mesajı',
         'registrations_enabled' => 'Yeni kayıtlar', 'anonymous_posts_enabled' => 'Anonim paylaşımlar',
         'encounters_enabled' => 'Karşılaşmalar', 'nearby_enabled' => 'Yakınındaki İnsanlar modülü',
-        'featured_enabled' => 'Öne Çıkan Karşılaşmalar modülü', 'messaging_enabled' => 'Mesajlaşma',
+        'featured_enabled' => 'Öne Çıkan Karşılaşmalar modülü', 'nearby_notes_enabled' => 'Yakınında yeni mektuplar (küçük ana sayfa kartı)', 'messaging_enabled' => 'Mesajlaşma',
         'announcements_enabled' => 'Ana sayfa duyuru alanı',
         'android_min_version' => 'Android minimum sürüm', 'android_latest_version' => 'Android güncel sürüm',
         'ios_min_version' => 'iOS minimum sürüm', 'ios_latest_version' => 'iOS güncel sürüm',
@@ -27,7 +27,7 @@ final class Settings
 
     public const SWITCHES = [
         'maintenance_mode', 'registrations_enabled', 'anonymous_posts_enabled', 'encounters_enabled',
-        'nearby_enabled', 'featured_enabled', 'messaging_enabled', 'announcements_enabled',
+        'nearby_enabled', 'featured_enabled', 'nearby_notes_enabled', 'messaging_enabled', 'announcements_enabled',
     ];
 
     private ?array $values = null;
@@ -46,7 +46,7 @@ final class Settings
                 'location_history_days' => config('location.history_days'), 'maintenance_mode' => false,
                 'maintenance_message' => 'Kısa bir bakım çalışması yürütüyoruz. Biraz sonra tekrar dene.',
                 'registrations_enabled' => true, 'anonymous_posts_enabled' => true, 'encounters_enabled' => true,
-                'nearby_enabled' => true, 'featured_enabled' => true, 'messaging_enabled' => true, 'announcements_enabled' => true,
+                'nearby_enabled' => true, 'featured_enabled' => true, 'nearby_notes_enabled' => true, 'messaging_enabled' => true, 'announcements_enabled' => true,
             ];
     }
 

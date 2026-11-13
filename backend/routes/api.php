@@ -55,10 +55,17 @@ Route::prefix('v1')->group(function (): void {
 
         // Map notes (digital letters): independent from posts, encounters and location matches.
         Route::get('map/notes', [MapNoteController::class, 'map'])->middleware('throttle:location-read');
+        Route::get('map/notes/unread', [MapNoteController::class, 'unread'])->middleware('throttle:location-read');
         Route::get('map/notes/{group}', [MapNoteController::class, 'group'])->where('group', '-?[0-9]{1,3}\.[0-9]{5}_-?[0-9]{1,3}\.[0-9]{5}')->middleware('throttle:location-read');
         Route::post('map-notes', [MapNoteController::class, 'store'])->middleware('throttle:map-note-create');
         Route::get('map-notes/{note}', [MapNoteController::class, 'show'])->whereNumber('note')->middleware('throttle:communication-read');
         Route::delete('map-notes/{note}', [MapNoteController::class, 'destroy'])->whereNumber('note')->middleware('throttle:comment-write');
+        Route::post('map-notes/{note}/read', [MapNoteController::class, 'read'])->whereNumber('note')->middleware('throttle:communication-read');
+        // "Mektuplarım": the owner's own letters (active and private archive).
+        Route::get('my/map-notes', [MapNoteController::class, 'mine'])->middleware('throttle:communication-read');
+        Route::get('my/map-notes/{note}', [MapNoteController::class, 'showMine'])->whereNumber('note')->middleware('throttle:communication-read');
+        Route::post('map-notes/{note}/archive', [MapNoteController::class, 'archive'])->whereNumber('note')->middleware('throttle:comment-write');
+        Route::post('map-notes/{note}/repost', [MapNoteController::class, 'repost'])->whereNumber('note')->middleware('throttle:map-note-create');
         Route::get('map-notes/{note}/replies', [MapNoteController::class, 'replies'])->whereNumber('note')->middleware('throttle:communication-read');
         Route::post('map-notes/{note}/replies', [MapNoteController::class, 'reply'])->whereNumber('note')->middleware('throttle:map-note-reply');
         Route::delete('map-note-replies/{reply}', [MapNoteController::class, 'destroyReply'])->whereNumber('reply')->middleware('throttle:comment-write');
@@ -87,6 +94,7 @@ Route::prefix('v1')->group(function (): void {
         Route::match(['POST', 'DELETE'], 'posts/{post}/save', [PostController::class, 'save'])->whereNumber('post')->middleware('throttle:reaction');
         Route::get('posts/{post}/comments', [PostController::class, 'comments'])->whereNumber('post');
         Route::post('posts/{post}/comments', [PostController::class, 'comment'])->whereNumber('post')->middleware('throttle:comment-write');
+        Route::get('posts/{post}/comments/{comment}/replies', [PostController::class, 'replies'])->whereNumber(['post', 'comment']);
         Route::delete('posts/{post}/comments/{comment}', [PostController::class, 'deleteComment'])->whereNumber(['post', 'comment'])->middleware('throttle:comment-write');
         Route::get('users/{username}', [SocialUserController::class, 'show']);
         Route::get('users/{username}/posts', [SocialUserController::class, 'posts']);

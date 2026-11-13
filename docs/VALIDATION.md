@@ -1,8 +1,34 @@
 # Doğrulama
 
-> **Güncel kaynak bu dosyanın ilk bölümüdür (14 Kasım 2026, public web final adayı).** Altındaki bölümler önceki turların tarihsel kayıtlarıdır; oradaki sayılar güncel durum değildir.
+> **Güncel kaynak bu dosyanın ilk bölümüdür (14 Kasım 2026, sosyal derinlik).** Altındaki bölümler önceki turların tarihsel kayıtlarıdır; oradaki sayılar güncel durum değildir.
 
-## Public web final adayı — 14 Kasım 2026 (en güncel)
+## Sosyal derinlik: Takip, yorum yanıtları, Mektuplarım, yakındaki yeni mektuplar — 14 Kasım 2026 (en güncel)
+
+Başlangıç `135987f` (gerçekten çalıştırıldı): Laravel 146 test / 2375 assertion, Flutter 125, analyze temiz.
+
+| Kontrol | Final |
+|---|---|
+| Laravel `php artisan test` | **162 test / 2627 assertion geçti** (+16 `SocialEngagementTest`, 1 `MapNotesTest` saklama testi güncellendi) |
+| `flutter analyze` | **No issues found** |
+| Flutter `flutter test` | **142 test geçti** (+17 `test/social_engagement_test.dart`) |
+| Pixel 6a entegrasyon | **9/9 geçti**, `clean=true` |
+| Pixel 6a location-time | **3/3 geçti** |
+
+**Gerçek Pixel 6a E2E (arayüz üzerinden, ASCII metinle — adb Türkçe karakter yazamaz):**
+
+- *Takip:* Demo'nun takip ettiği Elif'in normal paylaşımı Takip sekmesinde göründü (`following-feed.png`); profilden "Takip Ediliyor" ile takipten çıkınca Takip sekmesi "Henüz kimseyi takip etmiyorsun." + "İnsanları Keşfet" oldu (`following-feed-empty.png`).
+- *Yorum yanıtı:* Demo'nun yazısına Elif ana yorum yazdı → Demo bildirimden yorum sayfasını açtı → **Yanıtla** ile composer `@elifdemo ` ile başladı, "Yanıtlanıyor" şeridi → gönderildi, yanıt ana yorumun altında girintili (`comment-replies.png`). Elif için `comment_reply` bildirimi oluştu ("Yorumuna bir cevap geldi.", hedef yazı, gönderen kimliği API'de yok).
+- *Mektuplarım:* Demo not bıraktı → drawer'da tek satır "Mektuplarım" (`my-letters-drawer.png`) → Aktif ("6 gün kaldı", `my-letters-active.png`) → **Haritadan Kaldır** (onay penceresi) → Arşiv'de "Haritadan kaldırıldı" ve mektubun gerçek tarihi (`my-letters-archive.png`) → **Tekrar Paylaş**: yeni satırın `created_at` / `expires_at` = şimdi + 7 gün, `occurred_at` ilk mektubun tarihi aynen kaldı ("Tekrar paylaşıldı"), eski satır arşivde; haritada yeniden göründü. Test için ilk mektubun tarihi 20 gün geriye alındı (7 günü gerçekten beklemek yerine); sonuç DB satırlarıyla doğrulandı.
+- *Yakındaki yeni mektup:* Elif yakına not bıraktı → Demo Ana Sayfa'da küçük "Yakınında 1 yeni mektup var · Haritada keşfet" (`nearby-new-letters-home.png`) → karta dokununca Harita **Notlar** modunda açıldı, sekmede "1 yeni" rozeti → Elif'in notunun detayı açılınca sayı 0'a düştü, kart ve rozet kayboldu (`map_note_reads` yalnız Demo'ya ait tek satır). Harita işareti yalnız görününce sayı düşmedi.
+- Test verisi (not, yanıt, yorum, takip, sohbet, konum, bildirim) sonunda temizlendi; uygulama normal debug sürümüyle Demo girişli açık bırakıldı.
+
+**Bulunan ve düzeltilen gerçek hatalar:** (1) `purgeExpired` 30. günde süresi dolmuş mektubu fiziksel siliyordu — Mektuplarım arşiviyle çelişiyordu; artık yalnız kalıcı silinmiş / moderasyonla kaldırılmış satırlar temizlenir. (2) Kendi mektuplarım listesinde açık notun yazar kimliği gizleniyordu; artık "başkaları nasıl görüyorsa" gösterilir (anonimde yok). (3) Ana Sayfa kartı gereksiz yere cihaz konum senkronuna bağlıydı; karar sunucunun yakın zamanlı konumuna bırakıldı. (4) Yorum sayısı yetim yanıtları sayıyordu; yetim yanıt artık hiçbir yerde görünmez ve sayılmaz.
+
+**Sınırlar:** harita işaretinin okundu sayılmadığı davranışı sunucu + widget testiyle ve Pixel'da elle doğrulandı. 7 günlük süre gerçek 7 gün beklenerek değil test saatiyle ve tarih geri alınarak doğrulandı. Güvenli 16+ (teen) modeli uygulanmadı, yalnız belgelendi (`docs/AGE_AND_STORE_READINESS.md`); üretim minimum yaşı 18.
+
+---
+
+## Public web final adayı — 14 Kasım 2026 (önceki tur)
 
 Başlangıç `a866be9`: Laravel 142 test / 2098 assertion, Flutter 125, analyze temiz, Pixel 9/9, location-time 3/3. Mobil uygulama ve backend sosyal özellikleri değişmedi; yalnız `website/*` Blade, `public/web/*` varlıkları, `WebsiteTest` ve belgeler.
 

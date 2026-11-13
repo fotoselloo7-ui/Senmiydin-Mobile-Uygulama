@@ -115,11 +115,49 @@ class CommentsPage extends StatefulWidget {
 class _CommentsPageState extends State<CommentsPage>
     with AccountAction<CommentsPage> {
   final text = TextEditingController(), scroll = ScrollController();
+  final focus = FocusNode();
+
+  /// The top-level comment being answered (replies never answer replies).
+  Comment? replyingTo;
+
+  /// Fully loaded reply lists, by top-level comment id (the list itself only embeds the first few).
+  final expanded = <String, List<Comment>>{};
+
   @override
   void dispose() {
     text.dispose();
     scroll.dispose();
+    focus.dispose();
     super.dispose();
+  }
+
+  void startReply(Comment comment) {
+    final store = StoreScope.of(context);
+    final person = comment.authorId.isEmpty
+        ? null
+        : store.person(comment.authorId);
+    setState(() => replyingTo = comment);
+    // The composer starts with @username, only to give the conversation its context.
+    text.text = person == null ? '' : '@${person.handle} ';
+    text.selection = TextSelection.collapsed(offset: text.text.length);
+    focus.requestFocus();
+  }
+
+  void cancelReply() {
+    setState(() => replyingTo = null);
+    text.clear();
+  }
+
+  Future<void> loadAllReplies(Post post, String commentId) async {
+    final store = StoreScope.of(context);
+    final all = <Comment>[];
+    int? page = 1;
+    while (page != null) {
+      final result = await store.loadReplies(post.id, commentId, page);
+      all.addAll(result.items);
+      page = result.nextPage;
+    }
+    if (mounted) setState(() => expanded[commentId] = all);
   }
 
   void send(Post post) {
@@ -128,9 +166,14 @@ class _CommentsPageState extends State<CommentsPage>
       return;
     }
     if (post.remote) {
+      final parent = replyingTo;
       runAccountAction(() async {
-        await store.writeComment(post, text.text);
-        if (mounted) text.clear();
+        await store.writeComment(post, text.text, parent: parent);
+        if (!mounted) return;
+        text.clear();
+        setState(() => replyingTo = null);
+        // Show the whole conversation, including the new reply, in order.
+        if (parent?.id != null) await loadAllReplies(post, parent!.id!);
       });
       return;
     }
@@ -192,7 +235,7 @@ class _CommentsPageState extends State<CommentsPage>
                                   'Henüz yorum yapılmamış.',
                                 ),
                               for (final comment in comments)
-                                commentRow(context, store, post, comment),
+                                commentThread(context, store, post, comment),
                               ?footer,
                             ],
                           ),
@@ -226,32 +269,81 @@ class _CommentsPageState extends State<CommentsPage>
               decoration: const BoxDecoration(
                 border: Border(top: BorderSide(color: AppColors.line)),
               ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Avatar(store.me, size: 38),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: TextField(
-                      controller: text,
-                      enabled: !busy,
-                      minLines: 1,
-                      maxLines: 4,
-                      maxLength: 500,
-                      onChanged: (_) => setState(() {}),
-                      decoration: const InputDecoration(
-                        hintText: 'Bir yorum yaz…',
-                        counterText: '',
+                  if (replyingTo != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        key: const Key('replying-banner'),
+                        children: [
+                          const Icon(
+                            Icons.subdirectory_arrow_right_rounded,
+                            size: 16,
+                            color: AppColors.brandPurple,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Yanıtlanıyor: ${replyTargetName(store, replyingTo!)}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.metadata.copyWith(
+                                color: AppColors.brandPurple,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            key: const Key('cancel-reply'),
+                            tooltip: 'Yanıtı iptal et',
+                            visualDensity: VisualDensity.compact,
+                            icon: const Icon(Icons.close_rounded, size: 18),
+                            onPressed: busy ? null : cancelReply,
+                          ),
+                        ],
                       ),
-                      onSubmitted: (_) => send(post),
                     ),
-                  ),
-                  IconButton(
-                    tooltip: 'Yorumu gönder',
-                    onPressed: busy || text.text.trim().isEmpty
-                        ? null
-                        : () => send(post),
-                    icon: const Icon(Icons.send_rounded, color: AppColors.blue),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Avatar(store.me, size: 38),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          key: const Key('comment-field'),
+                          controller: text,
+                          focusNode: focus,
+                          enabled: !busy,
+                          minLines: 1,
+                          maxLines: 4,
+                          maxLength: 500,
+                          onChanged: (_) => setState(() {}),
+                          decoration: InputDecoration(
+                            hintText: replyingTo == null
+                                ? 'Bir yorum yaz…'
+                                : 'Yanıtını yaz…',
+                            counterText: '',
+                          ),
+                          onSubmitted: (_) => send(post),
+                        ),
+                      ),
+                      IconButton(
+                        key: const Key('send-comment'),
+                        tooltip: replyingTo == null
+                            ? 'Yorumu gönder'
+                            : 'Yanıtı gönder',
+                        onPressed: busy || text.text.trim().isEmpty
+                            ? null
+                            : () => send(post),
+                        icon: const Icon(
+                          Icons.send_rounded,
+                          color: AppColors.blue,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -261,28 +353,91 @@ class _CommentsPageState extends State<CommentsPage>
     );
   }
 
-  Widget commentRow(
+  String replyTargetName(AppStore store, Comment comment) {
+    final person = comment.authorId.isEmpty
+        ? null
+        : store.person(comment.authorId);
+    return person == null ? 'Anonim yorum' : '@${person.handle}';
+  }
+
+  /// A top-level comment with its replies (oldest first, one level only).
+  Widget commentThread(
     BuildContext context,
     AppStore store,
     Post post,
     Comment comment,
   ) {
+    final replies = expanded[comment.id] ?? comment.replies;
+    final hidden = comment.replyCount - replies.length;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        commentRow(context, store, post, comment, padBottom: replies.isEmpty),
+        if (replies.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(left: 44, bottom: Space.lg),
+            child: Column(
+              key: ValueKey('replies-${comment.id}'),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final reply in replies)
+                  commentRow(context, store, post, reply, reply: true),
+                if (hidden > 0 && expanded[comment.id] == null)
+                  TextButton(
+                    key: ValueKey('more-replies-${comment.id}'),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      minimumSize: const Size(0, 36),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: busy
+                        ? null
+                        : () => runAccountAction(
+                            () => loadAllReplies(post, comment.id!),
+                          ),
+                    child: Text('$hidden yanıt daha'),
+                  ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget commentRow(
+    BuildContext context,
+    AppStore store,
+    Post post,
+    Comment comment, {
+    bool reply = false,
+    bool padBottom = true,
+  }) {
     final person = comment.authorId.isEmpty
         ? null
         : store.person(comment.authorId);
     return Padding(
-      padding: const EdgeInsets.only(bottom: Space.lg),
+      key: ValueKey('comment-${comment.id}'),
+      padding: EdgeInsets.only(bottom: padBottom || reply ? Space.lg : 4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (reply)
+            const Padding(
+              padding: EdgeInsets.only(top: 6, right: 4),
+              child: Icon(
+                Icons.subdirectory_arrow_right_rounded,
+                size: 16,
+                color: AppColors.textMuted,
+              ),
+            ),
           Avatar(
             person,
-            size: 36,
+            size: reply ? 30 : 36,
             onTap: person == null
                 ? null
                 : () => openPage(context, '/profile', person.id),
           ),
-          const SizedBox(width: Space.md),
+          SizedBox(width: reply ? Space.sm : Space.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -301,17 +456,22 @@ class _CommentsPageState extends State<CommentsPage>
                     ),
                     if (comment.mine)
                       IconButton(
-                        tooltip: 'Yorumu sil',
+                        tooltip: reply ? 'Yanıtı sil' : 'Yorumu sil',
                         icon: const Icon(Icons.delete_outline, size: 18),
                         onPressed: busy
                             ? null
-                            : () => runAccountAction(
-                                () => store.removeComment(post, comment),
-                              ),
+                            : () => runAccountAction(() async {
+                                await store.removeComment(post, comment);
+                                if (comment.parentId != null) {
+                                  expanded.remove(comment.parentId);
+                                }
+                              }),
                       )
                     else if (comment.id != null && post.remote)
                       IconButton(
-                        tooltip: 'Yorumu şikâyet et',
+                        tooltip: reply
+                            ? 'Yanıtı şikâyet et'
+                            : 'Yorumu şikâyet et',
                         icon: const Icon(Icons.flag_outlined, size: 18),
                         onPressed: () => openPage(
                           context,
@@ -319,7 +479,7 @@ class _CommentsPageState extends State<CommentsPage>
                           ReportTarget(
                             'comment',
                             int.parse(comment.id!),
-                            'Yorum',
+                            reply ? 'Yanıt' : 'Yorum',
                           ),
                         ),
                       ),
@@ -327,6 +487,30 @@ class _CommentsPageState extends State<CommentsPage>
                 ),
                 const SizedBox(height: 4),
                 Text(comment.text),
+                if (!reply &&
+                    post.remote &&
+                    post.commentsEnabled &&
+                    comment.id != null)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      key: ValueKey('reply-${comment.id}'),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
+                        minimumSize: const Size(0, 34),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        textStyle: AppTypography.metadata.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      onPressed: busy ? null : () => startReply(comment),
+                      icon: const Icon(
+                        Icons.subdirectory_arrow_right_rounded,
+                        size: 16,
+                      ),
+                      label: const Text('Yanıtla'),
+                    ),
+                  ),
               ],
             ),
           ),

@@ -53,7 +53,17 @@ class MapNoteItem {
       replyCount = json['reply_count'] as int? ?? 0,
       canReply = json['can_reply'] == true,
       createdAt = DateTime.parse(json['created_at'] as String),
-      expiresAt = DateTime.parse(json['expires_at'] as String);
+      expiresAt = DateTime.parse(json['expires_at'] as String),
+      occurredAt = DateTime.parse(
+        (json['occurred_at'] ?? json['created_at']) as String,
+      ),
+      republished = json['republished'] == true,
+      state = json['state'] as String? ?? 'active',
+      hasLiveRepost = json['has_live_repost'] == true,
+      canRepost = json['can_repost'] == true,
+      archivedAt = json['archived_at'] == null
+          ? null
+          : DateTime.parse(json['archived_at'] as String);
 
   MapNoteItem._(MapNoteItem other, this.replyCount)
     : id = other.id,
@@ -67,7 +77,13 @@ class MapNoteItem {
       longitude = other.longitude,
       canReply = other.canReply,
       createdAt = other.createdAt,
-      expiresAt = other.expiresAt;
+      expiresAt = other.expiresAt,
+      occurredAt = other.occurredAt,
+      republished = other.republished,
+      state = other.state,
+      hasLiveRepost = other.hasLiveRepost,
+      canRepost = other.canRepost,
+      archivedAt = other.archivedAt;
 
   MapNoteItem withReplyCount(int count) => MapNoteItem._(this, count);
 
@@ -76,7 +92,42 @@ class MapNoteItem {
   final bool anonymous, mine, canReply;
   final Person? author;
   final double latitude, longitude;
-  final DateTime createdAt, expiresAt;
+
+  /// createdAt = when this publication went public; expiresAt = createdAt + 7 days.
+  /// occurredAt = the letter's real date. A re-publication keeps it while createdAt / expiresAt start over.
+  final DateTime createdAt, expiresAt, occurredAt;
+  final bool republished;
+
+  /// Mektuplarım only: active (public now), archived (taken off the map), expired (its public days are over).
+  final String state;
+  final bool hasLiveRepost, canRepost;
+  final DateTime? archivedAt;
+
+  bool get isActive => state == 'active';
+
+  /// "2 gün kaldı", "5 saat kaldı", "Birazdan kalkacak" (active letters only).
+  String remaining({DateTime? now}) {
+    final left = expiresAt.difference(now ?? DateTime.now());
+    if (left.inDays >= 1) return '${left.inDays} gün kaldı';
+    if (left.inHours >= 1) return '${left.inHours} saat kaldı';
+    return left.isNegative ? 'Süresi doldu' : 'Birazdan kalkacak';
+  }
+}
+
+/// The signed-in user's private "new letters near you" summary.
+class MapNoteUnread {
+  const MapNoteUnread(
+    this.count, {
+    this.locationRequired = false,
+    this.enabled = true,
+  });
+  MapNoteUnread.fromJson(Map<String, dynamic> json)
+    : count = json['count'] as int? ?? 0,
+      locationRequired = json['location_required'] == true,
+      enabled = json['enabled'] != false;
+  final int count;
+  final bool locationRequired, enabled;
+  bool get visible => enabled && !locationRequired && count > 0;
 }
 
 class MapNoteReplyItem {
@@ -101,7 +152,12 @@ class MapNoteReplyItem {
 }
 
 class MapNotePointResult {
-  const MapNotePointResult(this.items, this.nextPage, this.count, this.placeLabel);
+  const MapNotePointResult(
+    this.items,
+    this.nextPage,
+    this.count,
+    this.placeLabel,
+  );
   final List<MapNoteItem> items;
   final int? nextPage;
   final int count;
@@ -225,9 +281,77 @@ class MapNotesApi {
     person,
   );
 
+  /// "Kalıcı Sil": erases the letter, its replies and every personal access to it.
   Future<void> deleteNote(int id) async {
     await client.send('DELETE', 'map-notes/$id', authenticated: true);
   }
+
+  /// Mektuplarım: scope is `active` (still public) or `archive` (expired or taken off the map). Private to the owner.
+  Future<SocialPage<MapNoteItem>> mine(String scope, int page) async {
+    final data = await client.send(
+      'GET',
+      'my/map-notes',
+      authenticated: true,
+      query: {'scope': scope, 'page': '$page'},
+    ) as Map<String, dynamic>;
+    return SocialPage(
+      (data['items'] as List)
+          .cast<Map<String, dynamic>>()
+          .map((item) => MapNoteItem.fromJson(item, person))
+          .toList(),
+      data['next_page'] as int?,
+    );
+  }
+
+  /// One of the owner's letters with its full historical thread (also after it left the public map).
+  Future<MapNoteDetail> mineDetail(int id) async {
+    final data = await client.send(
+      'GET',
+      'my/map-notes/$id',
+      authenticated: true,
+    ) as Map<String, dynamic>;
+    final replies = data['replies'] as Map<String, dynamic>;
+    return MapNoteDetail(
+      MapNoteItem.fromJson(data['note'] as Map<String, dynamic>, person),
+      SocialPage(
+        (replies['items'] as List)
+            .cast<Map<String, dynamic>>()
+            .map((item) => MapNoteReplyItem.fromJson(item, person))
+            .toList(),
+        replies['next_page'] as int?,
+      ),
+    );
+  }
+
+  /// "Haritadan Kaldır": public visibility ends; the letter stays in Mektuplarım → Arşiv.
+  Future<MapNoteItem> archive(int id) async => MapNoteItem.fromJson(
+    await client.send('POST', 'map-notes/$id/archive', authenticated: true)
+        as Map<String, dynamic>,
+    person,
+  );
+
+  /// "Tekrar Paylaş": a new public publication (fresh 7 days) of an archived letter; its real date is kept.
+  Future<MapNoteItem> repost(int id, {required String requestId}) async =>
+      MapNoteItem.fromJson(
+        await client.send(
+          'POST',
+          'map-notes/$id/repost',
+          authenticated: true,
+          body: {'request_id': requestId},
+        ) as Map<String, dynamic>,
+        person,
+      );
+
+  /// The reader really opened this letter (private, idempotent). Returns the new unread count.
+  Future<MapNoteUnread> markRead(int id) async => MapNoteUnread.fromJson(
+    await client.send('POST', 'map-notes/$id/read', authenticated: true)
+        as Map<String, dynamic>,
+  );
+
+  Future<MapNoteUnread> unread() async => MapNoteUnread.fromJson(
+    await client.send('GET', 'map/notes/unread', authenticated: true)
+        as Map<String, dynamic>,
+  );
 
   Future<MapNoteReplyItem> reply(
     int id,
@@ -250,7 +374,7 @@ class MapNotesApi {
 }
 
 /// "Bugün · 14:32", "Dün · 22:18", "11 Kasım · 17:04" in the device's local time.
-String mapNoteTime(DateTime value, {DateTime? now}) {
+String mapNoteTime(DateTime value, {DateTime? now, bool withYear = false}) {
   final time = value.toLocal();
   final today = now ?? DateTime.now();
   final day = DateTime(time.year, time.month, time.day);
@@ -274,5 +398,6 @@ String mapNoteTime(DateTime value, {DateTime? now}) {
   ];
   if (difference == 0) return 'Bugün · $clock';
   if (difference == 1) return 'Dün · $clock';
-  return '${time.day} ${months[time.month - 1]} · $clock';
+  final year = withYear || time.year != today.year ? ' ${time.year}' : '';
+  return '${time.day} ${months[time.month - 1]}$year · $clock';
 }

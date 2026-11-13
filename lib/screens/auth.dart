@@ -88,8 +88,7 @@ class _SplashPageState extends State<SplashPage>
     setState(() => error = null);
     final disableAnimations =
         MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-    final animFuture =
-        (disableAnimations || widget.initialGazeOffset != null)
+    final animFuture = (disableAnimations || widget.initialGazeOffset != null)
         ? Future<void>.value()
         : _controller.forward().orCancel.catchError((_) {});
     try {
@@ -487,11 +486,22 @@ class _AuthPageState extends State<AuthPage> with AccountAction<AuthPage> {
   DateTime? birthday;
   String city = 'Alanya';
   bool accepted = false, obscure = true;
+  bool askedAge = false;
   @override
   void initState() {
     super.initState();
     email.text = widget.social?.email ?? '';
     name.text = widget.social?.name ?? '';
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!askedAge) {
+      askedAge = true;
+      // The age gate comes from the server (one config value); nothing in the UI hardcodes it.
+      if (widget.register) unawaited(StoreScope.of(context).loadMinimumAge());
+    }
   }
 
   @override
@@ -653,21 +663,22 @@ class _AuthPageState extends State<AuthPage> with AccountAction<AuthPage> {
                       ? null
                       : () async {
                           final now = DateTime.now();
+                          final age = StoreScope.of(context).minimumAge;
                           final value = await showDatePicker(
                             context: context,
                             initialDate: DateTime(
-                              now.year - 20,
+                              now.year - age - 2,
                               now.month,
                               now.day,
                             ),
                             firstDate: DateTime(1920),
                             lastDate: DateTime(
-                              now.year - 18,
+                              now.year - age,
                               now.month,
                               now.day,
                             ),
                             helpText:
-                                'Devam etmek için 18 yaşını doldurmalısın',
+                                'Devam etmek için $age yaşını doldurmalısın',
                           );
                           if (mounted && value != null) {
                             setState(() => birthday = value);
@@ -695,10 +706,13 @@ class _AuthPageState extends State<AuthPage> with AccountAction<AuthPage> {
                           ? null
                           : (v) => setState(() => accepted = v!),
                     ),
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        '18 yaşını doldurdum ve aşağıdaki koşulları kabul ediyorum.',
-                        style: TextStyle(fontSize: 12, color: AppColors.muted),
+                        '${StoreScope.of(context).minimumAge} yaşını doldurdum ve aşağıdaki koşulları kabul ediyorum.',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.muted,
+                        ),
                       ),
                     ),
                   ],

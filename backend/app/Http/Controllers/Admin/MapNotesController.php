@@ -17,7 +17,7 @@ class MapNotesController
 
     public static function state(MapNote $note): string
     {
-        return $note->deleted_at !== null || $note->moderated_at !== null ? 'removed'
+        return $note->deleted_at !== null || $note->moderated_at !== null || $note->archived_at !== null ? 'removed'
             : ($note->expires_at->isPast() ? 'expired' : 'active');
     }
 
@@ -32,9 +32,9 @@ class MapNotesController
             ->when($q, fn ($items) => $items->whereRaw("body LIKE ? ESCAPE '!'", [$q]))
             ->when(isset($f['anonymous']), fn ($items) => $items->where('is_anonymous', $f['anonymous']))
             ->when(isset($f['reported']), fn ($items) => $f['reported'] ? $items->whereIn('map_notes.id', $reports) : $items->whereNotIn('map_notes.id', $reports))
-            ->when(($f['status'] ?? null) === 'active', fn ($items) => $items->whereNull('deleted_at')->whereNull('moderated_at')->where('expires_at', '>', now()))
-            ->when(($f['status'] ?? null) === 'expired', fn ($items) => $items->whereNull('deleted_at')->whereNull('moderated_at')->where('expires_at', '<=', now()))
-            ->when(($f['status'] ?? null) === 'removed', fn ($items) => $items->where(fn ($x) => $x->whereNotNull('deleted_at')->orWhereNotNull('moderated_at')))
+            ->when(($f['status'] ?? null) === 'active', fn ($items) => $items->whereNull('deleted_at')->whereNull('moderated_at')->whereNull('archived_at')->where('expires_at', '>', now()))
+            ->when(($f['status'] ?? null) === 'expired', fn ($items) => $items->whereNull('deleted_at')->whereNull('moderated_at')->whereNull('archived_at')->where('expires_at', '<=', now()))
+            ->when(($f['status'] ?? null) === 'removed', fn ($items) => $items->where(fn ($x) => $x->whereNotNull('deleted_at')->orWhereNotNull('moderated_at')->orWhereNotNull('archived_at')))
             ->orderByDesc('id')->paginate(25)->withQueryString();
         $reportCounts = DB::table('reports')->where('target_type', 'map_note')->whereIn('target_id', $rows->pluck('id'))
             ->selectRaw('target_id, COUNT(*) AS total')->groupBy('target_id')->pluck('total', 'target_id');

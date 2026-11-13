@@ -8,6 +8,7 @@ use App\Http\ApiResponse;
 use App\Location\Geo;
 use App\Location\LocationData;
 use App\Models\Post;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -88,9 +89,15 @@ class LocationController extends Controller
                 'cities.id as city_id', 'cities.name as city_name', 'cities.slug as city_slug']);
         Blocks::exclude($people, $viewer->id, 'users.id');
         Geo::bound($people, $origin, $radius, 'l.latitude', 'l.longitude');
-        $items = $people->whereRaw("($distance) <= ?", [...$bindings, $radius])
-            ->selectRaw("($distance) AS meters", $bindings)
-            ->orderBy('meters')->orderBy('users.id')->limit($data['limit'] ?? 20)->get()->map(fn ($person) => [
+        $limit = (int) ($data['limit'] ?? 20);
+        // Distance stays the primary rule. Shared interests / compatible connection choices only reorder people who fall into
+        // the same publicly shown distance step (100 m) and are never a filter, a label or a visible score.
+        $candidates = $people->whereRaw("($distance) <= ?", [...$bindings, $radius])
+            ->selectRaw("($distance) AS meters", $bindings)->selectRaw('users.connections AS connection_choices')
+            ->orderBy('meters')->orderBy('users.id')->limit(max($limit * 4, 60))->get();
+        $affinity = $this->discoveryAffinity($viewer, $candidates);
+        $items = $candidates->sortBy(fn ($person) => [Geo::publicDistance($person->meters), -($affinity[$person->id] ?? 0), $person->meters, $person->id])
+            ->take($limit)->values()->map(fn ($person) => [
                 'id' => $person->id,
                 'name' => $person->name,
                 'username' => $person->username,
@@ -100,6 +107,31 @@ class LocationController extends Controller
             ]);
 
         return ApiResponse::ok(['items' => $items, 'location_required' => false]);
+    }
+
+    /**
+     * Internal, low-weight discovery signal (0..4): up to three shared interests plus one point when both people chose at least one
+     * common "connections" preference. Never shown to anyone, never a filter: people with different choices are not hidden.
+     *
+     * @return array<int,int> user id => affinity
+     */
+    private function discoveryAffinity(User $viewer, $candidates): array
+    {
+        $ids = $candidates->pluck('id')->all();
+        if ($ids === []) {
+            return [];
+        }
+        $mine = DB::table('user_interests')->where('user_id', $viewer->id)->pluck('interest_id')->all();
+        $shared = $mine === [] ? collect() : DB::table('user_interests')->whereIn('user_id', $ids)->whereIn('interest_id', $mine)
+            ->selectRaw('user_id, COUNT(*) AS total')->groupBy('user_id')->pluck('total', 'user_id');
+        $viewerChoices = (array) ($viewer->connections ?? []);
+        $scores = [];
+        foreach ($candidates as $person) {
+            $choices = json_decode((string) ($person->connection_choices ?? '[]'), true) ?: [];
+            $scores[$person->id] = min(3, (int) ($shared[$person->id] ?? 0)) + (array_intersect($viewerChoices, $choices) ? 1 : 0);
+        }
+
+        return $scores;
     }
 
     public function map(Request $request): JsonResponse

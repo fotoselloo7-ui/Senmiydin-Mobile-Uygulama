@@ -39,7 +39,11 @@ Future<void> routeInboxNotification(
   }
   final entity = item.entity?.toString();
   switch (item.route) {
-    case '/post' || '/comments' || '/conversation' || '/encounter' || '/map-note'
+    case '/post' ||
+            '/comments' ||
+            '/conversation' ||
+            '/encounter' ||
+            '/map-note'
         when entity != null:
       await navigator.pushNamed(item.route, arguments: entity);
     case '/profile' when item.actor != null:
@@ -197,7 +201,7 @@ class _NoticeAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final icon = switch (item.type) {
       'like' => Icons.favorite_border,
-      'comment' => Icons.chat_bubble_outline,
+      'comment' || 'comment_reply' => Icons.chat_bubble_outline,
       'follow' => Icons.person_add_outlined,
       'message' || 'message_request' => Icons.mail_outline,
       'location_match' || 'nearby_activity' => Icons.location_on_outlined,

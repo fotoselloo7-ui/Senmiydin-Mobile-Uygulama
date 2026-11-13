@@ -27,7 +27,10 @@ class MapNoteResource extends JsonResource
             'latitude' => $this->approx_latitude,
             'longitude' => $this->approx_longitude,
             'reply_count' => (int) ($this->replies_count ?? 0),
-            'can_reply' => $this->expires_at->isFuture() && $this->deleted_at === null && $this->moderated_at === null,
+            'can_reply' => $this->expires_at->isFuture() && $this->deleted_at === null && $this->moderated_at === null && $this->archived_at === null,
+            // The letter's real date. A re-publication gets a new created_at / expires_at but keeps this one.
+            'occurred_at' => ($this->occurred_at ?? $this->created_at)->toISOString(),
+            'republished' => $this->reposted_from_id !== null,
             'created_at' => $this->created_at->toISOString(),
             'expires_at' => $this->expires_at->toISOString(),
         ];

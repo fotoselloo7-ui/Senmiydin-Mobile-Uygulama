@@ -17,6 +17,7 @@ final class Inbox
     public const TYPES = [
         'like' => ['/post', 'Paylaşımın beğenildi.'],
         'comment' => ['/comments', 'Paylaşımına yorum yapıldı.'],
+        'comment_reply' => ['/comments', 'Yorumuna bir cevap geldi.'],
         'follow' => ['/profile', 'Bir kullanıcı seni takip etmeye başladı.'],
         'message' => ['/conversation', 'Yeni bir mesajın var.'],
         'message_request' => ['/conversation', 'Yeni bir mesaj isteğin var.'],
@@ -61,7 +62,8 @@ final class Inbox
 
     public static function permitted(\App\Models\User $user, string $type): bool
     {
-        $category = str_starts_with($type, 'encounter_') ? 'encounter' : $type;
+        // Replies share the existing "comment" preference; no extra settings row.
+        $category = str_starts_with($type, 'encounter_') ? 'encounter' : ($type === 'comment_reply' ? 'comment' : $type);
         return isset(self::DEFAULTS[$category]) &&
             (($user->push_preferences ?? []) + self::DEFAULTS)[$category] &&
             (! in_array($type, ['location_match', 'nearby_activity'], true) || $user->location_history_enabled) &&

@@ -67,7 +67,12 @@ class Post extends Model
 
     public function comments(): HasMany
     {
-        return $this->hasMany(PostComment::class)->whereHas('author', fn (Builder $user) => $user->where('account_status', 'active'));
+        // A reply is public only while its top-level comment is (not deleted / moderated, active author): no orphan replies.
+        return $this->hasMany(PostComment::class)
+            ->whereHas('author', fn (Builder $user) => $user->where('account_status', 'active'))
+            ->where(fn (Builder $thread) => $thread->whereNull('post_comments.parent_id')
+                ->orWhereHas('parent', fn (Builder $parent) => $parent
+                    ->whereHas('author', fn (Builder $user) => $user->where('account_status', 'active'))));
     }
 
     public function likes(): BelongsToMany

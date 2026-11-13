@@ -22,6 +22,8 @@ class AppConfigController
             'maintenance' => $data['maintenance_mode'],
             'maintenance_message' => $data['maintenance_mode'] ? $data['maintenance_message'] : null,
             'nearby_enabled' => $data['nearby_enabled'],
+            'nearby_notes_enabled' => $data['nearby_notes_enabled'],
+            'minimum_age' => (int) $data['minimum_age'],
             'featured_enabled' => $data['featured_enabled'] && $data['encounters_enabled'],
             'announcement' => $data['announcements_enabled'] && $user instanceof User && $user->account_status === 'active'
                 ? $announcements->banner($user) : null,

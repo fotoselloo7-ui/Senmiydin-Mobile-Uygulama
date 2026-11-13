@@ -320,7 +320,7 @@ class MapNotesTest extends TestCase
         $this->assertSame(2, DB::table('map_note_replies')->count());
     }
 
-    public function test_expired_notes_are_purged_after_the_retention_window_and_the_scheduler_runs_it(): void
+    public function test_expiry_never_destroys_the_owners_archive_but_removed_rows_are_purged_after_the_retention_window(): void
     {
         $registered = collect(app(\Illuminate\Console\Scheduling\Schedule::class)->events())
             ->first(fn ($event) => str_contains($event->command, 'map-notes:purge'));
@@ -329,16 +329,21 @@ class MapNotesTest extends TestCase
 
         $old = $this->note($this->ada);
         $this->as($this->ece)->postJson('/api/v1/map-notes/'.$old['id'].'/replies', ['body' => 'Eski not cevabı'])->assertCreated();
+        $moderated = $this->note($this->ada, ['request_id' => (string) Str::uuid()]);
+        MapNote::whereKey($moderated['id'])->update(['moderated_at' => now()]);
         Carbon::setTestNow(now()->addDays(8));
         $fresh = $this->note($this->ada, ['request_id' => (string) Str::uuid()]);
         $this->artisan('map-notes:purge')->assertExitCode(0);
-        $this->assertNotNull(MapNote::withTrashed()->find($old['id']), 'Within the admin retention window.');
+        $this->assertNotNull(MapNote::withTrashed()->find($old['id']));
 
-        Carbon::setTestNow(now()->addDays(config('map_notes.retention_days')));
+        // Months later: the expired letter and its thread are still the owner's (public visibility is a separate rule).
+        Carbon::setTestNow(now()->addDays(config('map_notes.retention_days') + 90));
         $this->artisan('map-notes:purge')->assertExitCode(0);
-        $this->assertNull(MapNote::withTrashed()->find($old['id']));
-        $this->assertSame(0, DB::table('map_note_replies')->count(), 'Replies are purged with their note.');
+        $this->assertNotNull(MapNote::withTrashed()->find($old['id']), 'An expired letter lives on in Mektuplarım → Arşiv.');
+        $this->assertSame(1, DB::table('map_note_replies')->count(), 'Its replies are kept as history.');
+        $this->assertNull(MapNote::withTrashed()->find($moderated['id']), 'Moderation rows still leave after the audit window.');
         $this->assertNotNull(MapNote::withTrashed()->find($fresh['id']));
+        $this->assertSame(0, $this->as($this->ece)->getJson('/api/v1/map/notes?city_id='.$this->alanya)->json('data.items.0.count') ?? 0, 'Never public again after expiry.');
     }
 
     public function test_replies_are_single_level_oldest_first_open_or_anonymous_and_notify_the_owner_without_identity(): void

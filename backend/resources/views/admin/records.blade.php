@@ -65,7 +65,7 @@
         <h2>Mobil ana sayfa ve keşif modülleri</h2>
         <p>Ana sayfa modül sırası sabittir: Üst Başlık → Akış / Yakın / Popüler / Şehir → Yakınında Yeni Paylaşımlar / Duyuru → Yakınındaki İnsanlar → Öne Çıkan Karşılaşmalar → Hızlı Paylaşım → Normal Akış → Alt Navigasyon. Buradan modül görünürlüklerini yönetebilirsin.</p>
         <div class="field-grid">
-            @foreach(['announcements_enabled', 'nearby_enabled', 'featured_enabled', 'encounters_enabled'] as $key)
+            @foreach(['announcements_enabled', 'nearby_enabled', 'nearby_notes_enabled', 'featured_enabled', 'encounters_enabled'] as $key)
                 <label class="toggle"><input type="hidden" name="{{ $key }}" value="0"><input type="checkbox" name="{{ $key }}" value="1" @checked(old($key, $settings[$key]))>{{ \App\Administration\Settings::LABELS[$key] }}</label>
             @endforeach
         </div>

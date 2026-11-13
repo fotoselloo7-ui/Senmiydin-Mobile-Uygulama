@@ -48,6 +48,21 @@ class _LiveMapContentState extends State<LiveMapContent> {
   int noteToken = 0;
   Timer? highlightTimer;
   Timer? debounce;
+  bool consumedHomeRequest = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!consumedHomeRequest) {
+      consumedHomeRequest = true;
+      // The Home card "Yakınında N yeni mektup var" opens the map straight in its Notlar view.
+      final store = StoreScope.of(context);
+      if (store.openMapInNotes && store.mapNotes != null) {
+        store.openMapInNotes = false;
+        mode = _MapMode.notes;
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -262,13 +277,41 @@ class _LiveMapContentState extends State<LiveMapContent> {
                       needsInitialFocus = true;
                     }),
                     icon: const Icon(Icons.mail_outline_rounded),
-                    label: Text(
-                      'Notlar',
-                      style: TextStyle(
-                        color: mode == _MapMode.notes
-                            ? AppColors.brandPurple
-                            : AppColors.muted,
-                      ),
+                    label: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Notlar',
+                          style: TextStyle(
+                            color: mode == _MapMode.notes
+                                ? AppColors.brandPurple
+                                : AppColors.muted,
+                          ),
+                        ),
+                        // Private count of unopened letters near the user (never visible to anyone else).
+                        if (store.nearbyNotesEnabled &&
+                            store.nearbyUnread.visible)
+                          Container(
+                            key: const Key('notes-unread-badge'),
+                            margin: const EdgeInsets.only(left: 6),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.brandPurple,
+                              borderRadius: BorderRadius.circular(99),
+                            ),
+                            child: Text(
+                              '${store.nearbyUnread.count} yeni',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
               ],

@@ -39,6 +39,7 @@ class PostController extends Controller
             'use_location' => ['sometimes', 'boolean'],
             'content' => ['sometimes', Rule::in(['photo', 'text', 'tagged', ...Post::TYPES])],
             'media' => ['sometimes', Rule::in(['all', 'photo', 'text'])],
+            'following' => ['sometimes', 'boolean'],
             'photo_first' => ['sometimes', 'boolean'],
             'encounter_first' => ['sometimes', 'boolean'],
             'interests' => ['sometimes', 'array', 'list', 'max:30'],
@@ -62,6 +63,12 @@ class PostController extends Controller
             }
         } elseif (isset($data['radius'])) {
             $posts->whereRaw('1 = 0');
+        }
+        if ($data['following'] ?? false) {
+            // "Takip": only people the viewer follows. Anonymous posts never appear here: with a short follow list they would
+            // reveal their author. They stay in the city-wide Akış / Yakın / Popüler feeds, where they remain anonymous.
+            $posts->where('posts.is_anonymous', false)->whereIn('posts.user_id',
+                DB::table('user_follows')->where('follower_id', $viewer->id)->select('followed_id'));
         }
         $content = $data['content'] ?? null;
         match ($content) {
@@ -328,34 +335,78 @@ class PostController extends Controller
         return ApiResponse::page($posts->simplePaginate(20), PostResource::class);
     }
 
+    private const REPLY_PREVIEW = 3;
+
     public function comments(Request $request, int $post): JsonResponse
     {
-        $entry = Post::visibleTo($request->user())->findOrFail($post);
-        $comments = Blocks::exclude($entry->comments()->getQuery(), $request->user()->id, 'post_comments.user_id')
-            ->with('author')->latest('id')->simplePaginate(20);
+        $viewer = $request->user();
+        $entry = Post::visibleTo($viewer)->findOrFail($post);
+        $visible = fn () => Blocks::exclude($entry->comments()->getQuery(), $viewer->id, 'post_comments.user_id');
+        $comments = $visible()->whereNull('post_comments.parent_id')->with('author')->latest('id')->simplePaginate(20);
+        $ids = collect($comments->items())->pluck('id');
+        $totals = $visible()->whereIn('post_comments.parent_id', $ids)->selectRaw('post_comments.parent_id, COUNT(*) AS total')
+            ->groupBy('post_comments.parent_id')->pluck('total', 'parent_id');
+        $previews = $visible()->whereIn('post_comments.parent_id', $ids)->with('author')->orderBy('post_comments.id')->get()
+            ->groupBy('parent_id');
         foreach ($comments as $comment) {
             $comment->setRelation('post', $entry);
+            $comment->setAttribute('reply_total', (int) ($totals[$comment->id] ?? 0));
+            $comment->setRelation('replies', ($previews[$comment->id] ?? collect())->take(self::REPLY_PREVIEW)->values());
         }
 
         return ApiResponse::page($comments, PostCommentResource::class);
     }
 
+    /** All replies of one top-level comment, oldest first (a conversation reads top to bottom). */
+    public function replies(Request $request, int $post, int $comment): JsonResponse
+    {
+        $viewer = $request->user();
+        $entry = Post::visibleTo($viewer)->findOrFail($post);
+        $parent = Blocks::exclude($entry->comments()->getQuery(), $viewer->id, 'post_comments.user_id')
+            ->whereNull('post_comments.parent_id')->findOrFail($comment);
+        $replies = Blocks::exclude($entry->comments()->getQuery(), $viewer->id, 'post_comments.user_id')
+            ->where('post_comments.parent_id', $parent->id)->with('author')->orderBy('post_comments.id')->simplePaginate(20);
+        foreach ($replies as $reply) {
+            $reply->setRelation('post', $entry);
+        }
+
+        return ApiResponse::page($replies, PostCommentResource::class);
+    }
+
     public function comment(Request $request, int $post): JsonResponse
     {
-        $data = $request->validate(['body' => ['required', 'string', 'max:500']], [
-            'body.required' => 'Bir yorum yaz.',
-        ]);
+        $data = $request->validate([
+            'body' => ['required', 'string', 'max:500'],
+            'parent_id' => ['sometimes', 'nullable', 'integer'],
+        ], ['body.required' => 'Bir yorum yaz.']);
         $comment = DB::transaction(function () use ($request, $post, $data) {
-            $entry = Post::visibleTo($request->user())->lockForUpdate()->findOrFail($post);
+            $viewer = $request->user();
+            $entry = Post::visibleTo($viewer)->lockForUpdate()->findOrFail($post);
             abort_unless($entry->comments_enabled &&
                 (! $entry->encounter_id || $entry->story_status === Post::STORY_PUBLISHED), 403);
-            User::whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
-            app(\App\Safety\ContentGuard::class)->check($request->user()->id, $data['body'], 'post_comments');
-            $comment = $entry->comments()->create([...$data, 'user_id' => $request->user()->id]);
+            $parent = null;
+            if (! empty($data['parent_id'])) {
+                // Same post, still public, not blocked either way. A reply can only target a TOP-LEVEL comment.
+                $parent = Blocks::exclude($entry->comments()->getQuery(), $viewer->id, 'post_comments.user_id')
+                    ->lockForUpdate()->find($data['parent_id']);
+                abort_unless($parent, 404);
+                if ($parent->parent_id !== null) {
+                    throw ValidationException::withMessages(['parent_id' => 'Yanıta yanıt verilemez; ana yoruma yanıt ver.']);
+                }
+            }
+            User::whereKey($viewer->id)->lockForUpdate()->firstOrFail();
+            app(\App\Safety\ContentGuard::class)->check($viewer->id, $data['body'], 'post_comments');
+            $comment = $entry->comments()->create(['body' => $data['body'], 'user_id' => $viewer->id, 'parent_id' => $parent?->id]);
             $comment->forceFill(['content_hash' => \App\Safety\ContentGuard::fingerprint($data['body'])])->save();
 
-            Inbox::add($entry->user_id, $request->user()->id, 'comment', $entry->id);
-            return $comment->setRelation('post', $entry)->setRelation('author', $request->user());
+            if ($parent) {
+                // One meaningful notification: the owner of the comment that was answered (also when that is the post owner).
+                // The post owner does not additionally get a generic "comment" for every reply in a thread.
+                Inbox::add($parent->user_id, $viewer->id, 'comment_reply', $comment->id);
+            } else {
+                Inbox::add($entry->user_id, $viewer->id, 'comment', $entry->id);
+            }
+            return $comment->setRelation('post', $entry)->setRelation('author', $viewer);
         });
 
         return ApiResponse::ok(new PostCommentResource($comment), 'Yorum eklendi.', 201);

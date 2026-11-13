@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\ApiResponse;
 use App\Http\Resources\MapNoteReplyResource;
+use App\Http\Resources\MyMapNoteResource;
 use App\Http\Resources\MapNoteResource;
 use App\Location\CityResolver;
 use App\Location\Geo;
@@ -157,6 +158,7 @@ class MapNoteController extends Controller
                 'approx_longitude' => Geo::grid((float) $data['longitude'], $grid),
                 'place_label' => $city.' · Yaklaşık bölge', 'content_hash' => ContentGuard::fingerprint($body),
                 'request_id' => $data['request_id'] ?? null,
+                'occurred_at' => now(),
                 'expires_at' => now()->addDays((int) config('map_notes.ttl_days')),
             ]);
             // Exactly one create-time fan-out; later map opens, location updates or replies never notify again.
@@ -169,13 +171,179 @@ class MapNoteController extends Controller
         return ApiResponse::ok(new MapNoteResource($note), 'Notun haritaya bırakıldı.', $created ? 201 : 200);
     }
 
+    /**
+     * "Kalıcı Sil": the owner's letter, its replies and every personal access to it are removed. Rows that carry a report are
+     * only soft-deleted so moderation can still review them until the retention window ends; everything else is erased now.
+     */
     public function destroy(Request $request, int $note): JsonResponse
     {
         $entry = MapNote::findOrFail($note);
         abort_unless($entry->user_id === $request->user()->id, 403);
-        $entry->delete();
+        DB::transaction(function () use ($entry): void {
+            $reported = DB::table('reports')->where('target_type', 'map_note')->where('target_id', $entry->id)->exists()
+                || DB::table('reports')->where('target_type', 'map_note_reply')
+                    ->whereIn('target_id', DB::table('map_note_replies')->where('map_note_id', $entry->id)->select('id'))->exists();
+            $reported ? $entry->delete() : $entry->forceDelete();
+        });
 
-        return ApiResponse::ok(message: 'Notun kaldırıldı.');
+        return ApiResponse::ok(message: 'Mektup kalıcı olarak silindi.');
+    }
+
+    /** "Haritadan Kaldır": public visibility ends now; the letter stays in the owner's private archive. */
+    public function archive(Request $request, int $note): JsonResponse
+    {
+        $entry = $this->ownLetter($request, $note);
+        if ($entry->archived_at === null) {
+            $entry->forceFill(['archived_at' => now()])->save();
+        }
+
+        return ApiResponse::ok($this->mineResource($request, $entry->id), 'Mektup haritadan kaldırıldı. Mektuplarım → Arşiv’de duruyor.');
+    }
+
+    /**
+     * "Tekrar Paylaş": a NEW public publication of the same letter. It gets a fresh 7-day lifecycle (created_at / expires_at),
+     * keeps the letter's real date (occurred_at) and the same approximate point, and starts with an empty public thread.
+     * Replies to the earlier publication stay in the owner's archive only. No "near you" fan-out is sent again.
+     */
+    public function repost(Request $request, int $note): JsonResponse
+    {
+        $data = $request->validate(['request_id' => ['sometimes', 'uuid']]);
+        $viewer = $request->user();
+        [$fresh, $created] = DB::transaction(function () use ($viewer, $note, $data) {
+            User::whereKey($viewer->id)->lockForUpdate()->firstOrFail();
+            if (isset($data['request_id'])) {
+                $existing = MapNote::withTrashed()->where('user_id', $viewer->id)->where('request_id', $data['request_id'])->first();
+                if ($existing) {
+                    return [$existing, false];
+                }
+            }
+            $original = MapNote::where('user_id', $viewer->id)->whereNull('moderated_at')->lockForUpdate()->findOrFail($note);
+            if ($original->state() === 'active') {
+                throw ValidationException::withMessages(['note' => 'Bu mektup zaten haritada.']);
+            }
+            if ($original->reposts()->live()->exists()) {
+                throw ValidationException::withMessages(['note' => 'Bu mektup zaten yeniden paylaşıldı ve haritada.']);
+            }
+            if (! DB::table('cities')->where('id', $original->city_id)->where('is_active', true)->exists()) {
+                throw ValidationException::withMessages(['note' => 'Bu şehirde şu an mektup bırakılamıyor.']);
+            }
+            app(ContentGuard::class)->check($viewer->id, $original->body, 'map_notes');
+            $fresh = MapNote::create([
+                'user_id' => $viewer->id, 'city_id' => $original->city_id, 'body' => $original->body,
+                'is_anonymous' => $original->is_anonymous,
+                'approx_latitude' => $original->approx_latitude, 'approx_longitude' => $original->approx_longitude,
+                'place_label' => $original->place_label, 'content_hash' => $original->content_hash,
+                'request_id' => $data['request_id'] ?? null,
+                'occurred_at' => $original->occurred_at ?? $original->created_at,
+                'reposted_from_id' => $original->id,
+                'expires_at' => now()->addDays((int) config('map_notes.ttl_days')),
+            ]);
+
+            return [$fresh, true];
+        });
+        $fresh->load(['author', 'city'])->loadCount(['replies' => fn ($replies) => $replies->visibleTo($viewer)]);
+
+        return ApiResponse::ok(new MapNoteResource($fresh), 'Mektubun yeniden haritada.', $created ? 201 : 200);
+    }
+
+    /** Mektuplarım list: active = still public (7 days), archive = expired or taken off the map. Private to the owner. */
+    public function mine(Request $request): JsonResponse
+    {
+        $data = $request->validate(['scope' => ['sometimes', Rule::in(['active', 'archive'])]]);
+        $viewer = $request->user();
+        $notes = MapNote::where('map_notes.user_id', $viewer->id)->whereNull('map_notes.moderated_at')
+            ->with(['city', 'author'])
+            ->withCount(['replies' => fn ($replies) => $replies->visibleTo($viewer)])
+            ->addSelect(['map_notes.*', 'has_live_repost' => $this->liveRepostSubquery()]);
+        if (($data['scope'] ?? 'active') === 'active') {
+            $notes->whereNull('map_notes.archived_at')->where('map_notes.expires_at', '>', now())
+                ->orderByDesc('map_notes.created_at')->orderByDesc('map_notes.id');
+        } else {
+            $notes->where(fn ($x) => $x->whereNotNull('map_notes.archived_at')->orWhere('map_notes.expires_at', '<=', now()))
+                ->orderByRaw('COALESCE(map_notes.archived_at, map_notes.expires_at) DESC')->orderByDesc('map_notes.id');
+        }
+
+        return ApiResponse::page($notes->simplePaginate((int) config('map_notes.page_size')), MyMapNoteResource::class);
+    }
+
+    /** One of the owner's letters with its full historical thread (also after it left the public map). */
+    public function showMine(Request $request, int $note): JsonResponse
+    {
+        $viewer = $request->user();
+        $entry = $this->ownLetter($request, $note);
+        $replies = MapNoteReply::visibleTo($viewer)->where('map_note_id', $entry->id)->with('author')
+            ->orderBy('map_note_replies.created_at')->orderBy('map_note_replies.id')
+            ->simplePaginate((int) config('map_notes.reply_page_size'))
+            ->through(fn (MapNoteReply $reply) => $reply->setRelation('note', $entry));
+
+        return ApiResponse::ok([
+            'note' => $this->mineResource($request, $entry->id),
+            'replies' => [
+                'items' => MapNoteReplyResource::collection($replies->items()),
+                'next_page' => $replies->hasMorePages() ? $replies->currentPage() + 1 : null,
+            ],
+        ]);
+    }
+
+    /**
+     * The viewer really opened this letter. Idempotent, private to the viewer: nobody (not even the author) can see who read what.
+     * Map viewport movement never counts as reading.
+     */
+    public function read(Request $request, int $note): JsonResponse
+    {
+        $viewer = $request->user();
+        $entry = MapNote::visibleTo($viewer)->findOrFail($note);
+        if ($entry->user_id !== $viewer->id) {
+            DB::table('map_note_reads')->insertOrIgnore(['user_id' => $viewer->id, 'map_note_id' => $entry->id, 'read_at' => now()]);
+        }
+
+        return ApiResponse::ok($this->unreadSummary($viewer));
+    }
+
+    /** Count of active letters left near the viewer (recent location) that the viewer has not opened yet. */
+    public function unread(Request $request): JsonResponse
+    {
+        return ApiResponse::ok($this->unreadSummary($request->user()));
+    }
+
+    private function unreadSummary(User $viewer): array
+    {
+        $enabled = (bool) app(\App\Administration\Settings::class)->get('nearby_notes_enabled');
+        $origin = LocationData::active($viewer);
+        if (! $origin) {
+            return ['count' => 0, 'location_required' => true, 'enabled' => $enabled];
+        }
+        $radius = (int) config('map_notes.nearby_notification_meters');
+        $notes = MapNote::visibleTo($viewer)->where('map_notes.city_id', LocationData::city($viewer, $origin, null))
+            ->where('map_notes.user_id', '<>', $viewer->id)
+            ->whereNotExists(fn ($reads) => $reads->selectRaw('1')->from('map_note_reads as r')
+                ->whereColumn('r.map_note_id', 'map_notes.id')->where('r.user_id', $viewer->id));
+        [$distance, $bindings] = Geo::expression($origin, 'map_notes.approx_latitude', 'map_notes.approx_longitude');
+        Geo::bound($notes, $origin, $radius, 'map_notes.approx_latitude', 'map_notes.approx_longitude');
+        $notes->whereRaw("($distance) <= ?", [...$bindings, $radius]);
+
+        return ['count' => (int) $notes->count(), 'location_required' => false, 'enabled' => $enabled, 'radius_meters' => $radius];
+    }
+
+    private function ownLetter(Request $request, int $note): MapNote
+    {
+        return MapNote::where('user_id', $request->user()->id)->whereNull('moderated_at')->findOrFail($note);
+    }
+
+    private function mineResource(Request $request, int $id): MyMapNoteResource
+    {
+        $viewer = $request->user();
+
+        return new MyMapNoteResource(MapNote::with(['city', 'author'])->addSelect(['map_notes.*', 'has_live_repost' => $this->liveRepostSubquery()])
+            ->withCount(['replies' => fn ($replies) => $replies->visibleTo($viewer)])->findOrFail($id));
+    }
+
+    /** 1 when a later publication of this letter is public right now (aliased: the relation points back at the same table). */
+    private function liveRepostSubquery(): \Illuminate\Database\Query\Builder
+    {
+        return DB::table('map_notes as later')->selectRaw('1')->whereColumn('later.reposted_from_id', 'map_notes.id')
+            ->whereNull('later.deleted_at')->whereNull('later.moderated_at')->whereNull('later.archived_at')
+            ->where('later.expires_at', '>', now())->limit(1);
     }
 
     public function reply(Request $request, int $note): JsonResponse
@@ -241,7 +409,7 @@ class MapNoteController extends Controller
 
     private function expiredButOtherwiseVisible(MapNote $note, User $viewer): bool
     {
-        return $note->deleted_at === null && $note->moderated_at === null && $note->expires_at->isPast()
+        return $note->deleted_at === null && $note->moderated_at === null && $note->archived_at === null && $note->expires_at->isPast()
             && User::whereKey($note->user_id)->where('account_status', 'active')->exists()
             && ! \App\Safety\Blocks::between($viewer->id, $note->user_id);
     }
