@@ -23,7 +23,7 @@ class SocialUserController extends Controller
     public function show(Request $request, string $username): JsonResponse
     {
         $viewer = $request->user();
-        $user = $this->activeUsers($viewer)->with(['city', 'interests'])
+        $user = $this->activeUsers($viewer)
             ->withCount([
                 'posts' => fn (Builder $posts) => $posts->publishedOrOrdinary()->where(fn (Builder $visible) => $visible
                     ->where('user_id', $viewer->id)
@@ -85,7 +85,7 @@ class SocialUserController extends Controller
 
     private function connections(Request $request, string $username, string $relation): JsonResponse
     {
-        $users = $this->find($username, $request->user())->{$relation}()->with('city')->where('account_status', 'active')
+        $users = $this->find($username, $request->user())->{$relation}()->where('account_status', 'active')
             ->withExists(['followers as followed_by_viewer' => fn (Builder $followers) => $followers->where($followers->qualifyColumn('id'), $request->user()->id)])
             ->orderBy('users.id');
 
@@ -108,7 +108,7 @@ class SocialUserController extends Controller
         }
         $pattern = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $query);
         if ($data['type'] === 'users') {
-            $users = $this->activeUsers($viewer)->with('city')
+            $users = $this->activeUsers($viewer)
                 ->where(fn (Builder $matches) => $matches
                     ->whereRaw("username LIKE ? ESCAPE '!'", [$pattern.'%'])
                     ->orWhereRaw("LOWER(name) LIKE ? ESCAPE '!'", ['%'.$pattern.'%']));

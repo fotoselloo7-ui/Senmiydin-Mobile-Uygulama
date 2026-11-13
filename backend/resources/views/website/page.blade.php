@@ -2,96 +2,117 @@
 
 @section('content')
 @if($slug === '')
-{{-- 1. HERO SECTION --}}
+@php
+$pin = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
+$slides = [
+    ['tram', 'İstanbul · İstiklal', 'Kırmızı tramvay durağındaki o an', '“Elinde kahve, kulaklığı boynunda olan; tramvaya birlikte baktığımız sen miydin?”', 'web/hero-istanbul-tram.jpg', 'İstiklal Caddesi’nde kırmızı tramvayın önünde konuşan iki kişi'],
+    ['ferry', 'İstanbul · Kadıköy', 'Akşam vapurunda gün batımı', '“Martılara simit atarken göz göze geldiğimiz sen miydin?”', 'web/polaroid-kiz-kulesi.jpg', 'Gün batımında Kız Kulesi ve Boğaz'],
+    ['cafe', 'İstanbul · Moda', 'Köşe masadaki kahve', '“Kitabını kapatıp bana gülümseyen, ikinci kahveyi sipariş eden sen miydin?”', 'web/coffee.jpg', 'Bir kafede demlenen filtre kahve'],
+    ['note', 'Ankara · Kütüphane', 'Masama bıraktığın not', '“Masama bıraktığın nota teşekkür etmek istedim. Kim olduğunu hâlâ merak ediyorum.”', null, null],
+    ['trip', 'Ankara → Eskişehir · Tren', 'Cam kenarında bir yolculuk', '“Seferin ortasında kitabını bana uzatan sen miydin?”', 'web/journey.jpg', 'Raylar boyunca ilerleyen bir tren'],
+];
+@endphp
+
+{{-- 1. HERO --}}
 <section class="hero">
     <div class="wrap hero-grid">
         <div class="hero-copy">
             <div class="hero-eyebrow">
                 <svg class="eyebrow-pin-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7C20D4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                <span>Şehrinde Tanışma ve Karşılaşma Platformu</span>
+                <span>Gerçek hayattaki karşılaşmalar için şehir bazlı sosyal keşif</span>
             </div>
             <h1>Kaçırdığın<br>karşılaşmalar artık<br>sadece <span class="highlight-blue">bir ihtimal değil.</span></h1>
-            <p class="hero-lead">SenMiydin, günlük hayatta yolunun kesiştiği, dikkatini çeken insanları yeniden bulmana ve anlamlı tanışmalara kapı aralamana yardımcı olur.<span class="sr-only"> Bazı karşılaşmalar yarım kalmasın.</span></p>
-            
+            <p class="hero-lead">SenMiydin; şehirde yolunun kesiştiği anları, anıları, düşünceleri, itirafları ve yolculukları paylaşabildiğin bir uygulamadır. Bir karşılaşma, ancak karşı taraf kabul ettiğinde doğrulanır.<span class="sr-only"> Bazı karşılaşmalar yarım kalmasın.</span></p>
+
             <div class="hero-cta-group">
                 @include('website.stores')
             </div>
 
             <div class="hero-trust-row">
                 <span class="trust-item">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0877E8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                    Gerçek insanlarla
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0877E8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    Karşılıklı onay
                 </span>
                 <span class="trust-item">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0877E8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                    Güvenli ve kontrollü
+                    Kesin konum paylaşılmaz
                 </span>
                 <span class="trust-item">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C20D4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                    Şehrine özel
+                    Şehrine özel akış
                 </span>
             </div>
             <a class="sr-only" href="#nasil-calisir">Nasıl çalıştığını keşfet</a>
         </div>
 
-        <div class="hero-showcase" aria-label="Uygulama önizlemesi">
-            <div class="hero-showcase-glow" aria-hidden="true"></div>
-            <div class="hero-photo-card">
-                <img src="{{ asset('web/hero-istanbul-tram.jpg') }}" alt="İstanbul tramvay karşılaşma anı" class="hero-main-photo">
-
-                <div class="hero-floating-quote">
-                    <div class="quote-slide-inner">
-                        <div class="quote-header">
-                            <span class="quote-location">
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#7C20D4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                                İstanbul · Kadıköy
+        <div class="story-slider" data-slider role="region" aria-roledescription="carousel" aria-label="Örnek karşılaşma hikâyeleri">
+            <div class="story-glow" aria-hidden="true"></div>
+            <div class="story-stage">
+                @foreach($slides as $i => [$key, $loc, $title, $text, $img, $alt])
+                    <figure class="story-slide story-{{ $key }} @if($i === 0) is-active @endif" role="group" aria-roledescription="slide" aria-label="{{ $i + 1 }} / {{ count($slides) }}" @if($i !== 0) aria-hidden="true" @endif>
+                        @if($img)
+                            <img src="{{ asset($img) }}" alt="{{ $alt }}" @if($i !== 0) loading="lazy" @endif width="1200" height="760">
+                        @else
+                            <div class="story-note-art" aria-hidden="true">
+                                <span class="note-paper">
+                                    <i></i>
+                                    <b>Teşekkürler!</b>
+                                    <em>Bu notu bana bırakan kişiyi arıyorum.</em>
+                                </span>
+                            </div>
+                        @endif
+                        <figcaption class="story-caption">
+                            <span class="story-meta">
+                                <span class="story-loc">{!! $pin !!} {{ $loc }}</span>
+                                <span class="story-badge">Temsili paylaşım</span>
                             </span>
-                            <span class="sr-only">Temsili paylaşım</span>
-                        </div>
-                        <strong class="quote-title">Bugün vapurda karşılaştığımız kişi...</strong>
-                        <p class="quote-text">“Sarı montlu, kitap okuyan ve vapurda karşı koltukta oturan sen miydin?”</p>
-                    </div>
-                    <a href="#indir" class="quote-action-btn" aria-label="Keşfet">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                    </a>
-                </div>
+                            <strong>{{ $title }}</strong>
+                            <p>{{ $text }}</p>
+                        </figcaption>
+                    </figure>
+                @endforeach
             </div>
-            <div class="carousel-dots" aria-hidden="true">
-                <span class="dot active"></span>
-                <span class="dot"></span>
-                <span class="dot"></span>
-                <span class="dot"></span>
+            <div class="story-controls">
+                <div class="story-dots">
+                    @foreach($slides as $i => [$key, $loc, $title])
+                        <button type="button" class="story-dot @if($i === 0) is-active @endif" data-index="{{ $i }}" aria-label="{{ $i + 1 }}. hikâye: {{ $title }}" @if($i === 0) aria-current="true" @endif></button>
+                    @endforeach
+                </div>
+                <button type="button" class="story-pause" data-pause aria-label="Otomatik geçişi duraklat" aria-pressed="false">
+                    <svg class="icon-pause" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+                    <svg class="icon-play" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                </button>
             </div>
         </div>
     </div>
 </section>
 
 {{-- 2. SENMİYDİN NEDİR? --}}
-<section class="wrap section section-about">
+<section class="wrap section section-about" id="nedir">
     <div class="section-head-split">
         <div class="split-left">
             <span class="kicker">SENMİYDİN NEDİR?</span>
-            <h2>Günlük karşılaşmaları<br>anlamlı tanışmalara dönüştürür.</h2>
-            <p class="section-sub">Şehrinde fark ettiğin, dikkatini çeken, ama tanışma fırsatı bulamadığın<br>kişileri bulmanı, onlarla güvenli ve saygılı bir şekilde iletişim kurmanı sağlar.</p>
+            <h2>Günlük karşılaşmaları<br>hikâyeye dönüştürür.</h2>
+            <p class="section-sub">SenMiydin bir flört uygulaması değildir. Şehrindeki anıları, düşünceleri ve itirafları keşfedebilir, yolculukta ya da sokakta yarım kalan bir karşılaşmayı karşı tarafın onayıyla tamamlayabilirsin.</p>
         </div>
         <div class="split-right-cards">
             <div class="about-card card-purple">
                 <div class="about-card-icon">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7C20D4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7C20D4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 </div>
                 <h3>Gerçek<br>Karşılaşmalar</h3>
             </div>
             <div class="about-card card-blue">
                 <div class="about-card-icon">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0877E8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0877E8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                 </div>
-                <h3>Şehre Özel<br>Keşif</h3>
+                <h3>Şehir Bazlı<br>Keşif</h3>
             </div>
             <div class="about-card card-purple">
                 <div class="about-card-icon">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7C20D4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7C20D4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
                 </div>
-                <h3>Hızlı, Kolay<br>ve Güvenli</h3>
+                <h3>Anılar, Düşünceler<br>ve İtiraflar</h3>
             </div>
         </div>
     </div>
@@ -101,19 +122,19 @@
 <section class="wrap section section-steps" id="nasil-calisir">
     <div class="section-head">
         <span class="kicker">NASIL ÇALIŞIR?</span>
-        <h2>Üç adımda, şehirdeki karşılaşmalarını keşfet.</h2>
+        <h2>Üç adımda bir karşılaşmayı hikâyeye çevir.</h2>
     </div>
     <div class="steps-flow">
         <div class="step-card">
             <div class="step-left">
                 <div class="step-badge">1</div>
                 <div class="step-icon">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7C20D4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7C20D4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                 </div>
             </div>
             <div class="step-right">
                 <h3>Şehrini seç</h3>
-                <p>Bulunduğun şehri (ve istersen<br>ilçeni) belirle.</p>
+                <p>Yaşadığın şehir profilinde kalır; keşfettiğin şehri istediğin zaman ayrıca seçebilirsin.</p>
             </div>
         </div>
         <div class="step-arrow-connector" aria-hidden="true">
@@ -123,12 +144,12 @@
             <div class="step-left">
                 <div class="step-badge">2</div>
                 <div class="step-icon">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7C20D4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7C20D4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 </div>
             </div>
             <div class="step-right">
-                <h3>Karşılaşmanı paylaş</h3>
-                <p>Gördüğün kişiyi, zamanı ve yeri<br>kısaca anlat.</p>
+                <h3>Bir an paylaş</h3>
+                <p>Anı, karşılaşma, itiraf, düşünce veya yolculuk. İstersen fotoğraf ekle, istersen anonim kal.</p>
             </div>
         </div>
         <div class="step-arrow-connector" aria-hidden="true">
@@ -138,210 +159,207 @@
             <div class="step-left">
                 <div class="step-badge">3</div>
                 <div class="step-icon">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7C20D4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7C20D4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                 </div>
             </div>
             <div class="step-right">
-                <h3>Bağlantı kur</h3>
-                <p>Aynı kişiyi arayan biriyle eşleş,<br>sohbetini başlat.</p>
+                <h3>Karşılıklı onayla</h3>
+                <p>Etiketlediğin kişi kabul ederse karşılaşma doğrulanır; ortak hikâye için ayrıca yayın onayı gerekir.</p>
             </div>
         </div>
     </div>
 </section>
 
-{{-- 4. TÜM ÖZELLİKLER --}}
-<section class="surface section-features-wrap" id="ozellikler">
-    <div class="wrap section section-features">
-        <div class="features-left">
-            <span class="kicker">TÜM ÖZELLİKLER</span>
-            <h2>SenMiydin ile<br>neler yapabilirsin?</h2>
-            <p class="features-sub">Şehirdeki tesadüfleri, yeni tanışmalara<br>ve anlamlı hikâyelere dönüştürmen<br>için ihtiyacın olan tüm özellikler<br>tek uygulamada.</p>
-            
-            <div class="features-doodle" aria-hidden="true">
-                <svg width="60" height="14" viewBox="0 0 60 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M2 11C12 3 22 13 32 5C42 1 50 10 58 4" stroke="#A855F7" stroke-width="2.8" stroke-linecap="round"/>
-                </svg>
-            </div>
-
-            {{-- Phone Mockup from Approved Reference --}}
-            <div class="features-mockup-container">
-                <img src="{{ asset('web/features-phone-mockup.png') }}" alt="SenMiydin iPhone Önizlemesi" class="features-mockup-img">
-            </div>
+{{-- 4. ŞEHİR BAZLI AKIŞ --}}
+<section class="surface section-feature-band" id="sehir-akisi">
+    <div class="wrap feature-row">
+        <div class="feature-copy">
+            <span class="kicker">ŞEHİR BAZLI AKIŞ</span>
+            <h2>Şehrinde paylaşılanları<br>kendi ritminde keşfet.</h2>
+            <p>Paylaşımlar varsayılan olarak şehir genelinde keşfedilebilir. Yakınlık, bir sıralama sinyalidir; paylaşımı küçük bir çembere hapsetmez.</p>
+            <ul class="chip-list" aria-label="İçerik türleri">
+                <li>Anı</li><li>Karşılaşma</li><li>İtiraf</li><li>Düşünce</li><li>Yolculuk</li>
+            </ul>
+            <dl class="spec-list">
+                <div><dt>Kapsam</dt><dd>Tüm şehir · 5 km · 10 km · 25 km</dd></div>
+                <div><dt>Sıralama</dt><dd>Yakın · Yeni · Popüler</dd></div>
+                <div><dt>Filtreler</dt><dd>İçerik türü, fotoğraf ve ilgi alanı birlikte kullanılabilir.</dd></div>
+            </dl>
         </div>
-
-        <div class="features-right-grid">
-            <div class="feature-item-card">
-                <div class="feature-card-icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C20D4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-                </div>
-                <h3>Şehir Bazlı Akış</h3>
-                <p>Bulunduğun şehirde paylaşılan<br>tüm karşılaşmaları keşfet.</p>
-            </div>
-            <div class="feature-item-card">
-                <div class="feature-card-icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C20D4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M18 8a3 3 0 0 1 0 6"/><path d="M21 5a6 6 0 0 1 0 12"/></svg>
-                </div>
-                <h3>Yakındaki Kişiler</h3>
-                <p>Çevrende aynı anda aktif olan<br>kullanıcılarla tanışma fırsatı yakala.</p>
-            </div>
-            <div class="feature-item-card">
-                <div class="feature-card-icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C20D4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                </div>
-                <h3>Doğrulanmış Karşılaşmalar</h3>
-                <p>Gerçek ve samimi paylaşımlarla<br>daha güvenilir eşleşmeler bul.</p>
-            </div>
-            <div class="feature-item-card">
-                <div class="feature-card-icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C20D4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
-                </div>
-                <h3>Yolculuk Paylaşımları</h3>
-                <p>Seyahatlerinde (otobüs, tren, uçak<br>vb.) dikkatini çeken kesitleri paylaş.</p>
-            </div>
-            <div class="feature-item-card">
-                <div class="feature-card-icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C20D4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                </div>
-                <h3>Konum Bazlı Keşif</h3>
-                <p>Kafe, kampüs, etkinlik, toplu taşıma<br>gibi belirli yerlerdeki karşılaşmaları<br>keşfet.</p>
-            </div>
-            <div class="feature-item-card">
-                <div class="feature-card-icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C20D4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                </div>
-                <h3>Özel Mesajlaşma</h3>
-                <p>Eşleştiğin kişilerle güvenli, özel<br>sohbet başlat ve tanış.</p>
-            </div>
-            <div class="feature-item-card">
-                <div class="feature-card-icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C20D4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-                </div>
-                <h3>Ortak Karşılaşma Hikayeleri</h3>
-                <p>Şehirdeki en güzel tesadüfleri,<br>komik veya unutulmaz anları<br>paylaş ve keşfet.</p>
-            </div>
-            <div class="feature-item-card">
-                <div class="feature-card-icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C20D4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
-                </div>
-                <h3>Gizlilik ve Güvenlik Kontrolleri</h3>
-                <p>Görünürlüğünü, kimlerle<br>iletişim kurabileceğini ve hesap<br>ayarlarını sen belirle.</p>
-            </div>
-            <div class="feature-item-card">
-                <div class="feature-card-icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C20D4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-                </div>
-                <h3>Raporlama ve Engelleme</h3>
-                <p>Rahatsız edici davranışları kolayca<br>bildir, istemediğin kullanıcıları<br>engelle.</p>
-            </div>
+        <div class="feature-shot">
+            <figure class="phone-shot"><img src="{{ asset('web/screens/app-home.png') }}" alt="SenMiydin Ana Sayfa: şehir akışı ve karşılaşma hikâyeleri" loading="lazy" width="540" height="1200"></figure>
         </div>
     </div>
 </section>
 
-{{-- 5. DUAL SHOWCASE (Radar Map & Polaroid Stories) --}}
-<section class="wrap section section-dual-showcase">
-    <div class="showcase-card-dual radar-card">
-        <div class="dual-card-copy">
-            <div class="dual-icon-badge icon-badge-blue">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0877E8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-            </div>
-            <h3>Şehrinin<br>karşılaşma haritası</h3>
-            <p>Popüler noktalar, aktif paylaşımlar ve yakın çevrendeki karşılaşmaları harita üzerinden keşfet.</p>
-        </div>
-        <div class="dual-card-graphic radar-graphic-box">
-            <img src="{{ asset('web/radar-showcase.png') }}" alt="Kadıköy karşılaşma haritası" class="dual-preview-img">
-        </div>
+{{-- 5. YAKINDAKİ İNSANLAR / HARİTA --}}
+<section class="wrap section feature-row feature-row-reverse" id="harita">
+    <div class="feature-shot">
+        <figure class="phone-shot"><img src="{{ asset('web/screens/app-map.png') }}" alt="SenMiydin harita: yakındaki yaklaşık paylaşımlar" loading="lazy" width="540" height="1200"></figure>
     </div>
+    <div class="feature-copy">
+        <span class="kicker">YAKINDAKİ İNSANLAR VE HARİTA</span>
+        <h2>Yakınında olanı gör,<br>kendini ise sen göster.</h2>
+        <p>Yakınındaki İnsanlar listesinde yalnızca “yakınımda görünür” seçeneğini kendisi açan kişiler yer alır. Ayarı kapattığında listeden gerçekten çıkarsın.</p>
+        <ul class="check-list">
+            <li>Yalnızca yaklaşık mesafe gösterilir.</li>
+            <li>Kesin GPS konumu ve açık adres paylaşılmaz.</li>
+            <li>Gerçek zamanlı rota gösterilmez. Canlı kişi takibi yoktur.</li>
+            <li>Konum izni vermezsen şehri elle seçip uygulamayı kullanmayı sürdürebilirsin.</li>
+        </ul>
+    </div>
+</section>
 
-    <div class="showcase-card-dual polaroid-card">
-        <div class="dual-card-copy">
-            <div class="dual-icon-badge icon-badge-purple">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C20D4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            </div>
-            <h3>Gerçek hikâyeler,<br>gerçek insanlardan</h3>
-            <p>Şehirde yaşanan en güzel ve unutulmaz karşılaşma hikâyelerini keşfet, kendi hikâyeni de paylaş.</p>
+{{-- 6. PAYLAŞIM OLUŞTURMA --}}
+<section class="surface section-feature-band" id="paylasim">
+    <div class="wrap feature-row">
+        <div class="feature-copy">
+            <span class="kicker">PAYLAŞIM OLUŞTURMA</span>
+            <h2>Yalnızca metin de olur,<br>on fotoğrafa kadar da.</h2>
+            <p>Bir paylaşımı yazmak yeterlidir. İstersen fotoğraf ekler, sırasını değiştirir ve sonradan düzenlersin.</p>
+            <ul class="check-list">
+                <li>En fazla 10 fotoğraf, kaydırmalı gösterim ve 1/2 gibi sayaç.</li>
+                <li>Anonim paylaşım: adın ve profil bağlantın görünmez.</li>
+                <li>Şehir görünürlüğü ve yaklaşık yer seçimi sende.</li>
+                <li>Olayın gerçekleştiği zamanı belirtebilir, paylaşımını düzenleyip silebilirsin.</li>
+            </ul>
         </div>
-        <div class="dual-card-graphic polaroid-graphic-area">
-            <div class="polaroid-wrapper polaroid-one">
-                <img src="{{ asset('web/polaroid-kiz-kulesi.jpg') }}" alt="Kız Kulesi gün batımı" class="polaroid-photo">
-            </div>
-            <div class="polaroid-wrapper polaroid-two">
-                <img src="{{ asset('web/polaroid-red-tram.jpg') }}" alt="İstiklal kırmızı tramvay" class="polaroid-photo">
-            </div>
-            <svg class="floating-purple-heart" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#A855F7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            <svg class="floating-sparkle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A855F7" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        <div class="feature-shot">
+            <figure class="phone-shot"><img src="{{ asset('web/screens/app-compose.png') }}" alt="SenMiydin paylaşım oluşturma ekranı" loading="lazy" width="540" height="1200"></figure>
         </div>
     </div>
 </section>
 
-{{-- 6. GÜVENLİK VE GİZLİLİK --}}
+{{-- 7. KARŞILAŞMA + ONAY --}}
+<section class="wrap section feature-row feature-row-reverse" id="karsilasma">
+    <div class="feature-shot">
+        <figure class="phone-shot"><img src="{{ asset('web/screens/app-encounter.png') }}" alt="SenMiydin karşılaşma ve onay ekranı" loading="lazy" width="540" height="1200"></figure>
+    </div>
+    <div class="feature-copy">
+        <span class="kicker">KARŞILAŞMA VE ONAY</span>
+        <h2>Doğrulanmış karşılaşma<br>iki tarafın kararıdır.</h2>
+        <ol class="number-list">
+            <li><strong>Etiketle.</strong> Karşılaştığın kişiyi @kullanıcıadı ile etiketlersin.</li>
+            <li><strong>Karar versin.</strong> Karşı taraf isteği kabul eder ya da reddeder. Bekleyen isteği sen de geri çekebilirsin.</li>
+            <li><strong>Hikâyeni yayınla.</strong> Kabulden sonra ortak hikâye oluşturabilirsiniz; diğer taraf onay vermeden yayınlanmaz.</li>
+        </ol>
+        <p class="note-line">“Geçtiğim Yerler” önerileri yalnızca bir tahmindir ve kendiliğinden karşılaşma oluşturmaz.</p>
+    </div>
+</section>
+
+{{-- 8. YOLCULUK --}}
+<section class="surface section-feature-band" id="yolculuk">
+    <div class="wrap feature-row">
+        <div class="feature-copy">
+            <span class="kicker">Yolculuk Paylaşımları</span>
+            <h2>Yolda yarım kalan bir an<br>için doğru ayrıntılar.</h2>
+            <p>Yolculuk paylaşımına güzergâhı ve yaklaşık zamanı ekleyebilirsin. Aynı güzergâh ve zaman aralığı yalnızca bir keşif ipucudur.</p>
+            <ul class="chip-list" aria-label="Ulaşım türleri">
+                <li>Otobüs</li><li>Tren</li><li>Uçak</li><li>Feribot</li><li>Diğer</li>
+            </ul>
+            <dl class="spec-list">
+                <div><dt>Güzergâh</dt><dd>Kalkış ve varış şehri, yaklaşık saat</dd></div>
+                <div><dt>Ayrıntılar</dt><dd>Firma, sefer kodu ve isteğe bağlı araç kimliği; herkese açık veya özel</dd></div>
+                <div><dt>Örnek</dt><dd>Pamukkale · Ankara → Erzincan · 07 NM 365</dd></div>
+            </dl>
+            <p class="note-line">Yolculuk grubu, oda veya katılım butonu yoktur; kimsenin aynı araçta bulunduğu iddia edilmez.</p>
+        </div>
+        <div class="feature-shot">
+            <figure class="phone-shot"><img src="{{ asset('web/screens/app-journey.png') }}" alt="SenMiydin yolculuk paylaşımı ekranı" loading="lazy" width="540" height="1200"></figure>
+        </div>
+    </div>
+</section>
+
+{{-- 9. MESAJLAŞMA --}}
+<section class="wrap section feature-row feature-row-reverse" id="mesajlasma">
+    <div class="feature-shot">
+        <figure class="phone-shot"><img src="{{ asset('web/screens/app-chat.png') }}" alt="SenMiydin birebir mesajlaşma ekranı" loading="lazy" width="540" height="1200"></figure>
+    </div>
+    <div class="feature-copy">
+        <span class="kicker">MESAJLAŞMA</span>
+        <h2>Birebir ve izinli<br>mesajlaşma.</h2>
+        <p>İlk mesaj bir istektir; alıcı kabul ettiğinde sohbet devam eder. Hiç kimse seni dinlemeye mecbur bırakılmaz.</p>
+        <ul class="check-list">
+            <li>Mesaj isteğini kabul etme veya reddetme</li>
+            <li>Fotoğraf mesajı, okundu bilgisi ve okunmamış sayacı</li>
+            <li>Sohbeti gizleme, kullanıcıyı engelleme ve şikâyet etme</li>
+        </ul>
+    </div>
+</section>
+
+{{-- 10. GİZLİLİK / GÜVENLİK --}}
 <section class="wrap section section-security" id="guvenlik">
     <div class="security-split">
         <div class="security-left">
-            <span class="kicker">GÜVENLİK VE GİZLİLİK</span>
+            <span class="kicker">GİZLİLİK VE GÜVENLİK</span>
             <h2>Rahat, saygılı ve güvenli<br>bir deneyim.</h2>
-            <p>SenMiydin'de topluluk kuralları, gizlilik ayarları ve güçlü güvenlik araçlarıyla her zaman kontrol sende.</p>
+            <p>Konumun, görünürlüğün ve iletişimin üzerinde kontrol sende kalır.</p>
             <a href="/guvenlik" class="button button-soft-blue">
-                Güvenlik Politikamızı İncele
+                Güvenlik Sayfasını İncele
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
             </a>
         </div>
         <div class="security-right-rows">
             <div class="sec-row-item">
                 <div class="sec-row-icon icon-blue">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0877E8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0877E8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                 </div>
                 <div class="sec-row-content">
-                    <h3>Şeffaflığın Önceliğimiz</h3>
-                    <p>Kişisel bilgilerin güvende, profil görünürlüğünü sen kontrol edersin.<span class="sr-only"> Canlı kişi takibi yoktur; diğer kullanıcılar yalnızca yaklaşık mesafeyi görür.</span></p>
+                    <h3>Geçtiğim Yerler varsayılan olarak kapalı</h3>
+                    <p>Açarsan yaklaşık bölgeler en fazla 7 gün saklanır. Kapattığında kayıtların ve eşleşmelerin silinir.<span class="sr-only"> Canlı kişi takibi yoktur; diğer kullanıcılar yalnızca yaklaşık mesafeyi görür.</span></p>
                 </div>
             </div>
             <div class="sec-row-item">
                 <div class="sec-row-icon icon-blue">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0877E8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0877E8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
                 </div>
                 <div class="sec-row-content">
-                    <h3>Güvenli Topluluk</h3>
-                    <p>Gerçek kişilerle, saygılı ve olumlu bir ortamda tanış.</p>
+                    <h3>Bildirim tercihlerin ayrı ayrı</h3>
+                    <p>Veri kaydı, geçtiğin yerlerden haber ve yakın bölge aktiviteleri ayrı ayrı açılıp kapanır.</p>
                 </div>
             </div>
             <div class="sec-row-item">
                 <div class="sec-row-icon icon-purple">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C20D4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C20D4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
                 </div>
                 <div class="sec-row-content">
-                    <h3>Raporla ve Engelle</h3>
-                    <p>Uygunsuz davranışları bildir, istemediğin kullanıcıları engelle.</p>
+                    <h3>Raporla, engelle, hesabını sil</h3>
+                    <p>Uygunsuz davranışları bildir, istemediğin kişileri engelle, istediğin zaman hesabını ve verilerini sil.</p>
                 </div>
             </div>
         </div>
     </div>
 </section>
 
-{{-- 7. BOTTOM DOWNLOAD CTA BANNER --}}
+{{-- 11. GERÇEK MOBİL EKRANLAR --}}
+<section class="surface section-screens" id="ekranlar">
+    <div class="wrap section">
+        <div class="section-head">
+            <span class="kicker">GERÇEK EKRANLAR</span>
+            <h2>Uygulamadan gerçek görüntüler</h2>
+            <p class="section-sub">Aşağıdaki ekranlar, uygulamanın Android sürümünden alınmış gerçek ekran görüntüleridir.</p>
+        </div>
+        <ul class="screens-row">
+            @foreach([['app-home', 'Ana Sayfa'], ['app-profile', 'Profil'], ['app-drawer', 'Menü'], ['app-viewer', 'Fotoğraf görüntüleyici']] as [$file, $label])
+                <li><figure class="phone-shot"><img src="{{ asset('web/screens/'.$file.'.png') }}" alt="SenMiydin {{ $label }} ekranı" loading="lazy" width="540" height="1200"><figcaption>{{ $label }}</figcaption></figure></li>
+            @endforeach
+        </ul>
+    </div>
+</section>
+
+{{-- 12. FİNAL CTA --}}
 <section class="section-bottom-cta-wrap" id="indir">
-    <div class="wrap bottom-cta-banner">
-        <div class="cta-phone-side">
-            <div class="cta-phone-decor">
-                <span class="cta-rays left-rays" aria-hidden="true">
-                    <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><path d="M5 14H1M8 7L4 3M14 5V1" stroke="#A855F7" stroke-width="2.5" stroke-linecap="round"/></svg>
-                </span>
-                <img src="{{ asset('web/bottom-cta-phone.png') }}" alt="SenMiydin Mobil Uygulama" class="cta-phone-img">
-            </div>
+    <div class="wrap final-cta">
+        <div class="final-cta-copy">
+            <h2>{{ $settings['web_cta'] }}</h2>
+            @if(filled($settings['app_store_url']) || filled($settings['play_store_url']))
+                <p>Uygulamayı indir ve şehrindeki karşılaşmaları keşfetmeye başla.</p>
+            @else
+                <p>Mağaza bağlantıları yayınlandığında burada olacak. Şimdilik “Yakında” durumundadır.</p>
+            @endif
         </div>
-        <div class="cta-content-side">
-            <div class="cta-headline-wrapper">
-                <span class="cta-top-burst" aria-hidden="true">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2V6M5 5L8 8M19 5L16 8" stroke="#A855F7" stroke-width="2.5" stroke-linecap="round"/></svg>
-                </span>
-                <h2>{{ $settings['web_cta'] }}</h2>
-            </div>
-            <p>Hemen uygulamayı indir, kaçırdığın tanışma fırsatlarını yakala.</p>
-            <div class="cta-stores-row">
-                @include('website.stores')
-            </div>
-        </div>
-        <div class="cta-skyline-side" aria-hidden="true">
-            <img src="{{ asset('web/bottom-cta-skyline.png') }}" alt="" class="cta-skyline-img">
+        <div class="cta-stores-row">
+            @include('website.stores')
         </div>
     </div>
 </section>

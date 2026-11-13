@@ -350,7 +350,7 @@ class UserRow extends StatelessWidget {
     leading: Avatar(person, size: 46),
     title: Text(person.name, style: Theme.of(context).textTheme.titleMedium),
     subtitle: Text(
-      subtitle ?? '@${person.handle} · ${person.city}',
+      subtitle ?? '@${person.handle}',
       style: Theme.of(context).textTheme.bodySmall,
     ),
     trailing: trailing ?? const Icon(Icons.chevron_right_rounded, size: 21),

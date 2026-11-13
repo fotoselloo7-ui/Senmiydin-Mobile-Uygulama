@@ -21,7 +21,7 @@ class ProfileResource extends JsonResource
             'active_city_source' => $this->active_city_source,
             'city' => $this->city->only('id', 'name', 'slug'),
             'avatar' => $this->avatar ? route('avatars.show', ['filename' => basename($this->avatar)], false) : null,
-            'cover_image' => $this->cover_image,
+            'cover_image' => $this->coverUrl(),
             'bio' => $this->bio,
             'occupation_school' => $this->occupation_school,
             'account_status' => $this->account_status,

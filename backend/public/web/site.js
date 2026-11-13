@@ -1,140 +1,121 @@
 /**
- * SenMiydin Public Web Experience Script
- * Handles automatic hero quote sliding, dot navigation, smooth transitions, and scroll effects.
+ * SenMiydin public web: story slider and mobile menu.
+ * No external dependencies. Auto-advance can be paused and respects reduced motion.
  */
 (() => {
   'use strict';
 
-  const quotes = [
-    {
-      loc: 'İstanbul · Kadıköy',
-      title: 'Bugün vapurda karşılaştığımız kişi...',
-      text: '“Sarı montlu, kitap okuyan ve vapurda karşı koltukta oturan sen miydin?”'
-    },
-    {
-      loc: 'İstanbul · İstiklal',
-      title: 'Nostaljik tramvay durağındaki o an...',
-      text: '“Kırmızı tramvayın yanında göz göze geldiğimiz, sarı montlu ve gülümseyen sen miydin?”'
-    },
-    {
-      loc: 'İstanbul · Moda',
-      title: 'Sahil kafesinde tebessüm eden o kişi...',
-      text: '“Köşe masada oturup aynı anda kahvemizi yudumladığımız sen miydin?”'
-    },
-    {
-      loc: 'İstanbul · Karaköy',
-      title: 'Akşam vapurunda gün batımını izlerken...',
-      text: '“Martılara simit atarken göz göze geldiğimiz, sıcak bakışlı sen miydin?”'
-    }
-  ];
+  function initSlider(root) {
+    const slides = [...root.querySelectorAll('.story-slide')];
+    const dots = [...root.querySelectorAll('.story-dot')];
+    const pause = root.querySelector('[data-pause]');
+    if (slides.length < 2) return;
 
-  function initHeroCarousel() {
-    const card = document.querySelector('.hero-photo-card');
-    const dots = document.querySelectorAll('.carousel-dots .dot');
-    if (!card || !dots.length) return;
-
-    const slideInner = card.querySelector('.quote-slide-inner');
-    const locEl = card.querySelector('.quote-location');
-    const titleEl = card.querySelector('.quote-title');
-    const textEl = card.querySelector('.quote-text');
-
-    let idx = 0;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let index = 0;
     let timer = null;
-    let isTransitioning = false;
+    let userPaused = reduced;
+    let hovering = false;
 
-    function render(i, immediate = false) {
-      if (isTransitioning && !immediate) return;
-      const nextIdx = (i + quotes.length) % quotes.length;
-      if (nextIdx === idx && !immediate) return;
-
-      const q = quotes[nextIdx];
-      idx = nextIdx;
-
-      // Update dots immediately
-      dots.forEach((dot, dIdx) => {
-        dot.classList.toggle('active', dIdx === idx);
+    function show(next) {
+      index = (next + slides.length) % slides.length;
+      slides.forEach((slide, i) => {
+        const active = i === index;
+        slide.classList.toggle('is-active', active);
+        slide.setAttribute('aria-hidden', active ? 'false' : 'true');
+        const img = slide.querySelector('img[loading="lazy"]');
+        if (img && active) img.loading = 'eager';
       });
-
-      if (immediate || !slideInner) {
-        if (locEl) {
-          locEl.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#7C20D4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> ${q.loc}`;
-        }
-        if (titleEl) titleEl.textContent = q.title;
-        if (textEl) textEl.textContent = q.text;
-        return;
-      }
-
-      isTransitioning = true;
-      slideInner.classList.add('slide-out');
-
-      setTimeout(() => {
-        if (locEl) {
-          locEl.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#7C20D4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> ${q.loc}`;
-        }
-        if (titleEl) titleEl.textContent = q.title;
-        if (textEl) textEl.textContent = q.text;
-
-        slideInner.classList.remove('slide-out');
-        slideInner.classList.add('slide-in');
-
-        // Force browser reflow
-        void slideInner.offsetWidth;
-
-        slideInner.classList.remove('slide-in');
-        isTransitioning = false;
-      }, 220);
-    }
-
-    function startAuto() {
-      stopAuto();
-      timer = setInterval(() => {
-        render(idx + 1);
-      }, 4500);
-    }
-
-    function stopAuto() {
-      if (timer) {
-        clearInterval(timer);
-        timer = null;
-      }
-    }
-
-    dots.forEach((dot, dIdx) => {
-      dot.addEventListener('click', () => {
-        render(dIdx);
-        startAuto();
+      dots.forEach((dot, i) => {
+        dot.classList.toggle('is-active', i === index);
+        if (i === index) dot.setAttribute('aria-current', 'true');
+        else dot.removeAttribute('aria-current');
       });
+    }
+
+    function stop() {
+      if (timer) { clearInterval(timer); timer = null; }
+    }
+
+    function start() {
+      stop();
+      if (userPaused || hovering || document.hidden) return;
+      timer = setInterval(() => show(index + 1), 5200);
+    }
+
+    function setPaused(value) {
+      userPaused = value;
+      if (pause) {
+        pause.setAttribute('aria-pressed', String(value));
+        pause.setAttribute('aria-label', value ? 'Otomatik geçişi başlat' : 'Otomatik geçişi duraklat');
+      }
+      start();
+    }
+
+    dots.forEach((dot) => dot.addEventListener('click', () => {
+      show(Number(dot.dataset.index));
+      start();
+    }));
+    if (pause) pause.addEventListener('click', () => setPaused(!userPaused));
+
+    root.addEventListener('mouseenter', () => { hovering = true; stop(); });
+    root.addEventListener('mouseleave', () => { hovering = false; start(); });
+    root.addEventListener('focusin', () => { hovering = true; stop(); });
+    root.addEventListener('focusout', () => { hovering = false; start(); });
+    document.addEventListener('visibilitychange', start);
+
+    // Touch swipe
+    let startX = null;
+    root.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; }, { passive: true });
+    root.addEventListener('touchend', (e) => {
+      if (startX === null) return;
+      const delta = e.changedTouches[0].clientX - startX;
+      startX = null;
+      if (Math.abs(delta) > 40) { show(index + (delta < 0 ? 1 : -1)); start(); }
+    }, { passive: true });
+
+    root.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') { show(index + 1); start(); }
+      if (e.key === 'ArrowLeft') { show(index - 1); start(); }
     });
 
-    card.addEventListener('mouseenter', stopAuto);
-    card.addEventListener('mouseleave', startAuto);
+    if (reduced && pause) setPaused(true);
+    else start();
+  }
 
-    startAuto();
+  function initMenu() {
+    const inner = document.querySelector('.header-inner');
+    const toggle = inner && inner.querySelector('.nav-toggle');
+    if (!toggle) return;
+
+    function set(open) {
+      inner.classList.toggle('nav-open', open);
+      toggle.setAttribute('aria-expanded', String(open));
+      toggle.setAttribute('aria-label', open ? 'Menüyü kapat' : 'Menüyü aç');
+    }
+
+    toggle.addEventListener('click', () => set(!inner.classList.contains('nav-open')));
+    inner.querySelectorAll('nav a').forEach((link) => link.addEventListener('click', () => set(false)));
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && inner.classList.contains('nav-open')) { set(false); toggle.focus(); }
+    });
+    window.matchMedia('(min-width: 769px)').addEventListener('change', (e) => { if (e.matches) set(false); });
   }
 
   function initHeaderScroll() {
     const header = document.querySelector('.site-header');
     if (!header) return;
-
-    function onScroll() {
-      if (window.scrollY > 16) {
-        header.classList.add('is-scrolled');
-      } else {
-        header.classList.remove('is-scrolled');
-      }
-    }
-
+    const onScroll = () => header.classList.toggle('is-scrolled', window.scrollY > 16);
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      initHeroCarousel();
-      initHeaderScroll();
-    });
-  } else {
-    initHeroCarousel();
+  function init() {
+    document.querySelectorAll('[data-slider]').forEach(initSlider);
+    initMenu();
     initHeaderScroll();
   }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
 })();

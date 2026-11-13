@@ -1,5 +1,7 @@
 # Mobil arayüz denetimi — 9 Kasım 2026
 
+> **Tarihsel rapor — güncel kaynak değildir.** Bu belge 9–10 Kasım 2026 tarihli UI envanterini olduğu gibi korur. Sonraki kullanıcı kararları bu metinden üstündür: mavi yalnız işlevsel renktir, mor / lila SenMiydin markasıdır; herkese açık profilde şehir, mesafe ve hobi çipi gösterilmez ("diğer profil" kanıtındaki statik ilgi etiketleri artık geçersizdir); Home, Profil, Medya Görüntüleyici, drawer, alt navigasyon ve ikon sistemi kilitlidir. Güncel kurallar için [UI_DESIGN_SYSTEM.md](UI_DESIGN_SYSTEM.md) ve [VALIDATION.md](VALIDATION.md) okunur.
+
 Kaynaklar: SENMIYDIN_URUN_TANIMI.md, VALIDATION.md, LOCATION_TIME_TRAVEL.md, STORE_READINESS.md ve Ekran Görüntüleri klasöründeki iki panonun tamamı tek tek incelendi. Birinci pano: Ana Sayfa, composer, kişi etiketleme, karşılaşma onayı. İkinci pano: kayıt, profil tamamlama, ilgi alanları, filtreler ve profil. Diğer ekranlar aynı beyaz/mavi/lacivert dilin ortak bileşenlerini kullanır; yeni görsel kimlik veya final logo üretilmez.
 
 ## Envanter

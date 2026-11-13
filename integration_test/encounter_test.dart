@@ -133,8 +133,8 @@ void main() {
       await tap(find.widgetWithText(ChoiceChip, 'Karşılaşma'));
       await tap(find.text('Karşılaştığım kişiyi etiketle'));
       await enter(find.byKey(const Key('tag-search')), pixelEncounterReader);
-      await waitFor(find.textContaining('@$pixelEncounterReader · '));
-      await tap(find.textContaining('@$pixelEncounterReader · '));
+      await waitFor(find.text('@$pixelEncounterReader'));
+      await tap(find.text('@$pixelEncounterReader'));
       await tap(publish);
       await waitFor(find.text('Onay bekliyor'));
       expect(find.text('Karşılaşmayı Onayla'), findsNothing);

@@ -1,5 +1,7 @@
 # Ürün bütünlüğü denetimi — 10 Kasım 2026
 
+> **Tarihsel tablo + güncel bölüm.** Aşağıdaki ilk tablo 10 Kasım 2026 tarihli ürün-bütünlüğü denetimini olduğu gibi korur. Güncel, gerçek kod üzerinden yapılan 13 Kasım 2026 doğrulaması dosyanın sonundaki "Güncel doğrulama" bölümündedir ve çelişen yerlerde onun kararı geçerlidir (ör. herkese açık profilde şehir / ilgi alanı gösterilmez; public web ayrı olarak yeniden düzenlendi).
+
 Kod değişikliğinden önce ürün tanımı, VALIDATION, UI_AUDIT_VALIDATION, LOCATION_TIME_TRAVEL, PRODUCTION_CHECKLIST, store README, iki referans panosu ve 32 mobil kanıtın dizini incelendi. Route/controller/model/policy/migration, Flutter API/navigation/state ve admin/public Blade kaynakları tarandı. Gerçek browser turunda public site ve admin panelin tamamı, gerçek Pixel 6a üzerinde mobil akışlar doğrulandı. Kaynak başlangıcı ignored `.local/product-source-before.zip` ve hash manifestinde korunur; `.env`/credential içermez.
 
 Bu tablo başlangıç durumunu ve tamamlanan ürün-bütünlüğü geliştirmeleri sonrasındaki **final durumu** birlikte gösterir. `COMPLETE` mevcut gerçek uygulama ve doğrulanan uçtan uca test/kanıt tabanını ifade eder; canlı mağaza yayını veya dış ödeme/push/OAuth prod anahtarları anlamına gelmez.
@@ -52,3 +54,31 @@ Bu tablo başlangıç durumunu ve tamamlanan ürün-bütünlüğü geliştirmele
 
 - Başlangıçta `PARTIAL` veya `BACKEND_ONLY` olan tüm v1 özellikleri (`Birleşik feed filtreleri`, `Bildirim hedefleri / unavailable`, `Bildirim tercihleri`, `Sistem duyuruları yaşam döngüsü`, `Admin dashboard`, `Admin kullanıcı detayı`, `Home modül yönetimi`, `Public responsive landing + Yolculuk`, `Admin responsive/a11y`, `Admin block kayıtları`, `Config uçtan uca`) eksiksiz tamamlanarak `COMPLETE` durumuna getirildi.
 - Konum-zaman, Yolculuk ve Encounter motorları yeniden yazılmadan korundu.
+
+## Güncel doğrulama — 13 Kasım 2026 (gerçek kod: Flutter UI → API → backend → DB)
+
+Eski raporlara güvenilmedi; her madde route, model, controller, test ve cihaz akışı üzerinden yeniden okundu. COMPLETE, mevcut gerçek uygulamanın çalıştığı ve testle kanıtlandığı anlamına gelir.
+
+| Alan | Durum | Gerçek kanıt |
+|---|---|---|
+| İçerik türleri (Anı, Karşılaşma, İtiraf, Düşünce, Yolculuk) | COMPLETE | `Post::TYPES`, `PostController`, `PostKind`, filtre ve composer aynı beş tür; eski "aşk / arkadaşlık" ürün kategorisi yok (`connections` yalnız profil tercihi) |
+| Post sistemi (metin, ≤10 fotoğraf, sıra, carousel, anonim, edit/delete, like/comment/save/share) | COMPLETE | `SocialApiTest`, `media_viewer_test`, `carousel_storage_test` |
+| Konum modeli (profil şehri ≠ aktif şehir, manuel fallback) | COMPLETE | `LocationTimeTravelTest` |
+| Şehir bazlı feed (Tüm şehir/5/10/25 km, Yakın/Yeni/Popüler, birleşik filtre) | COMPLETE | `test_combined_feed_filters_compose_content_media_radius_and_sort` |
+| Yakınındaki insanlar (`nearby_visible`) | COMPLETE | `LocationApiTest`; ayar kapanınca konum görünürlüğü kapanır |
+| Geçtiğim Yerler (varsayılan kapalı, 7 gün, kapatınca silme, scheduler) | COMPLETE | `location:purge` saatlik kayıtlı; **yeni** `test_location_retention_is_registered_with_the_scheduler_and_enforces_the_seven_day_default` |
+| Üç ayrı konum bildirim tercihi | COMPLETE | `location_history_enabled`, `push_preferences.location_match`, `push_preferences.nearby_activity`; `Inbox::permitted` hem in-app hem push |
+| Location-time matcher (tahmin, kesin değil; sızıntı yok) | COMPLETE | `PostMatcher`, `config/location.php`, `LocationTimeTravelTest` |
+| Yolculuk (5 tür, alanlar, Pamukkale 07 NM 365, grup yok) | COMPLETE | `test_pamukkale_travel_metadata_feed_recommendation_without_any_group` |
+| Encounter (etiket → kabul/red/iptal → onay) ve ortak hikâye | COMPLETE | `EncounterApiTest` |
+| Follow / sayaç / listeler / block filtresi | COMPLETE | `test_follow_profile_and_connections_use_real_counts`; connected modda sahte sayı yok |
+| Mesajlaşma, bildirimler, admin paneli | COMPLETE | `CommunicationApiTest`, `DeliveryReadinessTest`, `AdministrationTest` |
+| Auth, hesap silme, Google/Apple kod yolu | COMPLETE (kod) / EXTERNAL (credential) | `AccountApiTest`, `AccountDeletionTest`, `SocialIdentityTest` |
+| Kapak fotoğrafı yükleme | **MISSING → COMPLETE** | `POST/DELETE /api/v1/profile/cover`, `GET /api/v1/covers/{uuid}.jpg`; JPEG/PNG/WebP doğrulama, yeniden kodlama (metadata temizliği), rastgele sunucu adı, eski kapak silme, hesap silmede temizlik; Profil Düzenle'de "Kapak Fotoğrafı" satırı; `test_cover_is_validated_reencoded_served_replaced_and_removed`, `test/cover_upload_test.dart` |
+| Herkese açık profil veri gizliliği | **PARTIAL → COMPLETE** | `PublicUserResource` artık `city`, `interests`, `occupation_school` döndürmez; kişi satırları yalnız `@kullanıcıadı` gösterir; `test_public_profile_resource_never_exposes_city_interests_or_occupation` |
+| Public web | **PARTIAL → COMPLETE (görsel onay bekliyor)** | Yeni hikâye akışı, slider, mobil hamburger, gerçek Pixel ekranları, sahte sosyal bağlantı kaldırıldı; `test_public_home_follows_the_final_story_flow_without_dating_copy_or_invented_proof` |
+| Admin → mobil E2E | COMPLETE | Pixel 6a: modül kapatma/açma ve bakım modu admin panelinden uygulanıp geri alındı (`docs/screenshots/ui-audit/e2e-*.png`) |
+| Veri dışa aktarma | NOT_REQUIRED_FOR_V1 | kapsam genişletilmedi |
+| Firebase/FCM, Google/Apple prod, APNs, SMTP, Android keystore, alan adı/SSL, operatör/legal bilgisi, mağaza URL'leri | EXTERNAL / WAITING | gerçek credential yok; sahte değer üretilmedi |
+
+OBSOLETE olarak temizlenen kararlar: herkese açık profilde şehir/ilgi alanı, mavi = marka, "final logo üretilmez", web'de canlı telefon çizimi.

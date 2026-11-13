@@ -129,19 +129,7 @@ class ProfileController extends Controller
                 'extensions:jpg,jpeg,png,webp', 'max:5120', 'dimensions:max_width=2048,max_height=2048'],
         ], ['avatar.*' => '2048 pikseli ve 5 MB boyutu aşmayan bir JPEG, PNG veya WebP fotoğrafı seç.']);
 
-        // Re-encode the image so its original metadata and embedded payload are not served.
-        $image = @imagecreatefromstring($request->file('avatar')->get());
-        if ($image === false) {
-            throw ValidationException::withMessages(['avatar' => 'Fotoğraf okunamadı.']);
-        }
-
-        ob_start();
-        try {
-            $encoded = imagejpeg($image, null, 88);
-        } finally {
-            $content = ob_get_clean();
-        }
-        abort_unless($encoded && is_string($content) && $content !== '', 500);
+        $content = $this->reencode($request->file('avatar')->get(), 'avatar');
 
         $disk = Storage::disk(config('mobile.avatar_disk'));
         $path = 'avatars/'.Str::uuid().'.jpg';
@@ -164,6 +152,92 @@ class ProfileController extends Controller
         }
 
         return $this->profile($user, 'Profil fotoğrafın güncellendi.');
+    }
+
+    public function uploadCover(Request $request): JsonResponse
+    {
+        $request->validate([
+            'cover' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png,webp',
+                'extensions:jpg,jpeg,png,webp', 'max:8192', 'dimensions:min_width=320,min_height=120,max_width=4096,max_height=4096'],
+        ], ['cover.*' => 'En az 320 piksel genişliğinde, 4096 pikseli ve 8 MB boyutu aşmayan bir JPEG, PNG veya WebP fotoğrafı seç.']);
+
+        $content = $this->reencode($request->file('cover')->get(), 'cover');
+        $disk = Storage::disk(config('mobile.avatar_disk'));
+        $path = 'covers/'.Str::uuid().'.jpg';
+        abort_unless($disk->put($path, $content), 500);
+
+        try {
+            [$user, $previous] = DB::transaction(function () use ($request, $path) {
+                $user = User::lockForUpdate()->findOrFail($request->user()->id);
+                $previous = $user->cover_image;
+                $user->forceFill(['cover_image' => $path])->save();
+
+                return [$user, $previous];
+            });
+        } catch (\Throwable $error) {
+            $disk->delete($path);
+            throw $error;
+        }
+        $this->forgetCover($previous);
+
+        return $this->profile($user, 'Kapak fotoğrafın güncellendi.');
+    }
+
+    public function removeCover(Request $request): JsonResponse
+    {
+        [$user, $previous] = DB::transaction(function () use ($request) {
+            $user = User::lockForUpdate()->findOrFail($request->user()->id);
+            $previous = $user->cover_image;
+            $user->forceFill(['cover_image' => null])->save();
+
+            return [$user, $previous];
+        });
+        $this->forgetCover($previous);
+
+        return $this->profile($user, 'Kapak fotoğrafın kaldırıldı.');
+    }
+
+    public function cover(string $filename): Response
+    {
+        $disk = Storage::disk(config('mobile.avatar_disk'));
+        $path = 'covers/'.$filename;
+        abort_unless(User::where('cover_image', $path)->where('account_status', 'active')->exists() && $disk->exists($path), 404);
+
+        return $disk->response($path, $filename, [
+            'Content-Type' => 'image/jpeg',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'no-store',
+        ]);
+    }
+
+    /** Only files this endpoint created are ever deleted; legacy values are left untouched. */
+    private function forgetCover(?string $previous): void
+    {
+        if ($previous !== null && str_starts_with($previous, 'covers/')) {
+            Storage::disk(config('mobile.avatar_disk'))->delete($previous);
+        }
+    }
+
+    /** Re-encode so the original metadata (EXIF/GPS) and any embedded payload are never served. */
+    private function reencode(string $binary, string $field): string
+    {
+        $image = @imagecreatefromstring($binary);
+        if ($image === false) {
+            throw ValidationException::withMessages([$field => 'Fotoğraf okunamadı.']);
+        }
+        $flat = imagecreatetruecolor(imagesx($image), imagesy($image));
+        imagefill($flat, 0, 0, imagecolorallocate($flat, 255, 255, 255));
+        imagecopy($flat, $image, 0, 0, 0, 0, imagesx($image), imagesy($image));
+
+        ob_start();
+        try {
+            $encoded = imagejpeg($flat, null, 88);
+        } finally {
+            $content = ob_get_clean();
+        }
+        abort_unless($encoded && is_string($content) && $content !== '', 500);
+
+        return $content;
     }
 
     public function image(string $filename): Response

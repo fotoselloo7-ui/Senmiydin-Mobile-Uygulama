@@ -416,9 +416,6 @@ class _SearchPageState extends State<SearchPage> {
             for (final person in people)
               UserRow(
                 person,
-                subtitle: widget.tag
-                    ? '@${person.handle} · ${person.city}'
-                    : null,
                 trailing: widget.tag
                     ? const Icon(
                         Icons.add_circle_outline,

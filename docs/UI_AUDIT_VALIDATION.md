@@ -1,5 +1,7 @@
 # Mobil UI doğrulaması — 9–10 Kasım 2026
 
+> **Tarihsel rapor — güncel kaynak değildir.** Bu belge 9–10 Kasım 2026 tarihli UI turunu olduğu gibi korur. Sonraki kullanıcı kararları bu metinden üstündür: mavi yalnız işlevsel renktir, mor / lila SenMiydin markasıdır; herkese açık profilde şehir, mesafe ve hobi çipi gösterilmez ("diğer profil" kanıtındaki statik ilgi etiketleri artık geçersizdir); Home, Profil, Medya Görüntüleyici, drawer, alt navigasyon ve ikon sistemi kilitlidir. Güncel kurallar için [UI_DESIGN_SYSTEM.md](UI_DESIGN_SYSTEM.md) ve [VALIDATION.md](VALIDATION.md) okunur.
+
 Bu çalışma mevcut mobil uygulamanın arayüzünü tamamlar. Ürün tanımı, konum/zaman/yolculuk belgesi, önceki validation, store readiness ve Ekran Görüntüleri klasöründeki iki panonun tamamı incelendi. Başlangıç envanteri [UI_AUDIT.md](UI_AUDIT.md), ortak bileşen kuralları [UI_DESIGN_SYSTEM.md](UI_DESIGN_SYSTEM.md) içindedir.
 
 ## Kapsam ve otomatik doğrulama

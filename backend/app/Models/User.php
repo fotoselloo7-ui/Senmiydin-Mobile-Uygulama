@@ -41,6 +41,18 @@ class User extends Authenticatable
         ];
     }
 
+    /** Cover files uploaded through the API are served privately; any legacy value is returned as stored. */
+    public function coverUrl(): ?string
+    {
+        if ($this->cover_image === null || $this->cover_image === '') {
+            return null;
+        }
+
+        return str_starts_with($this->cover_image, 'covers/')
+            ? route('covers.show', ['filename' => basename($this->cover_image)], false)
+            : $this->cover_image;
+    }
+
     public function activeCity(): BelongsTo
     {
         return $this->belongsTo(City::class, 'active_city_id');

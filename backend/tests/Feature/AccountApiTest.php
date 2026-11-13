@@ -167,6 +167,61 @@ class AccountApiTest extends TestCase
         $this->token($token)->getJson('/api/v1/profile')->assertJsonPath('data.avatar', $second);
     }
 
+    public function test_cover_is_validated_reencoded_served_replaced_and_removed(): void
+    {
+        $disk = Storage::fake(config('mobile.avatar_disk'));
+        $token = $this->register();
+        $this->token($token)->postJson('/api/v1/profile/cover', [
+            'cover' => UploadedFile::fake()->create('not-an-image.jpg', 10),
+        ])->assertUnprocessable()->assertJsonValidationErrors('cover');
+        $this->token($token)->postJson('/api/v1/profile/cover', [
+            'cover' => UploadedFile::fake()->image('tiny.png', 64, 64),
+        ])->assertUnprocessable()->assertJsonValidationErrors('cover');
+        $this->token($token)->postJson('/api/v1/profile/cover', [
+            'cover' => UploadedFile::fake()->create('payload.svg', 5, 'image/svg+xml'),
+        ])->assertUnprocessable()->assertJsonValidationErrors('cover');
+        $this->token($token)->getJson('/api/v1/profile')->assertOk()->assertJsonPath('data.cover_image', null);
+
+        $first = $this->token($token)->postJson('/api/v1/profile/cover', [
+            'cover' => UploadedFile::fake()->image('cover name.png', 640, 240),
+        ])->assertOk()->json('data.cover_image');
+        $this->assertStringStartsWith('/api/v1/covers/', $first);
+        $this->assertMatchesRegularExpression('#^/api/v1/covers/[0-9a-f-]{36}\.jpg$#', $first);
+        $this->assertStringNotContainsString('cover name', $first);
+        $this->flushHeaders()->get($first)->assertOk()->assertHeader('Content-Type', 'image/jpeg');
+
+        $second = $this->token($token)->postJson('/api/v1/profile/cover', [
+            'cover' => UploadedFile::fake()->image('new.jpg', 800, 300),
+        ])->assertOk()->json('data.cover_image');
+        $this->assertNotSame($first, $second);
+        $disk->assertMissing('covers/'.basename($first));
+        $disk->assertExists('covers/'.basename($second));
+        $this->flushHeaders()->get($first)->assertNotFound();
+        $this->token($token)->getJson('/api/v1/profile')->assertJsonPath('data.cover_image', $second);
+
+        $viewer = $this->registerViewer();
+        $this->token($viewer)->getJson('/api/v1/users/deniz')->assertOk()->assertJsonPath('data.cover_image', $second);
+
+        $this->token($token)->deleteJson('/api/v1/profile/cover')->assertOk()->assertJsonPath('data.cover_image', null);
+        $disk->assertMissing('covers/'.basename($second));
+        $this->flushHeaders()->get($second)->assertNotFound();
+    }
+
+    public function test_public_profile_resource_never_exposes_city_interests_or_occupation(): void
+    {
+        $token = $this->register();
+        $owner = User::where('username', 'deniz')->firstOrFail();
+        $owner->forceFill(['occupation_school' => 'Mühendis'])->save();
+        $viewer = $this->registerViewer();
+
+        $public = $this->token($viewer)->getJson('/api/v1/users/deniz')->assertOk()->json('data');
+        foreach (['city', 'city_id', 'interests', 'occupation_school', 'email', 'birth_date', 'latitude', 'longitude', 'distance'] as $field) {
+            $this->assertArrayNotHasKey($field, $public, "Public profile leaked {$field}");
+        }
+        $this->token($token)->getJson('/api/v1/profile')->assertOk()
+            ->assertJsonPath('data.city.id', $owner->city_id)->assertJsonPath('data.occupation_school', 'Mühendis');
+    }
+
     public function test_password_reset_is_private_single_use_and_revokes_sessions(): void
     {
         Notification::fake();
@@ -225,6 +280,14 @@ class AccountApiTest extends TestCase
     {
         return $this->postJson('/api/v1/auth/register', $this->registration())
             ->assertCreated()->json('data.token');
+    }
+
+    private function registerViewer(): string
+    {
+        return $this->postJson('/api/v1/auth/register', $this->registration([
+            'name' => 'Ece Okur', 'username' => 'ece', 'email' => 'ece@example.test',
+            'city_id' => City::where('name', 'Ankara')->value('id'),
+        ]))->assertCreated()->json('data.token');
     }
 
     private function login(string $identifier, string $password = self::PASSWORD): TestResponse

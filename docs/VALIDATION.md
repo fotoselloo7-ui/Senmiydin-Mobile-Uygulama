@@ -1,4 +1,28 @@
-# Doğrulama — 10 Kasım 2026
+# Doğrulama
+
+> **Güncel kaynak bu dosyanın ilk bölümüdür (13 Kasım 2026).** "Tarihsel kayıt" bölümü 10 Kasım 2026 çalışmasını olduğu gibi korur; oradaki sayılar ve tasarım ifadeleri (ör. mavi marka dili, herkese açık profildeki ilgi etiketleri) güncel durum değildir.
+
+## Güncel doğrulama — 13 Kasım 2026
+
+Başlangıç (`db90b1e`, değişiklik öncesi) ile final karşılaştırması:
+
+| Kontrol | Başlangıç | Final |
+|---|---|---|
+| Laravel `php artisan test` | 105 test / 1303 assertion | **109 test / 1405 assertion geçti** (+4 test: kapak yükleme, public profil gizliliği, scheduler/7 gün saklama, public web akışı) |
+| `flutter analyze` | No issues found | **No issues found** |
+| Flutter `flutter test` | 96 geçti | **98 geçti** (+2: kapak yükleme, kişi satırında şehir yok) |
+| Pixel 6a entegrasyon (`tool/run_pixel_regression.ps1`) | — (başlangıçta koşulmadı) | **9/9 geçti**, sahipli fixture temizliği `clean=true` (`tool/run_pixel_regression.ps1 -SkipClean`) |
+| Pixel 6a location-time (`-Suite location-time`) | — | **3/3 geçti** |
+
+Hiçbir test silinmedi, atlanmadı veya assertion'ı gevşetilmedi. Entegrasyon testlerinde yalnızca kilitli final arayüzle ve bu çalışmadaki kararla uyumsuz bulucular güncellendi: "Profili Düzenle" etiketi, ikinci "Paylaşım oluştur" semantiği için `compose-button` anahtarı, kişi satırlarında artık şehir olmadığı için `@kullanıcıadı` (önceki `@kullanıcıadı · şehir`) bulucusu ve boş bulucuda çöken kaydırma yardımcısı.
+
+Gerçek cihaz / tarayıcı kanıtları: Pixel 6a (`Pixel_6a`, emulator-5554) üzerinde normal debug uygulama, local API `http://127.0.0.1:8000/api/v1`; admin paneli → mobil uçtan uca: Yakınındaki İnsanlar modülü kapatıldı → mobil Ana Sayfa'dan kayboldu → yeniden açıldı; bakım modu açıldı → mobil bakım ekranı → kapatıldı → uygulama normale döndü (`docs/screenshots/ui-audit/e2e-module-disabled.png`, `e2e-maintenance.png`). Duyuru ve minimum sürüm akışları testlerle (`AdministrationTest`, `ProductionReadinessTest`) doğrulandı; bu turda cihazda ayrıca denenmedi. Public web: 1200 px masaüstü ve 390 px mobil tam sayfa görüntüleri `docs/screenshots/web-final/` altındadır; yatay taşma yok, mobil menü çalışıyor.
+
+Dış bağımlılıklar (Firebase/FCM, Google/Apple production, APNs, SMTP, Android keystore, alan adı/sunucu/SSL, gerçek operatör ve legal bilgileri, App Store / Play Store adresleri) bu çalışmada sahte değerle doldurulmadı: EXTERNAL / WAITING.
+
+---
+
+# Doğrulama — 10 Kasım 2026 (tarihsel kayıt)
 
 Güncel çalışma mobil UI/UX denetimi ile uçtan uca ürün bütünlüğü (mobil + Laravel API + Admin panel + Public web) tamamlamasıdır. [Ürün bütünlüğü denetimi](PRODUCT_GAP_AUDIT.md), [41 yüzeylik envanter](UI_AUDIT.md), [tasarım sistemi](UI_DESIGN_SYSTEM.md) ve [cihaz/ekran kanıtları](UI_AUDIT_VALIDATION.md) birlikte okunmalıdır. Önceki [store hazırlık raporu korunur](test-history/validation-2026-11-09-before-ui-audit.md); [store paketinin gerçek yayın kapıları](store/README.md) değişmedi.
 

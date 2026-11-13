@@ -144,8 +144,8 @@ void main() {
 
     await tap(find.byTooltip('Ara'));
     await enter(find.byKey(const Key('global-search')), pixelMessageReader);
-    await waitFor(find.textContaining('@$pixelMessageReader ·'));
-    await tap(find.textContaining('@$pixelMessageReader ·'));
+    await waitFor(find.text('@$pixelMessageReader').first);
+    await tap(find.text('@$pixelMessageReader').first);
     await tap(find.text('Mesaj'));
     await waitFor(input);
     await enter(input, first);

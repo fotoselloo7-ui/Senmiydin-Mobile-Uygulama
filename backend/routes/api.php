@@ -23,6 +23,8 @@ Route::prefix('v1')->group(function (): void {
     Route::get('interests', [CatalogController::class, 'interests']);
     Route::get('avatars/{filename}', [ProfileController::class, 'image'])
         ->where('filename', '[0-9a-f-]{36}\.jpg')->name('avatars.show');
+    Route::get('covers/{filename}', [ProfileController::class, 'cover'])
+        ->where('filename', '[0-9a-f-]{36}\.jpg')->name('covers.show');
 
     Route::prefix('auth')->group(function (): void {
         Route::post('social/apple/challenge', [App\Http\Controllers\SocialAuthController::class, 'challenge'])->middleware('throttle:login');
@@ -41,6 +43,8 @@ Route::prefix('v1')->group(function (): void {
         Route::get('profile', [ProfileController::class, 'show']);
         Route::put('profile', [ProfileController::class, 'update']);
         Route::post('profile/avatar', [ProfileController::class, 'uploadAvatar'])->middleware('throttle:12,1');
+        Route::post('profile/cover', [ProfileController::class, 'uploadCover'])->middleware('throttle:12,1');
+        Route::delete('profile/cover', [ProfileController::class, 'removeCover'])->middleware('throttle:12,1');
         Route::put('active-city', [LocationController::class, 'selectCity'])->middleware('throttle:location-write');
         Route::get('location-history', [LocationController::class, 'history'])->middleware('throttle:location-read');
         Route::put('location', [LocationController::class, 'update'])->middleware('throttle:location-write');

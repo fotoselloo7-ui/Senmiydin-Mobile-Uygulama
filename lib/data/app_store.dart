@@ -758,6 +758,14 @@ class AppStore extends ChangeNotifier {
     _applyAccount(await _profiles!.uploadAvatar(image));
   }
 
+  Future<void> uploadCover(XFile image) async {
+    _applyAccount(await _profiles!.uploadCover(image));
+  }
+
+  Future<void> removeCover() async {
+    _applyAccount(await _profiles!.removeCover());
+  }
+
   Future<void> saveAccountInterests(List<CatalogItem> items) async {
     if (!connected) {
       me.interests = items.map((item) => item.name).toList();

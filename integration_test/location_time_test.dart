@@ -136,13 +136,13 @@ void main() {
       await tester.pumpAndSettle();
       await waitFor(
         tester,
-        () => find.bySemanticsLabel('Paylaşım oluştur').evaluate().isNotEmpty,
+        () => find.byKey(const Key('compose-button')).evaluate().isNotEmpty,
         'Ana Sayfa',
       );
       await writer.location!.refresh();
       writer.location!.configure(active: false, history: false);
       await writer.setCity('İstanbul');
-      await tapVisible(tester, find.bySemanticsLabel('Paylaşım oluştur'));
+      await tapVisible(tester, find.byKey(const Key('compose-button')));
       const message = 'Bugün Gülhane’de gördüğüm kişi sen miydin?';
       final before = (await writer.loadProfilePosts(
         scenarioWriter,
@@ -292,16 +292,18 @@ void main() {
       reader.location!.configure(active: false, history: false);
       await reader.setCity('Ankara');
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(
-        find.text('Ankara → Erzincan').first,
-        220,
-        maxScrolls: 40,
-        scrollable: find
-            .byWidgetPredicate(
-              (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
-            )
-            .first,
-      );
+      final journeyTitle = find.text('Ankara → Erzincan');
+      final feedScrollable = find
+          .byWidgetPredicate(
+            (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+          )
+          .first;
+      for (var i = 0; i < 40 && journeyTitle.evaluate().isEmpty; i++) {
+        await tester.drag(feedScrollable, const Offset(0, -220));
+        await tester.pump(const Duration(milliseconds: 400));
+      }
+      expect(journeyTitle, findsWidgets);
+      await tester.ensureVisible(journeyTitle.first);
       await waitFor(
         tester,
         () => find.text('Ankara → Erzincan').evaluate().isNotEmpty,

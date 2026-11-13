@@ -468,26 +468,20 @@ Admin panelinden:
 
 ## 15. Profil
 
-Kullanıcı profilinde:
+**FINAL KARAR (güncel kaynak):** Herkese açık profilde şehir satırı, konum, mesafe ve hobi / ilgi alanı çipi **yoktur**. Şehir, ilgi alanı ve meslek / okul bilgisi backend'de yalnızca onboarding, filtre ve eşleştirme için saklanır; başka bir kullanıcıya dönen hiçbir API yanıtında (`PublicUserResource`) bulunmaz. Kendi profil düzenleme ekranında bu alanlar düzenlenebilir.
 
+Final profil yapısı:
+
+- Kapak görseli (kullanıcı kendi kapağını Profil Düzenle ekranından ekleyip değiştirebilir veya kaldırabilir)
 - Profil fotoğrafı
-- Kapak alanı
 - Ad
 - @kullanıcıadı
-- Şehir
-- Biyografi
-- İlgi alanları
-- Paylaşım sayısı
-- Karşılaşma sayısı
-- Takipçi
-- Takip edilen
-- Paylaşımlar
-- Karşılaşmalarım
-- Kaydedilenler
-- Profil düzenle
-- Ayarlar
+- Kısa biyografi
+- İstatistik satırı: Paylaşım, Karşılaşma, Takipçi, Takip (sayaçlar gerçek listeye gider)
+- Başkasının profilinde: Takip Et / Mesaj. Kendi profilinde: Profil Düzenle / Ayarlar
+- Sekmeler: Paylaşımlar, Karşılaşmalar, Medya (yalnızca kendi profilinde özel Kaydedilenler)
 
-bulunur.
+> Not: Bu bölümün önceki sürümü herkese açık profilde şehir ve ilgi alanlarını listeliyordu; bu karar geçersizdir.
 
 ---
 
@@ -600,6 +594,8 @@ içermelidir.
 
 İlk sürümde mobil uygulamanın tüm sosyal işlevlerini web'e taşımak zorunlu değildir.
 
+**Güncel durum (13 Kasım 2026):** Mobil tasarım FINAL ve kilitlidir; public web tasarımı henüz kullanıcı tarafından onaylanmamıştır ve mevcut marka sistemiyle (mavi = işlevsel, mor / lila = marka, lacivert = metin, beyaz = yüzey) geliştirilmeye açıktır. Ana sayfa akışı: Header → hikâye slider'lı Hero → SenMiydin Nedir? → Nasıl Çalışır? → Şehir Bazlı Akış → Yakındaki İnsanlar / Harita → Paylaşım Oluşturma → Karşılaşma + Onay → Yolculuk → Mesajlaşma → Gizlilik / Güvenlik → Gerçek mobil ekranlar → Final CTA → Footer. Web'de uydurma kullanıcı sayısı, puan, yorum veya mağaza durumu bulunmaz; mağaza adresi boşsa "Yakında" gösterilir; mobil bölümlerde yalnızca gerçek Pixel 6a ekran görüntüleri kullanılır.
+
 ---
 
 ## 22. Admin Paneli
@@ -665,11 +661,12 @@ Uygulamanın kritik ayarlarında kontrol admin panelinde olmalıdır.
 
 Onaylı referans ekranlar tasarım açısından tek kaynaktır.
 
-Temel görsel dil:
+Temel görsel dil (güncel, FINAL):
 
 - Beyaz ana arka plan
-- Canlı mavi ana vurgu
-- Koyu lacivert metin
+- **Mavi = işlevsel birincil renk** (`#0877E8`): navigasyon, harita, konum, filtre, normal CTA, keşif, mesajlar
+- **Mor / lila = marka** (`#7C20D4`, `#A855F7`): SenMiydin logosu, marka vurguları, karşılaşma, profil vurgusu, seçili özel durumlar, drawer dekorasyonu
+- Koyu lacivert metin (`#0B1F44`)
 - Açık mavi yardımcı yüzeyler
 - Hafif mavi gölgeler
 - Bol beyaz alan
@@ -682,6 +679,7 @@ Uygulama karmaşık görünmemelidir.
 
 ### Tasarım kuralları
 
+- KİLİTLİ ve FINAL: Ana Sayfa, Profil, Medya Görüntüleyici, Yan Menü (drawer), Alt Navigasyon, global ikon sistemi, final SenMiydin markası, açılış ekranı ve temel kart / buton / input sistemi yeniden tasarlanmaz.
 - Onaylı ana sayfa yapısı değiştirilmez.
 - Yeni bir tema icat edilmez.
 - Koyu tema ilk sürüm için zorunlu değildir.

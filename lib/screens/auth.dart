@@ -966,6 +966,67 @@ class _CompleteProfilePageState extends State<CompleteProfilePage>
     });
   }
 
+  void pickCover(AppStore store) {
+    runAccountAction(() async {
+      try {
+        final image = await ImagePicker().pickImage(
+          source: ImageSource.gallery,
+          maxWidth: 1600,
+          maxHeight: 1600,
+          imageQuality: 88,
+        );
+        if (image == null || !mounted) return;
+        await store.uploadCover(image);
+        if (mounted) {
+          setState(() {});
+          toast(context, 'Kapak fotoğrafın güncellendi.');
+        }
+      } on PlatformException {
+        throw const ApiFailure('Galeriden fotoğraf seçilemedi.');
+      }
+    });
+  }
+
+  void removeCover(AppStore store) {
+    runAccountAction(() async {
+      await store.removeCover();
+      if (mounted) {
+        setState(() {});
+        toast(context, 'Kapak fotoğrafın kaldırıldı.');
+      }
+    });
+  }
+
+  Future<void> changeCover(AppStore store) async {
+    if ((store.account?.cover ?? '').isEmpty) return pickCover(store);
+    final remove = await showModalBottomSheet<bool>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: Space.page,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SettingsRow(
+                'Yeni fotoğraf seç',
+                Icons.image_outlined,
+                onTap: () => Navigator.pop(ctx, false),
+              ),
+              SettingsRow(
+                'Kapak fotoğrafını kaldır',
+                Icons.delete_outline_rounded,
+                danger: true,
+                onTap: () => Navigator.pop(ctx, true),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!mounted || remove == null) return;
+    remove ? removeCover(store) : pickCover(store);
+  }
+
   @override
   Widget build(BuildContext context) {
     final store = StoreScope.of(context);
@@ -1091,6 +1152,15 @@ class _CompleteProfilePageState extends State<CompleteProfilePage>
               ),
               const SizedBox(height: Space.xl),
               if (widget.edit) ...[
+                if (store.connected)
+                  SettingsRow(
+                    'Kapak Fotoğrafı',
+                    Icons.image_outlined,
+                    subtitle: (store.account?.cover ?? '').isEmpty
+                        ? 'Profilinin üst görselini ekle'
+                        : 'Değiştir veya kaldır',
+                    onTap: busy ? null : () => changeCover(store),
+                  ),
                 Field('Ad Soyad', Icons.person_outline, controller: name),
                 Field(
                   'Kullanıcı Adı',

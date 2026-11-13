@@ -148,7 +148,7 @@ void main() {
       find.text('Nehir kıyısında yürümeyi ve kahveyi seviyorum.'),
       findsOneWidget,
     );
-    await tap(find.text('Düzenle'));
+    await tap(find.text('Profili Düzenle'));
     await enter('Ad Soyad', 'Ada Yılmaz');
     await tap(find.text('Değişiklikleri Kaydet'));
     await waitFor(find.text('Ada Yılmaz'));

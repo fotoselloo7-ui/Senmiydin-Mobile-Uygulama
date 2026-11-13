@@ -138,6 +138,26 @@ class LocationTimeTravelTest extends TestCase
         $this->assertDatabaseCount('app_notifications', 0);
     }
 
+    public function test_location_retention_is_registered_with_the_scheduler_and_enforces_the_seven_day_default(): void
+    {
+        $registered = collect(app(\Illuminate\Console\Scheduling\Schedule::class)->events())
+            ->first(fn ($event) => str_contains($event->command, 'location:purge'));
+        $this->assertNotNull($registered, 'location:purge must be scheduled.');
+        $this->assertSame('0 * * * *', $registered->expression);
+        $this->assertSame(7, (int) config('location.history_days'));
+        $fresh = User::create(['name' => 'Default', 'username' => 'defaultuser', 'email' => 'default@example.test',
+            'birth_date' => '1995-01-01', 'password' => 'TestPassword1234', 'city_id' => $this->city('istanbul')])->fresh();
+        $this->assertFalse($fresh->location_history_enabled);
+
+        $user = $this->user('retention', history: true);
+        Carbon::setTestNow('2026-11-08 12:00:00');
+        $this->sample($user, '2026-11-08 11:00:00');
+        $this->sample($user, '2026-10-20 11:00:00');
+        $this->assertSame(2, DB::table('user_location_history')->where('user_id', $user->id)->count());
+        $this->artisan('location:purge')->assertExitCode(0);
+        $this->assertSame(1, DB::table('user_location_history')->where('user_id', $user->id)->count());
+    }
+
     public function test_history_consent_and_notification_preferences_are_independent(): void
     {
         $author = $this->user('author');

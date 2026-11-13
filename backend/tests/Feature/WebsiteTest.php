@@ -20,6 +20,29 @@ class WebsiteTest extends TestCase
             ->assertSee('SoftwareApplication')->assertDontSee('aggregateRating')->assertDontSee('downloadUrl');
     }
 
+    public function test_public_home_follows_the_final_story_flow_without_dating_copy_or_invented_proof(): void
+    {
+        $html = $this->get('/')->assertOk()->getContent();
+        $order = ['story-slider', 'id="nedir"', 'id="nasil-calisir"', 'id="sehir-akisi"', 'id="harita"', 'id="paylasim"',
+            'id="karsilasma"', 'id="yolculuk"', 'id="mesajlasma"', 'id="guvenlik"', 'id="ekranlar"', 'id="indir"', 'site-footer'];
+        $previous = -1;
+        foreach ($order as $marker) {
+            $position = strpos($html, $marker);
+            $this->assertNotFalse($position, "Missing {$marker}");
+            $this->assertGreaterThan($previous, $position, "{$marker} is out of order");
+            $previous = $position;
+        }
+        $this->assertGreaterThanOrEqual(5, substr_count($html, 'class="story-slide'));
+        $this->assertStringContainsString('Pamukkale · Ankara → Erzincan · 07 NM 365', $html);
+        $this->assertStringContainsString('class="nav-toggle"', $html);
+        foreach (['flört uygulaması değildir', 'Yakında · App Store', 'Yakında · Google Play'] as $expected) {
+            $this->assertStringContainsString($expected, $html);
+        }
+        foreach (['aggregateRating', 'ratingValue', '100K', '50K', '4.9 ★', '★', 'yorum yapan', 'instagram.com', 'tiktok.com', 'youtube.com', 'eşleşme algoritma', 'swipe', 'Premium', 'flörtleş'] as $forbidden) {
+            $this->assertStringNotContainsStringIgnoringCase($forbidden, $html, "Invented or off-product copy: {$forbidden}");
+        }
+    }
+
     public function test_public_routes_sitemap_and_robots(): void
     {
         foreach (['nasil-calisir', 'ozellikler', 'guvenlik', 'gizlilik', 'kvkk', 'kullanim-kosullari', 'topluluk-kurallari', 'iletisim', 'hesap-silme'] as $slug) {

@@ -69,6 +69,7 @@ class ApiClient {
     Map<String, Object?>? body,
     bool authenticated = false,
     XFile? avatar,
+    XFile? cover,
     XFile? messageImage,
     List<XFile> media = const [],
     Map<String, dynamic>? query,
@@ -81,6 +82,7 @@ class ApiClient {
       body: body,
       authenticated: authenticated,
       avatar: avatar,
+      cover: cover,
       messageImage: messageImage,
       media: media,
       query: query,
@@ -96,6 +98,7 @@ class ApiClient {
     Map<String, Object?>? body,
     bool authenticated = false,
     XFile? avatar,
+    XFile? cover,
     XFile? messageImage,
     List<XFile> media = const [],
     Map<String, dynamic>? query,
@@ -120,7 +123,10 @@ class ApiClient {
     }
 
     final http.BaseRequest request;
-    if (avatar == null && messageImage == null && media.isEmpty) {
+    if (avatar == null &&
+        cover == null &&
+        messageImage == null &&
+        media.isEmpty) {
       final jsonRequest = http.Request(method, uri);
       if (body != null) {
         jsonRequest.headers['Content-Type'] = 'application/json';
@@ -133,7 +139,7 @@ class ApiClient {
         if (body != null) {
           upload.fields.addAll(multipartFields(body));
         }
-        final single = avatar ?? messageImage;
+        final single = avatar ?? cover ?? messageImage;
         final files = single == null ? media : [single];
         for (final (index, file) in files.indexed) {
           final length = await file.length();
@@ -144,6 +150,8 @@ class ApiClient {
             http.MultipartFile(
               avatar != null
                   ? 'avatar'
+                  : cover != null
+                  ? 'cover'
                   : messageImage != null
                   ? 'image'
                   : 'media[$index]',
@@ -440,6 +448,21 @@ class ProfileService {
           avatar: image,
         ) as Map<String, dynamic>,
       );
+
+  Future<AccountProfile> uploadCover(XFile image) async =>
+      AccountProfile.fromJson(
+        await client.send(
+          'POST',
+          'profile/cover',
+          authenticated: true,
+          cover: image,
+        ) as Map<String, dynamic>,
+      );
+
+  Future<AccountProfile> removeCover() async => AccountProfile.fromJson(
+    await client.send('DELETE', 'profile/cover', authenticated: true)
+        as Map<String, dynamic>,
+  );
 
   Future<AccountProfile> saveInterests(List<int> ids) async =>
       AccountProfile.fromJson(
