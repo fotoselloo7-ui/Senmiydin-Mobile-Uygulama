@@ -6,8 +6,8 @@
   'use strict';
 
   function initSlider(root) {
-    const slides = [...root.querySelectorAll('.story-slide')];
-    const dots = [...root.querySelectorAll('.story-dot')];
+    const slides = [...root.querySelectorAll('.hs-slide')];
+    const dots = [...root.querySelectorAll('.hs-dot')];
     const pause = root.querySelector('[data-pause]');
     if (slides.length < 2) return;
 
@@ -99,7 +99,11 @@
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && inner.classList.contains('nav-open')) { set(false); toggle.focus(); }
     });
-    window.matchMedia('(min-width: 769px)').addEventListener('change', (e) => { if (e.matches) set(false); });
+    // Tap outside the open menu closes it.
+    document.addEventListener('click', (e) => {
+      if (inner.classList.contains('nav-open') && !inner.contains(e.target)) set(false);
+    });
+    window.matchMedia('(min-width: 901px)').addEventListener('change', (e) => { if (e.matches) set(false); });
   }
 
   function initHeaderScroll() {

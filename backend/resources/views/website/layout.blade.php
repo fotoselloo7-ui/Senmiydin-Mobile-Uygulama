@@ -26,11 +26,13 @@
     <script>document.documentElement.classList.add('js')</script>
     <link rel="stylesheet" href="{{ asset('web/site.css') }}">
     <script src="{{ asset('web/site.js') }}" defer></script>
+    @stack('head')
     @if($slug === '')
         <script type="application/ld+json">{!! json_encode([
             '@context' => 'https://schema.org', '@type' => 'SoftwareApplication',
             'name' => $settings['app_name'], 'applicationCategory' => 'SocialNetworkingApplication',
             'operatingSystem' => 'Android, iOS', 'url' => $canonical, 'description' => $description,
+            'featureList' => ['Şehir bazlı sosyal akış', 'Karşılıklı onaylı karşılaşmalar', 'Harita Notları: 7 gün kalan dijital mektuplar', 'Yolculuk paylaşımları', 'İzinli birebir mesajlaşma', 'Yaklaşık konum ve gizlilik kontrolleri'],
             ...(($stores = array_values(array_filter([$settings['app_store_url'], $settings['play_store_url']]))) ? ['downloadUrl' => $stores] : []),
         ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) !!}</script>
     @endif
@@ -43,9 +45,10 @@
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line class="bar-a" x1="4" y1="7" x2="20" y2="7"/><line class="bar-b" x1="4" y1="12" x2="20" y2="12"/><line class="bar-c" x1="4" y1="17" x2="20" y2="17"/></svg>
     </button>
     <nav id="ana-menu" aria-label="Ana menü">
-        @foreach(['' => 'Ana Sayfa', 'nasil-calisir' => 'Nasıl Çalışır', 'ozellikler' => 'Özellikler', 'guvenlik' => 'Güvenlik', 'iletisim' => 'İletişim'] as $path => $label)
-            <a href="/{{ $path }}" @if($slug === $path) aria-current="page" @endif>{{ $label }}</a>
+        @foreach([['/nasil-calisir', 'Nasıl Çalışır', 'nasil-calisir'], ['/#harita-notlari', 'Harita Notları', null], ['/ozellikler', 'Özellikler', 'ozellikler'], ['/guvenlik', 'Güvenlik', 'guvenlik'], ['/iletisim', 'İletişim', 'iletisim']] as [$href, $label, $page])
+            <a href="{{ $href }}" @if($page && $slug === $page) aria-current="page" @endif>{{ $label }}</a>
         @endforeach
+        <a href="/#indir" class="nav-cta-mobile">Uygulamayı Keşfet</a>
     </nav>
     <a class="button header-cta" href="/#indir">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -65,12 +68,13 @@
             <a href="/" class="brand">
                 <img src="{{ asset('web/logo-primary-light.png') }}" alt="{{ $settings['app_name'] }}" width="156" height="52">
             </a>
-            <p>Şehrinde karşılaştığın insanları yeniden bul.</p>
+            <p>Şehrinde karşılaştığın insanları yeniden bul; geçtiğiniz yere bir mektup bırak.</p>
         </div>
         <div class="footer-links-group">
             <div class="footer-col">
                 <a href="/">Ana Sayfa</a>
                 <a href="/nasil-calisir">Nasıl Çalışır</a>
+                <a href="/#harita-notlari">Harita Notları</a>
             </div>
             <div class="footer-col">
                 <a href="/ozellikler">Özellikler</a>
@@ -78,6 +82,7 @@
             </div>
             <div class="footer-col">
                 <a href="/gizlilik">Gizlilik Politikası</a>
+                <a href="/kvkk">KVKK Aydınlatma</a>
                 <a href="/kullanim-kosullari">Kullanım Koşulları</a>
                 <a href="/topluluk-kurallari">Topluluk Kuralları</a>
                 <a href="/iletisim">İletişim</a>

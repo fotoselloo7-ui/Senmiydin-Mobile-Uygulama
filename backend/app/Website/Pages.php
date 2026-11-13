@@ -14,7 +14,7 @@ final class Pages
     ];
 
     public const PUBLIC = [
-        '' => ['SenMiydin?', 'Gerçek hayattaki karşılaşmaları, şehir içeriklerini, yolculuk anılarını ve yarım kalan hikâyeleri konum temelli sosyal keşifle bir araya getir.'],
+        '' => ['SenMiydin?', 'Birini gördün ama konuşamadın mı? Şehrinde karşılaştığın insanları yeniden bul, yolculuk anılarını paylaş ve geçtiğiniz yere 7 gün kalan dijital bir mektup bırak.'],
         'nasil-calisir' => ['Nasıl Çalışır?', 'Bir an bırak, karşılaştığın kişiyi bul ve birlikte doğrula.'],
         'ozellikler' => ['Özellikler', 'Şehir akışı, yolculuk paylaşımları, yakınlıkla keşif, karşılaşma hikâyeleri ve özel mesajlar.'],
         'guvenlik' => ['Güvenlik', 'Konum görünürlüğünü, mesaj isteklerini ve etkileşimlerini yönet.'],
@@ -32,6 +32,7 @@ final class Pages
     public const FEATURES = [
         ['Şehir içerikleri ve akış', 'Düşünce, anı, itiraf ve fotoğraflı paylaşımlar yaşadığın şehrin akışında bir araya gelir.'],
         ['Yolculuk paylaşımları', 'Otobüs, tren, uçak veya feribot yolculuklarında aynı güzergâh ve seferdeki yarım kalan karşılaşmaları paylaş.'],
+        ['Harita Notları', 'Haritada yaklaşık bir noktaya 7 gün kalan dijital bir mektup bırak. Açık ya da anonim olabilir; başkaları okuyabilir ve cevap yazabilir.'],
         ['Gerçek hayattaki karşılaşmalar', 'Karşılıklı onaydan sonra doğrulanan karşılaşmaları ortak bir hikâyeye dönüştürebilirsiniz.'],
         ['Konum temelli sosyal keşif', 'Yakındaki paylaşımları ve görünürlük tercihi açık profilleri canlı kişi takibi olmadan, yaklaşık mesafeyle keşfet.'],
         ['Özel mesajlar', 'İlk mesaj bir istektir. Alıcı kabul ettiğinde sohbet güvenle devam eder.'],

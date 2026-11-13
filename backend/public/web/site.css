@@ -1796,3 +1796,35 @@ img {
 @media (max-width: 768px) {
   .feature-shot .phone-shot img { max-width: 240px; }
 }
+
+
+/* =============================================================
+   Header v2: never overflows. Compact nav up to 1100px, hamburger up to 900px.
+============================================================= */
+@media (max-width: 1100px) and (min-width: 901px) {
+  .header-inner { gap: .75rem; }
+  .header-inner nav { gap: .1rem; }
+  .header-inner nav a { padding: .4rem .65rem; font-size: .9rem; white-space: nowrap; }
+  .button.header-cta, .header-cta { padding: .6rem 1rem; font-size: .88rem; }
+}
+@media (max-width: 900px) {
+  .header-inner { flex-wrap: nowrap; position: relative; padding-block: 0; min-height: 64px; }
+  .nav-toggle { display: inline-flex; margin-left: auto; }
+  .button.header-cta { display: none; }
+  .js .header-inner nav {
+    display: none; position: absolute; top: 100%; left: -1.5rem; right: -1.5rem; z-index: 35;
+    flex-direction: column; align-items: stretch; gap: .15rem; width: auto; overflow: visible;
+    padding: .75rem 1.5rem 1rem; background: #fff; border-bottom: 1px solid var(--line);
+    box-shadow: 0 18px 30px -22px rgba(11, 31, 68, .5);
+  }
+  .js .header-inner.nav-open nav { display: flex; }
+  .header-inner nav a { font-size: 1rem; padding: .8rem 1rem; white-space: normal; }
+}
+html { scroll-padding-top: 5rem; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+.nav-cta-mobile { display: none !important; }
+@media (max-width: 900px) {
+  .header-inner nav a.nav-cta-mobile { display: inline-flex !important; justify-content: center; margin-top: .5rem; background: linear-gradient(135deg, #0877E8 0%, #19AEFF 100%); color: #fff; font-weight: 700; border-radius: 999px; }
+  .header-inner nav a.nav-cta-mobile:hover { color: #fff; }
+}

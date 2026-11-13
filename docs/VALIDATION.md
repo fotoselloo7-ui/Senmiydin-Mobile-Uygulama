@@ -1,8 +1,30 @@
 # Doğrulama
 
-> **Güncel kaynak bu dosyanın ilk bölümüdür (14 Kasım 2026, yerleştirme düzeltmesi).** Altındaki bölümler önceki turların tarihsel kayıtlarıdır; oradaki sayılar güncel durum değildir.
+> **Güncel kaynak bu dosyanın ilk bölümüdür (14 Kasım 2026, public web final adayı).** Altındaki bölümler önceki turların tarihsel kayıtlarıdır; oradaki sayılar güncel durum değildir.
 
-## Harita notu yerleştirme düzeltmesi + arayüz E2E + harita düzeni — 14 Kasım 2026 (en güncel)
+## Public web final adayı — 14 Kasım 2026 (en güncel)
+
+Başlangıç `a866be9`: Laravel 142 test / 2098 assertion, Flutter 125, analyze temiz, Pixel 9/9, location-time 3/3. Mobil uygulama ve backend sosyal özellikleri değişmedi; yalnız `website/*` Blade, `public/web/*` varlıkları, `WebsiteTest` ve belgeler.
+
+| Kontrol | Sonuç |
+|---|---|
+| Laravel `php artisan test` | **146 test / 2375 assertion geçti** (başlangıç 142 / 2098; +4 web testi) |
+| `WebsiteTest` | 9 test (5 mevcut, 4 yeni): Harita Notları bölümü + 7 gün doğruluğu, anonim / cevap anlatımı, flört / sahte kanıt yok, başlık hiyerarşisi + tek H1, alt metinler, kırık görsel / ölü bağlantı yok, SEO + footer + gizli veri sızıntısı yok |
+| `flutter analyze` / `flutter test` | Flutter kodu değişmedi: analyze temiz, 125 test geçti; Pixel entegrasyon 9/9, location-time 3/3 (yeniden doğrulandı) |
+| Tarayıcı (Playwright) 1920 / 1440 / 1200 / 1024 / 768 / 430 / 390 / 360 | yatay taşma **0**, konsol hatası **0**, kırık görsel **0**, kırık iç bağlantı **0**, başlık taşması yok |
+| Mobil menü | açılır, Esc ve dışarı tıklama kapatır, bağlantı seçince kapanır, "Uygulamayı Keşfet" menüde |
+
+**Kapsam.** Ana sayfa yeniden kurgulandı (hikâye akışı, iki kolonlu hero, 5 hikâyeli klavye kullanılabilir slider, 4. hikâye gerçek Harita Notu ekranları: mektup + "Notuna bir cevap geldi." bildirimi + anonim yanıt "O kişi bendim :)"). Harita Notları ayrı büyük bölüm: 7 gün, açık / anonim, cevap, yaklaşık nokta; üç adım gerçek Pixel 6a ekranlarıyla (mektup bırak → noktadaki notlar → cevap). Geçtiğim Yerler (opt-in, varsayılan kapalı, yaklaşık bölge, 7 gün, kesin rota takibi yok), Yolculuk (sistem aynı araçta olduğunuzu bilmez), Mesajlaşma (grup sohbeti ve arama yok), Gizlilik ve Güvenlik (yaklaşık konum, anonim paylaşım, engel, şikâyet, moderasyon, konum tercihleri, hesap silme; doğrulanamayan güvenlik iddiası yok). Header en dar 901–1100 px aralığında sıkışmaz; 900 px ve altında hamburger. Footer'a KVKK ve Harita Notları bağlantısı eklendi. Yasal sayfalar, iletişim formu (hız sınırı, honeypot, kuyruk) ve hesap silme davranışı değişmedi.
+
+**Performans / erişilebilirlik.** Hero görseli `preload` + `fetchpriority=high`, diğer görseller `loading=lazy`, tüm görsellerde boyut ve alt metin; fotoğraflar ve ekran görüntüleri WebP (ör. hero 858 KB JPG → 95 KB WebP). Tek H1, bölümler `aria-labelledby`, atla bağlantısı, odak halkaları, `prefers-reduced-motion`; kaydırmalı şeritler (`tabindex=0`, etiketli).
+
+**Gerçek ekranlar.** Harita Notları ekranları, local API'ye tohumlanmış hikâye metinleriyle (not, anonim not, anonim yanıt, sohbet) Pixel 6a'da alındı; ekranlar gerçek uygulama çıktısıdır, çizim değildir. Android `adb input` Türkçe karakter yazamadığı için metinler API ile tohumlandı ve yalnız görüntülendi. Test verisi sonunda temizlendi.
+
+Ekran görüntüleri: `docs/screenshots/web-final-v2/`.
+
+---
+
+## Harita notu yerleştirme düzeltmesi + arayüz E2E + harita düzeni — 14 Kasım 2026 (önceki tur)
 
 Başlangıç `a9320b5`: Laravel 139 test / 1919 assertion, Flutter 112, analyze temiz, Pixel 9/9, location-time 3/3.
 
