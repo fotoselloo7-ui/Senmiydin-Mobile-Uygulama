@@ -39,7 +39,7 @@ Future<void> routeInboxNotification(
   }
   final entity = item.entity?.toString();
   switch (item.route) {
-    case '/post' || '/comments' || '/conversation' || '/encounter'
+    case '/post' || '/comments' || '/conversation' || '/encounter' || '/map-note'
         when entity != null:
       await navigator.pushNamed(item.route, arguments: entity);
     case '/profile' when item.actor != null:
@@ -137,7 +137,7 @@ class _LiveNotificationsPageState extends State<LiveNotificationsPage>
                                 ),
                                 subtitle: Text(
                                   item.available
-                                      ? item.time
+                                      ? [?item.subtitle, item.time].join(' · ')
                                       : '${item.time} · İçerik kullanılamıyor',
                                   style: const TextStyle(
                                     color: AppColors.muted,
@@ -201,6 +201,7 @@ class _NoticeAvatar extends StatelessWidget {
       'follow' => Icons.person_add_outlined,
       'message' || 'message_request' => Icons.mail_outline,
       'location_match' || 'nearby_activity' => Icons.location_on_outlined,
+      'map_note_nearby' || 'map_note_reply' => Icons.mail_outline_rounded,
       'system' => Icons.campaign_outlined,
       _ => Icons.favorite_border,
     };

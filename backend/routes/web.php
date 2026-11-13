@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\MapNotesController;
 use App\Http\Controllers\Admin\ModerationController;
 use App\Http\Controllers\Admin\RecordsController;
 use App\Http\Controllers\Admin\SessionController;
@@ -29,6 +30,10 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::post('logout', [SessionController::class, 'destroy'])->name('logout');
         Route::get('media/{media}', [RecordsController::class, 'media'])->whereNumber('media')->name('media');
         Route::get('reports/{report}/image', [RecordsController::class, 'reportImage'])->whereNumber('report')->name('report.image');
+        Route::get('map-notes', [MapNotesController::class, 'index'])->name('map-notes.index');
+        Route::get('map-notes/{id}', [MapNotesController::class, 'detail'])->whereNumber('id')->name('map-notes.detail');
+        Route::post('map-notes/{id}/moderate', [MapNotesController::class, 'moderate'])->whereNumber('id')->name('map-notes.moderate');
+        Route::post('map-note-replies/{id}/moderate', [MapNotesController::class, 'moderateReply'])->whereNumber('id')->name('map-note-replies.moderate');
         Route::get('{section}', [RecordsController::class, 'index'])->name('index');
         Route::get('{section}/{id}', [RecordsController::class, 'detail'])->whereNumber('id')->name('detail');
         Route::post('users/{id}', [ModerationController::class, 'user'])->whereNumber('id')->name('user.action');

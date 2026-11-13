@@ -11,6 +11,7 @@ final class Inbox
     public const DEFAULTS = [
         'message' => true, 'message_request' => true, 'encounter' => true,
         'like' => true, 'comment' => true, 'follow' => true, 'nearby_activity' => false, 'location_match' => false, 'system' => true,
+        'map_note_nearby' => true, 'map_note_reply' => true,
     ];
 
     public const TYPES = [
@@ -28,7 +29,12 @@ final class Inbox
         'location_match' => ['/post', 'Birine denk gelmiş olabilirsin 👀'],
         'nearby_activity' => ['/post', 'Geçtiğin bölgede bir paylaşım var.'],
         'system' => ['/notifications', 'Yeni bir SenMiydin? duyurusu var.'],
+        'map_note_nearby' => ['/map-note', 'Yakınına bir not bırakıldı.'],
+        'map_note_reply' => ['/map-note', 'Notuna bir cevap geldi.'],
     ];
+
+    /** Optional second line shown under the notification text. Never carries identity. */
+    public const SUBTITLES = ['map_note_nearby' => 'Birisi bulunduğun bölgede dijital bir not bıraktı.'];
 
     public static function add(int $user, ?int $actor, string $type, ?int $entity = null, bool $inApp = true, bool $push = true, ?int $announcement = null): void
     {
@@ -58,7 +64,10 @@ final class Inbox
         $category = str_starts_with($type, 'encounter_') ? 'encounter' : $type;
         return isset(self::DEFAULTS[$category]) &&
             (($user->push_preferences ?? []) + self::DEFAULTS)[$category] &&
-            (! in_array($type, ['location_match', 'nearby_activity'], true) || $user->location_history_enabled);
+            (! in_array($type, ['location_match', 'nearby_activity'], true) || $user->location_history_enabled) &&
+            // Automatic recommendations are opt-in: strong matches follow encounter suggestions, nearby discovery follows city discovery.
+            ($type !== 'location_match' || $user->encounter_suggestions) &&
+            ($type !== 'nearby_activity' || $user->city_discovery);
     }
 
     public static function query(int $user, bool $includePushOnly = false)

@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\ApiResponse;
 use App\Http\Resources\PublicUserResource;
 use App\Models\Conversation;
+use App\Models\MapNote;
+use App\Models\MapNoteReply;
 use App\Models\EncounterRequest;
 use App\Models\Message;
 use App\Models\Post;
@@ -52,7 +54,7 @@ class SafetyController extends Controller
     public function report(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'target_type' => ['required', Rule::in(['user', 'post', 'comment', 'message', 'encounter_story', 'system'])],
+            'target_type' => ['required', Rule::in(['user', 'post', 'comment', 'message', 'encounter_story', 'map_note', 'map_note_reply', 'system'])],
             'target_id' => 'required|integer|min:0',
             'reason' => ['required', Rule::in(['harassment', 'spam', 'fake', 'inappropriate', 'hate', 'privacy', 'other'])],
             'description' => 'required_if:reason,other|nullable|string|max:1000',
@@ -67,6 +69,8 @@ class SafetyController extends Controller
             'comment' => DB::table('post_comments')->where('id', $target)
                 ->whereIn('post_id', Post::visibleTo($viewer)->select('id'))->firstOrFail()->user_id,
             'message' => Message::whereIn('conversation_id', Conversation::forMember($viewer->id)->select('id'))->findOrFail($target)->sender_id,
+            'map_note' => MapNote::visibleTo($viewer)->findOrFail($target)->user_id,
+            'map_note_reply' => MapNoteReply::visibleTo($viewer)->whereIn('map_note_id', MapNote::visibleTo($viewer)->select('map_notes.id'))->findOrFail($target)->user_id,
             'system' => $target === 0 ? null : abort(422),
         };
         abort_if($owner === $viewer->id, 422);

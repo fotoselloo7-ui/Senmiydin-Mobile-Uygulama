@@ -82,3 +82,21 @@ Eski raporlara güvenilmedi; her madde route, model, controller, test ve cihaz a
 | Firebase/FCM, Google/Apple prod, APNs, SMTP, Android keystore, alan adı/SSL, operatör/legal bilgisi, mağaza URL'leri | EXTERNAL / WAITING | gerçek credential yok; sahte değer üretilmedi |
 
 OBSOLETE olarak temizlenen kararlar: herkese açık profilde şehir/ilgi alanı, mavi = marka, "final logo üretilmez", web'de canlı telefon çizimi.
+
+## Harita Notları / Dijital Mektuplar — 14 Kasım 2026
+
+Ayrı ürün modülü; ayrıntılı karar metni SENMIYDIN_URUN_TANIMI.md §29. Aşağıdaki durumlar gerçek kod + test + Pixel 6a kanıtına dayanır.
+
+| Alan | Durum | Kanıt |
+|---|---|---|
+| Model, 7 günlük yaşam döngüsü, saklama + zamanlanmış temizlik | COMPLETE | `map_notes` / `map_note_replies`, `config/map_notes.php`, `map-notes:purge` (günlük), `MapNotesTest` (6 gün 23:59 görünür, 7 gün sonrası kapalı, yanıt süreyi uzatmaz, scheduler kaydı) |
+| Yaklaşık konum, ızgaraya yuvarlama, şehir doğrulama, gruplama | COMPLETE | `MapNoteController@store/map/group`; ham koordinat yanıtta ve veritabanında yok; yanlış şehir kullanıcı dilinde reddedilir |
+| Açık / anonim kimlik, sızıntı yok | COMPLETE | `test_open_notes_...anonymous_notes_leak_nothing`; Pixel'da ikinci hesap çağrısıyla doğrulandı |
+| Yanıt dizisi (tek seviye, eskiden yeniye, açık / anonim) | COMPLETE | `MapNotesTest`, `test/map_notes_test.dart`; Pixel 6a |
+| Bildirimler: yakınındaki not (tek sefer, merkezi yarıçap), nota yanıt, tercihler, hedef erişilemez | COMPLETE | `test_nearby_notification_...`, `test_nearby_radius_comes_from_central_config...`; Pixel'da yanıt bildirimi ve silinmiş hedef |
+| Engelleme, rapor, ContentGuard, hız sınırı | COMPLETE | `MapNotesTest` (block iki yönlü + unblock, rapor hedefleri, ContentGuard, 8 not/saat, 10 yanıt/dk) |
+| Admin: liste, detay, kaldırma / geri açma, anonim sahip, işlem günlüğü | COMPLETE | `test_admin_sees_anonymous_owners_...`, `test_reports_cover_notes_and_replies_...` |
+| Flutter: Notlar sekmesi, zarf pini + sayaç, nokta listesi, mektup, yanıt, ayarlar | COMPLETE | `test/map_notes_test.dart` (13 test), Pixel ekran görüntüleri `docs/screenshots/ui-audit/map-note*.png`, `map-notes-*.png` |
+| Ölü ayar: `encounter_suggestions` | **PARTIAL → COMPLETE** | Önceden kaydediliyor ama eşleştiricide kullanılmıyordu. Artık kapalıysa güçlü otomatik öneri üretilmez; manuel @kullanıcıadı encounter etkilenmez (`test_encounter_suggestions_switch_...`) |
+| Ölü ayar: `city_discovery` | **PARTIAL → COMPLETE** | Artık kapalıysa otomatik yakın / rota önerisi üretilmez; Harita, Nearby ve manuel şehir etkilenmez, GPS kill-switch değildir (`test_city_discovery_switch_...`) |
+| Ana Sayfa "Yakınında yeni notlar" modülü | NOT_REQUIRED_FOR_V1 | Bu görevde bilinçli olarak eklenmedi |

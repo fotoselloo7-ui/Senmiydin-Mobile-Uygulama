@@ -39,7 +39,7 @@ final class PixelFixtures
                 $email = $run.'.'.$role.'@example.test';
                 $history = str_starts_with($role, 'history_');
                 $user = User::create(['name' => $name, 'username' => $username, 'email' => $email, 'password' => $password,
-                    'birth_date' => '1995-04-12', 'city_id' => $city, 'nearby_visible' => true, 'city_discovery' => true,
+                    'birth_date' => '1995-04-12', 'city_id' => $city, 'nearby_visible' => true, 'city_discovery' => true, 'encounter_suggestions' => true,
                     'location_history_enabled' => $history, 'push_preferences' => ['location_match' => true]]);
                 $avatarSource = dirname(base_path()).'/assets/images/'.(str_contains($role, 'reader') ? 'user_1.jpg' : 'user_0.jpg');
                 $avatar = null;

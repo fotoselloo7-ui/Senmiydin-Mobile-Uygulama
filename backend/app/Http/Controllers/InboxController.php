@@ -41,7 +41,10 @@ class InboxController extends Controller
         [$route, $message] = Inbox::TYPES[$item->type];
         if (!$available) $announcement = null;
         return ['id' => $item->id, 'type' => $item->type, 'route' => $route, 'entity_id' => $item->entity_id, 'available' => $available,
-            'actor' => $actor && $item->type !== 'nearby_activity' ? new PublicUserResource($actor) : null, 'text' => $announcement?->title ?? $message,
+            // Location-derived and map-note notifications never carry another account's identity (replies may be anonymous).
+            'actor' => $actor && ! in_array($item->type, ['nearby_activity', 'map_note_nearby', 'map_note_reply'], true) ? new PublicUserResource($actor) : null,
+            'text' => $announcement?->title ?? $message,
+            ...(isset(Inbox::SUBTITLES[$item->type]) ? ['subtitle' => Inbox::SUBTITLES[$item->type]] : []),
             ...($announcement ? ['announcement_body' => $announcement->body] : []),
             'read' => $item->read_at !== null, 'created_at' => Carbon::parse($item->created_at)->toISOString()];
     }

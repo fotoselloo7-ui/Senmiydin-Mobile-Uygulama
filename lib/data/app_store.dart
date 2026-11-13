@@ -18,6 +18,7 @@ import 'push_client.dart';
 import 'models.dart';
 import 'location_api.dart';
 import 'location_service.dart';
+import 'map_notes_api.dart';
 import 'mock_data.dart';
 import 'social_api.dart';
 
@@ -31,6 +32,7 @@ class AppStore extends ChangeNotifier {
     api?.onUnauthorized = _clearAccount;
     if (api != null) {
       communication = CommunicationApi(api, _rememberPerson);
+      mapNotes = MapNotesApi(api, _rememberPerson);
       push = PushClient(communication!, () => _account?.id);
       location = LocationService(
         device: locationDevice ?? const LocationDevice(),
@@ -41,6 +43,9 @@ class AppStore extends ChangeNotifier {
   }
 
   CommunicationApi? communication;
+  MapNotesApi? mapNotes;
+  /// Bumped when a note is created or removed so the map reloads its envelope markers.
+  int mapNotesVersion = 0;
   PushClient? push;
   int unreadMessages = 0, unreadNotifications = 0, communicationVersion = 0;
   bool _loadingUnread = false;
@@ -282,6 +287,24 @@ class AppStore extends ChangeNotifier {
           .toList(),
       permissionRequired: data['location_required'] == true,
     );
+  }
+
+  Future<MapNoteMarkers> loadMapNotes() async {
+    final radius = radiusMeters;
+    if (radius != null &&
+        (location?.synced != true || location?.allowed != true)) {
+      return const MapNoteMarkers([], locationRequired: true);
+    }
+    return mapNotes!.markers(
+      cityId: await cityId(city),
+      radius: radius,
+      useLocation: location?.synced == true && location?.allowed == true,
+    );
+  }
+
+  void mapNotesChanged() {
+    mapNotesVersion++;
+    notifyListeners();
   }
 
   final _remotePosts = <String, Post>{};

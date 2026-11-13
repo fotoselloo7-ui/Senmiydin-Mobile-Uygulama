@@ -40,6 +40,11 @@ Artisan::command('location:purge', function (): void {
 
 Schedule::command('location:purge')->hourly()->withoutOverlapping();
 
+Artisan::command('map-notes:purge', function (): void {
+    $this->info(App\Models\MapNote::purgeExpired().' expired map notes purged.');
+})->purpose('Permanently remove map notes (and their replies) once the admin retention window after expiry has passed');
+Schedule::command('map-notes:purge')->daily()->withoutOverlapping();
+
 Schedule::call(fn () => app(App\Administration\Announcements::class)->run())
     ->name('announcements.publish')->everyMinute()->withoutOverlapping();
 

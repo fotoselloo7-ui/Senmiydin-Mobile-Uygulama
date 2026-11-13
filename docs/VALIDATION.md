@@ -1,8 +1,29 @@
 # Doğrulama
 
-> **Güncel kaynak bu dosyanın ilk bölümüdür (13 Kasım 2026).** "Tarihsel kayıt" bölümü 10 Kasım 2026 çalışmasını olduğu gibi korur; oradaki sayılar ve tasarım ifadeleri (ör. mavi marka dili, herkese açık profildeki ilgi etiketleri) güncel durum değildir.
+> **Güncel kaynak bu dosyanın ilk bölümüdür (14 Kasım 2026).** Altındaki bölümler önceki turların tarihsel kayıtlarıdır; oradaki sayılar güncel durum değildir.
 
-## Release candidate sertleştirme — 13 Kasım 2026 (2. tur, güncel)
+## Harita Notları / Dijital Mektuplar — 14 Kasım 2026 (güncel)
+
+Başlangıç `dfa95a1`: Laravel 117 test / 1545 assertion, Flutter 99, analyze temiz, Pixel 9/9, location-time 3/3 (doğrulandı).
+
+| Kontrol | Final |
+|---|---|
+| Laravel `php artisan test` | **139 test / 1919 assertion geçti** (+22: 20 `MapNotesTest`, 2 matcher anahtarı testi) |
+| `flutter analyze` | **No issues found** |
+| Flutter `flutter test` | **112 test geçti** (+13 `test/map_notes_test.dart`) |
+| Pixel 6a entegrasyon | **9/9 geçti**, `clean=true` |
+| Pixel 6a location-time | **3/3 geçti** |
+| Harita Notları Pixel E2E | Aşağıda (elle, gerçek cihaz + local API) |
+
+**Pixel 6a Harita Notları E2E** (Pixel_6a, normal debug uygulama, `http://127.0.0.1:8000`, Demo + Elif): Harita → Notlar sekmesi (zarf ikonlu, marka moru) → "Buraya Not Bırak" → haritada yaklaşık yer → açık not + aynı noktaya ikinci **anonim** not → işaret üzerinde **2** rozeti → işarete dokununca "Bu noktaya bırakılan notlar" (yeni not üstte, anonim kart "Anonim") → Elif (API) nota **açık yanıt** + **anonim yanıt** → Demo'da "Notuna bir cevap geldi." bildirimi → not detayında yanıtlar eskiden yeniye, anonim yanıtta ad / kullanıcı adı yok → ikinci hesap çağrısıyla JSON'da `elifdemo` yok → "Notu Sil" onayı → işaret sayısı düştü → eski bildirime dokununca güvenli "Bu not artık kullanılamıyor." ekranı. Test verisi (notlar, yanıtlar, bildirimler) sonunda temizlendi.
+
+Sınırlar: Elif'in yanıtları, ikinci cihaz / emülatör kullanılmadığı için API üzerinden gönderildi (aynı hesap kimlik doğrulamasıyla, uygulama arayüzünden değil). 7 günlük süre gerçek 7 gün beklenerek değil, test saatiyle (6 gün 23:59 görünür, 7 gün sonrası gizli) doğrulandı. Admin paneli akışı tarayıcıda değil, backend testleriyle doğrulandı. adb `input text` Türkçe "ı" harfini yazamadığı için cihazdaki not metinleri ASCII yazıldı.
+
+Bu turda bulunan ve düzeltilen iç problemler: `encounter_suggestions` ve `city_discovery` kaydediliyor ama gerçek eşleştirici davranışında kullanılmıyordu (şimdi kapalıyken otomatik öneri üretilmiyor; manuel encounter, Harita ve Nearby etkilenmiyor). Mevcut Pixel fixture ve test kullanıcıları bu iki tercihi açıkça açık oluşturacak şekilde güncellendi. Ayrıca APK paketlemesindeki bayat `kernel_blob.bin` çakışması `flutter clean` / çıktı klasörü silme ile giderildi (kod değişikliği gerekmedi).
+
+---
+
+## Release candidate sertleştirme — 13 Kasım 2026 (2. tur)
 
 Başlangıç `23125a5` (109 test / 1405 assertion, Flutter 98, analyze temiz, Pixel 9/9, location-time 3/3 doğrulandı). Yeni özellik eklenmedi; yalnız gerçek cihaz / güvenlik denetiminde bulunan iç sorunlar düzeltildi.
 

@@ -819,3 +819,29 @@ Referans ekranlarda görülen:
 uygulama genelinde tutarlı biçimde devam ettirilmelidir.
 
 Referansların dışında yeni bir görsel kimlik oluşturulmamalıdır.
+
+---
+
+## 29. Harita Notları / Dijital Mektuplar
+
+> Bu bölüm ayrı ve bağımsız bir ürün modülüdür. Normal paylaşım, Karşılaşma (encounter), konum eşleşmesi (location match), Geçtiğim Yerler ve Yolculuk sistemlerinden **ayrıdır**; bunların hiçbirinin yerine geçmez.
+
+**Fikir.** Kullanıcı şehir haritasında yaklaşık bir noktaya herkese açık bir dijital not / mektup bırakır. “Birini bulamadıysan, geçtiğiniz yere bir not bırak.” Başkaları notu okur ve nota yanıt yazabilir.
+
+**Encounter ile farkı.** Encounter, belirli bir kullanıcıyı @kullanıcıadı ile etiketleme ve karşı tarafın onayıdır. Harita Notu ise bir mekâna bırakılmış, kimseyi etiketlemeyen herkese açık bir mektuptur. İkisi birleştirilmez; bir yanıt Encounter oluşturmaz.
+
+**Kesin kararlar**
+
+- **Ayrı modül.** Yeni `map_notes` ve `map_note_replies` tabloları, `MapNote` / `MapNoteReply` modelleri. Altıncı bir post türü yoktur; kanonik türler Anı, Karşılaşma, İtiraf, Düşünce, Yolculuk olarak kalır. Notlar Ana Sayfa akışına **düşmez**; deneyim Harita → Notlar'dadır.
+- **7 gün.** Her not oluşturulduğu andan itibaren (`created_at + 7 gün`) haritada görünür. Kullanıcı süre seçmez. Yanıt süreyi uzatmaz. Süresi dolan not haritada, detayda ve yanıt listesinde görünmez, yanıt kabul etmez, bildirim hedefi olarak "kullanılamıyor" olur. Satırlar yönetici incelemesi için 30 gün tutulup günlük zamanlanmış görevle (`map-notes:purge`) kalıcı silinir; veritabanı sonsuza kadar büyümez, ancak 7 günlük herkese açık görünürlük kuralı değişmez.
+- **Haritada herkes okur.** Notu okumak için oradan geçmiş olmak, Geçtiğim Yerler'i açmış olmak, bildirim almış olmak veya yakında olmak gerekmez. Aktif şehir haritasındaki herkes Notlar sekmesinde şehrin tüm aktif notlarını görür; mesafe filtreleri (5 / 10 / 25 km) mevcut Harita davranışıyla aynıdır.
+- **Yaklaşık konum.** Seçilen nokta sunucuda `Geo::grid()` (`location.post_grid`) ile yaklaşık ızgaraya yuvarlanır; yalnız yaklaşık koordinat saklanır ve yayınlanır. Aynı ızgara noktasındaki notlar tek işaret altında gruplanır (tam eşitlik karşılaştırması yapılmaz). Nokta, `CityResolver` ile seçilen aktif şehirle doğrulanır; yanlış şehirde kullanıcı dilinde hata verilir. Bu özellik başka kullanıcının canlı konumunu hiçbir zaman göstermez.
+- **Açık veya anonim.** Açık notta avatar / ad / @kullanıcıadı görünür ve profile gidilir (final herkese açık profil kuralları geçerlidir: şehir, mesafe, hobi yok). Anonim notta kullanıcılara yalnız "Anonim" görünür; user_id, ad, kullanıcı adı, avatar, e-posta veya profil yolu hiçbir yanıtta bulunmaz. Yönetici moderasyon için gerçek sahibi görür.
+- **Sınırlar.** Not en fazla 700, yanıt en fazla 500 karakter; boş kabul edilmez. Mevcut `ContentGuard` (yasaklı ifade, bağlantı / spam, tekrar) ve hız sınırı: saatte 8 not; yanıtlar dakikada 10, saatte 60.
+- **Yanıtlar.** Her aktif nota yanıt yazılabilir. Bu özel mesaj değildir; notun altında herkese açık, **tek seviyeli** bir dizidir (yanıta yanıt yoktur). Notlar yeniden eskiye, yanıtlar eskiden yeniye sıralanır. Yanıt açık ya da anonim yazılabilir. Anonim bir notun sahibi kendi dizisinde "Not sahibi" olarak, kimliği açılmadan yanıt verir. Yanıt sahibi kendi yanıtını silebilir; düzenleme yoktur. Yazışmaya devam etmek için açık yanıtın profili ve mevcut mesajlaşma kullanılır; Harita Notları için ayrı özel sohbet yoktur.
+- **Bildirimler.** `map_note_reply`: nota yanıt gelince not sahibine (not anonim olsa da), yanıtın gönderen kimliği bildirim yanıtında asla yer almaz. `map_note_nearby`: not yayınlandığı anda, aynı şehirde, yakın zamanlı konumu etkin sayılan (`location.active_minutes`) ve merkezi yarıçap (`config/map_notes.php`, varsayılan 1000 m) içindeki, yazar olmayan, engel ilişkisi bulunmayan, tercihi açık kullanıcılara **bir kez** gönderilir; Geçtiğim Yerler'in açık olması gerekmez. Ayarlarda iki ayrı tercih: "Yakınıma bırakılan notlar" ve "Notlarıma gelen cevaplar" (ikisi de varsayılan açık; `location_match` ve `nearby_activity` tercihlerinden bağımsız). Tercih kapatılınca ne uygulama içi ne cihaz bildirimi oluşur.
+- **Güvenlik.** Engelleme çift yönlüdür: notlar, yanıtlar, bildirimler, profile geçiş ve nearby bildirimi iki taraf için de görünmez; engel kalkınca yeni içerik normal görünür. Rapor hedefleri `map_note` ve `map_note_reply`; kendi içeriğini raporlayamaz, anonim içerik yöneticiye gerçek sahibiyle iletilir. Not sahibi notunu siler (haritadan ve herkese açık dizilerden kalkar, eski bildirim güvenli "Bu içerik artık kullanılamıyor." gösterir). Hesap silmede notlar ve yanıtlar anında herkese kapanır.
+- **Admin.** Harita Notları alanı: kimlik, yazar, anonim mi, şehir, metin önizleme, yanıt sayısı, oluşturma / bitiş zamanı, aktif / süresi dolmuş / kaldırılmış durumu, şikâyetler; detay, not ve yanıt kaldırma / geri açma, işlem günlüğü.
+- **Tasarım.** Harita Notu pini marka moru / lila outline zarf ikonudur (emoji yok), birden çok not varsa sayı rozeti taşır; normal paylaşım pini mavi konum pini olarak kalır. Mektup yüzeyi çok hafif sıcak beyaz, ~22 yarıçap, ince lila sınır, yumuşak gölge, lacivert metin; yeni font veya tema yoktur. Harita altlığı (OSM) boyanmaz.
+
+**Bu sürümde yoktur:** Ana Sayfa'da "Yakınında yeni notlar var" modülü, yanıta yanıt, not / yanıt düzenleme, süre seçimi, özel not sohbeti.

@@ -21,7 +21,7 @@ class RecordsController
 {
     public const SECTIONS = [
         'users' => 'Kullanıcılar', 'posts' => 'Paylaşımlar', 'comments' => 'Yorumlar',
-        'encounters' => 'Karşılaşmalar', 'featured' => 'Öne çıkanlar', 'reports' => 'Şikâyetler',
+        'encounters' => 'Karşılaşmalar', 'map-notes' => 'Harita Notları', 'featured' => 'Öne çıkanlar', 'reports' => 'Şikâyetler',
         'blocks' => 'Engellemeler', 'interests' => 'Hobiler', 'cities' => 'Şehirler', 'types' => 'İçerik türleri',
         'modules' => 'Ana sayfa modülleri', 'announcements' => 'Duyurular', 'settings' => 'Ayarlar',
         'legal' => 'Web içerikleri', 'requests' => 'Destek talepleri', 'roles' => 'Yöneticiler ve roller',
@@ -32,7 +32,7 @@ class RecordsController
     public const STATES = ['active' => 'Aktif', 'suspended' => 'Askıda', 'banned' => 'Yasaklı', 'deleted' => 'Silindi'];
     public const REPORT_STATES = ['pending' => 'Bekliyor', 'reviewing' => 'İnceleniyor', 'resolved' => 'Çözüldü', 'rejected' => 'Reddedildi'];
     public const ENCOUNTER_STATES = ['pending' => 'Bekliyor', 'accepted' => 'Onaylandı', 'rejected' => 'Reddedildi', 'cancelled' => 'İptal edildi'];
-    public const TARGETS = ['user' => 'Kullanıcı', 'post' => 'Paylaşım', 'comment' => 'Yorum', 'message' => 'Mesaj', 'encounter_story' => 'Ortak hikâye', 'system' => 'Uygulama'];
+    public const TARGETS = ['user' => 'Kullanıcı', 'post' => 'Paylaşım', 'comment' => 'Yorum', 'message' => 'Mesaj', 'encounter_story' => 'Ortak hikâye', 'map_note' => 'Harita notu', 'map_note_reply' => 'Harita notu yanıtı', 'system' => 'Uygulama'];
     public const REASONS = ['harassment' => 'Taciz', 'spam' => 'Spam', 'fake' => 'Sahte hesap', 'inappropriate' => 'Uygunsuz içerik', 'hate' => 'Nefret veya tehdit', 'privacy' => 'Gizlilik ihlali', 'other' => 'Diğer'];
 
     public static function time(\DateTimeInterface|string|null $value, bool $withTime = true): string
@@ -56,6 +56,7 @@ class RecordsController
             'Toplam mesaj' => Message::count(),
             'Aktif sohbet' => DB::table('conversations')->where('status', 'active')->count(),
             'Bekleyen şikâyet' => DB::table('reports')->whereIn('status', ['pending', 'reviewing'])->count(),
+            'Aktif harita notu' => \App\Models\MapNote::live()->count(),
             'Anonim paylaşım' => Post::where('is_anonymous', true)->count(),
             'Konum paylaşan hesap' => DB::table('user_locations')->where('visibility', true)
                 ->where('recorded_at', '>=', now()->subMinutes(config('location.active_minutes')))->count(),
@@ -228,13 +229,15 @@ class RecordsController
         return $this->image(config('mobile.post_media_disk'), $message->image_path);
     }
 
-    public function reportedTarget(object $report): User|Post|PostComment|Message|null
+    public function reportedTarget(object $report): User|Post|PostComment|Message|\App\Models\MapNote|\App\Models\MapNoteReply|null
     {
         return match ($report->target_type) {
             'user' => User::find($report->target_id),
             'post', 'encounter_story' => Post::withTrashed()->find($report->target_id),
             'comment' => PostComment::withTrashed()->find($report->target_id),
             'message' => Message::find($report->target_id),
+            'map_note' => \App\Models\MapNote::withTrashed()->find($report->target_id),
+            'map_note_reply' => \App\Models\MapNoteReply::withTrashed()->find($report->target_id),
             default => null,
         };
     }

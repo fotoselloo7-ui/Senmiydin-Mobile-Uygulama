@@ -7,6 +7,7 @@ use App\Http\Controllers\SafetyController;
 use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\EncounterController;
 use App\Http\Controllers\LocationController;
+use App\Http\Controllers\MapNoteController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SocialUserController;
@@ -51,6 +52,16 @@ Route::prefix('v1')->group(function (): void {
         Route::delete('location', [LocationController::class, 'clear'])->middleware('throttle:location-write');
         Route::get('nearby/users', [LocationController::class, 'nearby'])->middleware('throttle:location-read');
         Route::get('map/posts', [LocationController::class, 'map'])->middleware('throttle:location-read');
+
+        // Map notes (digital letters): independent from posts, encounters and location matches.
+        Route::get('map/notes', [MapNoteController::class, 'map'])->middleware('throttle:location-read');
+        Route::get('map/notes/{group}', [MapNoteController::class, 'group'])->where('group', '-?[0-9]{1,3}\.[0-9]{5}_-?[0-9]{1,3}\.[0-9]{5}')->middleware('throttle:location-read');
+        Route::post('map-notes', [MapNoteController::class, 'store'])->middleware('throttle:map-note-create');
+        Route::get('map-notes/{note}', [MapNoteController::class, 'show'])->whereNumber('note')->middleware('throttle:communication-read');
+        Route::delete('map-notes/{note}', [MapNoteController::class, 'destroy'])->whereNumber('note')->middleware('throttle:comment-write');
+        Route::get('map-notes/{note}/replies', [MapNoteController::class, 'replies'])->whereNumber('note')->middleware('throttle:communication-read');
+        Route::post('map-notes/{note}/replies', [MapNoteController::class, 'reply'])->whereNumber('note')->middleware('throttle:map-note-reply');
+        Route::delete('map-note-replies/{reply}', [MapNoteController::class, 'destroyReply'])->whereNumber('reply')->middleware('throttle:comment-write');
 
         Route::get('encounter-requests', [EncounterController::class, 'index']);
         Route::get('encounter-requests/pending-count', [EncounterController::class, 'pendingCount']);

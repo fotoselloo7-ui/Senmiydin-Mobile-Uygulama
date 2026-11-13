@@ -60,13 +60,14 @@ class InboxNotification {
           : person(json['actor'] as Map<String, dynamic>),
       text = json['text'] as String,
       announcementBody = json['announcement_body'] as String?,
+      subtitle = json['subtitle'] as String?,
       read = json['read'] == true,
       available = json['available'] != false,
       time = socialTime(json['created_at'] as String);
   final int id;
   final int? entity;
   final String type, route, text, time;
-  final String? announcementBody;
+  final String? announcementBody, subtitle;
   final Person? actor;
   final bool read;
   final bool available;

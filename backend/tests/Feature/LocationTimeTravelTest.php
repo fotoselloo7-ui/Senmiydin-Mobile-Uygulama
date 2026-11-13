@@ -37,7 +37,8 @@ class LocationTimeTravelTest extends TestCase
     {
         return User::create(['name' => $name, 'username' => $name, 'email' => $name.'@example.test',
             'birth_date' => '1995-01-01', 'password' => 'TestPassword1234', 'city_id' => $this->city($city),
-            'location_history_enabled' => $history, 'nearby_visible' => true, 'push_preferences' => ['location_match' => $notify]]);
+            'location_history_enabled' => $history, 'nearby_visible' => true, 'city_discovery' => true, 'encounter_suggestions' => true,
+            'push_preferences' => ['location_match' => $notify]]);
     }
     private function asUser(User $user): static
     {
@@ -136,6 +137,51 @@ class LocationTimeTravelTest extends TestCase
         $this->assertDatabaseHas('location_matches', ['user_id' => $medium->id, 'strength' => 'medium']);
         $this->assertDatabaseMissing('location_matches', ['user_id' => $old->id]);
         $this->assertDatabaseCount('app_notifications', 0);
+    }
+
+    public function test_encounter_suggestions_switch_stops_automatic_strong_suggestions_but_not_manual_tagging(): void
+    {
+        $author = $this->user('author');
+        $on = $this->user('suggest_on');
+        $off = $this->user('suggest_off');
+        $off->forceFill(['encounter_suggestions' => false])->save();
+        foreach ([$on, $off] as $user) {
+            $this->sample($user, '2026-11-08 11:15:00');
+        }
+        $post = $this->publish($author, ['location_source' => 'map', 'place_latitude' => 41.015, 'place_longitude' => 28.980, 'occurred_at' => '2026-11-08T11:20:00Z']);
+        $this->match($post['id']);
+        $this->assertDatabaseHas('location_matches', ['user_id' => $on->id, 'strength' => 'strong']);
+        $this->assertDatabaseMissing('location_matches', ['user_id' => $off->id]);
+        $this->assertSame(0, DB::table('app_notifications')->where('user_id', $off->id)->count());
+        // Manual @username encounters are unaffected by the switch, and so is the map.
+        $tag = $this->publish($author, ['type' => 'encounter', 'encounter_target_id' => $off->id, 'body' => 'Seni etiketliyorum.']);
+        $this->assertNotNull($tag['encounter_request_id']);
+        $this->asUser($off)->postJson("/api/v1/encounter-requests/{$tag['encounter_request_id']}/accept")->assertOk();
+        $this->getJson('/api/v1/map/posts?city_id='.$this->city('istanbul'))->assertOk();
+        $this->getJson('/api/v1/nearby/users')->assertOk();
+    }
+
+    public function test_city_discovery_switch_stops_automatic_nearby_and_route_recommendations_only(): void
+    {
+        $author = $this->user('author');
+        $on = $this->user('discover_on');
+        $off = $this->user('discover_off');
+        $off->forceFill(['city_discovery' => false])->save();
+        foreach ([$on, $off] as $user) {
+            $this->sample($user, '2026-11-08 10:00:00', 41.025);
+        }
+        $post = $this->publish($author, ['location_source' => 'map', 'place_latitude' => 41.015, 'place_longitude' => 28.980, 'occurred_at' => '2026-11-08T11:20:00Z']);
+        $this->match($post['id']);
+        $this->assertDatabaseHas('location_matches', ['user_id' => $on->id, 'strength' => 'medium']);
+        $this->assertDatabaseMissing('location_matches', ['user_id' => $off->id]);
+        // The switch is not a GPS or map kill-switch: explicit location actions still work.
+        $this->asUser($off)->putJson('/api/v1/location', ['latitude' => 41.015, 'longitude' => 28.98, 'accuracy' => 20])->assertOk();
+        $this->getJson('/api/v1/map/posts?city_id='.$this->city('istanbul'))->assertOk();
+        $this->getJson('/api/v1/nearby/users')->assertOk();
+        $this->assertFalse(\App\Notifications\Inbox::permitted($off->fresh(), 'nearby_activity'));
+        $this->assertFalse(\App\Notifications\Inbox::permitted($on->fresh(), 'nearby_activity'), 'The category itself stays opt-in.');
+        $on->forceFill(['push_preferences' => ['nearby_activity' => true]])->save();
+        $this->assertTrue(\App\Notifications\Inbox::permitted($on->fresh(), 'nearby_activity'));
     }
 
     public function test_location_retention_is_registered_with_the_scheduler_and_enforces_the_seven_day_default(): void

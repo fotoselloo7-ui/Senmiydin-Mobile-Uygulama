@@ -175,7 +175,7 @@ class LocationApiTest extends TestCase
         return User::create([
             'username' => $name, 'name' => $name, 'email' => "$name@example.test",
             'birth_date' => '1998-04-12', 'password' => 'KonumDeneme123',
-            'city_id' => $city ?? $this->city, 'nearby_visible' => $visible, 'city_discovery' => true,
+            'city_id' => $city ?? $this->city, 'nearby_visible' => $visible, 'city_discovery' => true, 'encounter_suggestions' => true,
         ]);
     }
 

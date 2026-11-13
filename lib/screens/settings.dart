@@ -183,6 +183,8 @@ class _PreferencesPageState extends State<PreferencesPage>
     'follow': 'Takip',
     'location_match': 'Geçtiğim Yerlerden Haber Ver',
     'nearby_activity': 'Yakın bölge aktiviteleri',
+    'map_note_nearby': 'Yakınıma bırakılan notlar',
+    'map_note_reply': 'Notlarıma gelen cevaplar',
     'system': 'Sistem duyuruları',
   };
   bool? pushAllowed;

@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Models\Conversation;
 use App\Models\EncounterRequest;
+use App\Models\MapNote;
 use App\Models\Post;
 use App\Models\User;
 use App\Safety\Blocks;
@@ -18,6 +19,7 @@ final class Targets
         $ids = $items->pluck('entity_id')->filter()->unique();
         $posts = Post::visibleTo($viewer)->whereKey($ids)->pluck('id')->flip();
         $chats = Conversation::available($viewer->id)->whereKey($ids)->pluck('id')->flip();
+        $notes = MapNote::visibleTo($viewer)->whereKey($ids)->pluck('id')->flip();
         $pairs = EncounterRequest::participant($viewer->id)->activePair()->whereKey($ids);
         Blocks::exclude($pairs, $viewer->id, 'encounter_requests.requester_id');
         Blocks::exclude($pairs, $viewer->id, 'encounter_requests.target_user_id');
@@ -31,6 +33,7 @@ final class Targets
         return $items->mapWithKeys(fn ($item) => [$item->id => match (true) {
             in_array($item->type, ['like', 'comment', 'location_match', 'nearby_activity'], true) => $posts->has($item->entity_id),
             in_array($item->type, ['message', 'message_request'], true) => $chats->has($item->entity_id),
+            in_array($item->type, ['map_note_nearby', 'map_note_reply'], true) => $notes->has($item->entity_id),
             str_starts_with($item->type, 'encounter_') => $pairs->has($item->entity_id),
             $item->type === 'follow' => $actors->has($item->actor_id),
             $item->type === 'system' => !$item->announcement_id || $announcements->has($item->announcement_id),

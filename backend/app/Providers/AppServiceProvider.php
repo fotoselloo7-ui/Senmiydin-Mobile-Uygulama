@@ -46,6 +46,11 @@ class AppServiceProvider extends ServiceProvider
             RateLimiter::for($name, fn (Request $request) => Limit::perMinute($limit)->by($request->user()->id));
         }
 
+        // Notes: 8 per hour. Replies: 10 per minute and 60 per hour per account.
+        RateLimiter::for('map-note-create', fn (Request $request) => Limit::perHour((int) config('map_notes.create_per_hour'))->by($request->user()->id));
+        RateLimiter::for('map-note-reply', fn (Request $request) => [
+            Limit::perMinute(10)->by('reply-m:'.$request->user()->id), Limit::perHour(60)->by('reply-h:'.$request->user()->id),
+        ]);
         RateLimiter::for('account-deletion', fn (Request $request) => Limit::perMinute(3)->by($request->user()->id));
         RateLimiter::for('password-change', fn (Request $request) => Limit::perMinute(5)->by($request->user()->id));
     }

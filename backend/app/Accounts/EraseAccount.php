@@ -37,6 +37,9 @@ final class EraseAccount
                 'approx_latitude' => null, 'approx_longitude' => null, 'occurred_at' => null, 'place_label' => null, 'content_hash' => null,
                 'featured_rank' => null, 'deleted_at' => now(), 'updated_at' => now(),
             ]);
+            // Map notes and replies leave public view immediately; the rows are purged by the retention lifecycle.
+            DB::table('map_notes')->where('user_id', $id)->update(['body' => '', 'content_hash' => null, 'place_label' => null, 'deleted_at' => now(), 'updated_at' => now()]);
+            DB::table('map_note_replies')->where('user_id', $id)->update(['body' => '', 'content_hash' => null, 'deleted_at' => now(), 'updated_at' => now()]);
             DB::table('post_comments')->where('user_id', $id)->update(['body' => '', 'content_hash' => null, 'deleted_at' => now(), 'updated_at' => now()]);
             DB::table('messages')->where('sender_id', $id)->update(['body' => '', 'image_path' => null, 'deleted_at' => now(), 'updated_at' => now()]);
             DB::table('encounter_requests')->where(fn ($query) => $query->where('requester_id', $id)->orWhere('target_user_id', $id))

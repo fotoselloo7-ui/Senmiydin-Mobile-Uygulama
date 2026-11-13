@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/theme.dart';
@@ -21,6 +22,7 @@ import 'screens/discovery.dart';
 import 'screens/compose.dart';
 import 'screens/post.dart';
 import 'screens/profile.dart';
+import 'screens/map_notes.dart';
 import 'screens/messages.dart';
 import 'screens/direct_chat.dart';
 import 'screens/live_notifications.dart';
@@ -234,6 +236,19 @@ class _SenMiydinAppState extends State<SenMiydinApp> {
       ),
       '/featured' => const EncountersPage(featured: true),
       '/post' => PostDetailPage(arg as String),
+      '/map-notes' => switch (arg) {
+        (String group, int _) => MapNotePointPage(group),
+        (String group, String label) => MapNotePointPage(group, label: label),
+        _ => MapNotePointPage(arg as String),
+      },
+      '/map-note' => MapNoteDetailPage(int.parse('$arg')),
+      '/map-note-compose' => switch (arg) {
+        (LatLng center, double zoom) => MapNoteComposePage(
+          center: center,
+          zoom: zoom,
+        ),
+        _ => const MapNoteComposePage(),
+      },
       '/comments' => CommentsPage(arg as String),
       '/profile' => ProfilePage(arg as String? ?? store.me.id),
       '/edit-profile' => const CompleteProfilePage(edit: true),

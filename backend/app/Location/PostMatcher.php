@@ -70,6 +70,9 @@ final class PostMatcher
                             !$author || $author->account_status !== 'active' || Blocks::between($user->id, $author->id) ||
                             !Post::visibleTo($user)->whereKey($post->id)->exists()) return;
                         $strength = $item->score >= $rules['strong_score'] ? 'strong' : ($item->score >= $rules['medium_score'] ? 'medium' : 'weak');
+                        // Automatic suggestions are opt-in and independent of manual @username encounters and of the map:
+                        // strong matches follow "Yakınımdaki karşılaşmaları öner", nearby/route discovery follows "Konum temelli öneriler".
+                        if ($strength === 'strong' ? !$user->encounter_suggestions : !$user->city_discovery) return;
                         $type = $strength === 'strong' ? 'location_match' : ($strength === 'medium' ? 'nearby_activity' : null);
                         $notify = $type !== null && Inbox::permitted($user, $type);
                         $inserted = DB::table('location_matches')->insertOrIgnore([
