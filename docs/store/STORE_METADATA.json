@@ -1,0 +1,26 @@
+{
+  "locale": "tr-TR",
+  "application_id": "com.senmiydin.app",
+  "bundle_id": "com.senmiydin.app",
+  "version": "0.1.0+1",
+  "google_play": {
+    "name": "SenMiydin?",
+    "short_description": "Şehrindeki hikâyeleri keşfet, yarım kalan karşılaşmalara yeniden merhaba de.",
+    "description": "SenMiydin?, gerçek hayattaki karşılaşmaları ve şehir hikâyelerini bir araya getiren bir sosyal keşif uygulamasıdır. Sahilde, kafede veya bir yolculukta yarım kalan bir merhabayı, paylaşım ve karşılıklı onayla yeniden bir hikâyeye dönüştürmeyi amaçlar.\n\nŞehrinin akışını keşfet\nAnı, düşünce, itiraf, karşılaşma ve Yolculuk paylaşımlarına göz at. İstersen metin veya fotoğraf paylaş; ilgi alanlarınla keşfini şekillendir. Haritada paylaşımların yaklaşık noktalarını gör.\n\nKarşılaşmayı birlikte doğrulayın\nKarşılaştığın kişinin kullanıcı adını biliyorsan onu @kullanıcıadı ile etiketle. Karşı taraf kabul ettiğinde karşılaşma doğrulanır. Ortak hikâyenin yayımlanması için ayrıca partner onayı gerekir. Konum önerisi tek başına doğrulanmış karşılaşma değildir.\n\nGeçtiğin yerlerdeki hikâyeler\nGeçtiğim Yerler isteğe bağlıdır ve başlangıçta kapalıdır. Açtığında izinli konum geçmişin, daha sonra o bölgelerde paylaşılan ilgili hikâyeleri keşfetmene yardımcı olabilir. Eşleşme bildirimlerini ayrıca yönetebilirsin.\n\nYolculukta da bir merhaba\nOtobüs, tren, uçak veya feribot yolculuğunu paylaş. İstersen güzergâh, yaklaşık kalkış saati ve yolculuk bilgilerini ekle; hangi detayların görünür olacağını seç.\n\nİletişimini kontrol et\nMesaj istekleriyle sohbet başlat. Engelleme, şikâyet ve gizlilik ayarlarıyla iletişimini yönet. Kesin konumun diğer kullanıcılara gösterilmez; Yakındaki İnsanlar yalnız görünürlük tercihi açık uygun profillerden bir seçki sunar.\n\nKonum izni vermeden de manuel şehir seçerek temel akışı kullanabilirsin. SenMiydin? kesin eşleşme veya bir kişiyi bulma garantisi vermez; canlı kişi ya da araç takibi sunmaz.\n\nAndroid’de Geçtiğim Yerler’i açıkça etkinleştirdiğinde konum kaydı, uygulamada başlatılan görünür konum servisiyle arka planda da sürebilir. Özelliği kapatarak kaydı durdurabilir ve geçmişini temizleyebilirsin.",
+    "category": "Social",
+    "tags": [
+      "Social",
+      "Social networking",
+      "Local"
+    ]
+  },
+  "app_store": {
+    "name": "SenMiydin?",
+    "subtitle": "Şehrindeki hikâyeleri keşfet",
+    "promotional_text": "Anılarını paylaş, şehrindeki hikâyeleri keşfet. Yarım kalan karşılaşmaları karşılıklı onayla bir hikâyeye dönüştür; mesaj ve gizlilik tercihlerini sen yönet.",
+    "description": "SenMiydin?, gerçek hayattaki karşılaşmaları ve şehir hikâyelerini bir araya getiren bir sosyal keşif uygulamasıdır. Sahilde, kafede veya bir yolculukta yarım kalan bir merhabayı, paylaşım ve karşılıklı onayla yeniden bir hikâyeye dönüştürmeyi amaçlar.\n\nŞehrinin akışını keşfet\nAnı, düşünce, itiraf, karşılaşma ve Yolculuk paylaşımlarına göz at. İstersen metin veya fotoğraf paylaş; ilgi alanlarınla keşfini şekillendir. Haritada paylaşımların yaklaşık noktalarını gör.\n\nKarşılaşmayı birlikte doğrulayın\nKarşılaştığın kişinin kullanıcı adını biliyorsan onu @kullanıcıadı ile etiketle. Karşı taraf kabul ettiğinde karşılaşma doğrulanır. Ortak hikâyenin yayımlanması için ayrıca partner onayı gerekir. Konum önerisi tek başına doğrulanmış karşılaşma değildir.\n\nGeçtiğin yerlerdeki hikâyeler\nGeçtiğim Yerler isteğe bağlıdır ve başlangıçta kapalıdır. Açtığında izinli konum geçmişin, daha sonra o bölgelerde paylaşılan ilgili hikâyeleri keşfetmene yardımcı olabilir. Eşleşme bildirimlerini ayrıca yönetebilirsin.\n\nYolculukta da bir merhaba\nOtobüs, tren, uçak veya feribot yolculuğunu paylaş. İstersen güzergâh, yaklaşık kalkış saati ve yolculuk bilgilerini ekle; hangi detayların görünür olacağını seç.\n\nİletişimini kontrol et\nMesaj istekleriyle sohbet başlat. Engelleme, şikâyet ve gizlilik ayarlarıyla iletişimini yönet. Kesin konumun diğer kullanıcılara gösterilmez; Yakındaki İnsanlar yalnız görünürlük tercihi açık uygun profillerden bir seçki sunar.\n\nKonum izni vermeden de manuel şehir seçerek temel akışı kullanabilirsin. SenMiydin? kesin eşleşme veya bir kişiyi bulma garantisi vermez; canlı kişi ya da araç takibi sunmaz.\n\niOS’ta Geçtiğim Yerler uygulama açıkken çalışır; bu sürüm sürekli arka plan konum kaydı kullanmaz.",
+    "keywords": "karşılaşma,şehir,keşif,anı,yolculuk,sohbet,arkadaşlık,itiraf,konum",
+    "primary_category": "Social Networking",
+    "secondary_category": "Lifestyle"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "confirmations": {
+    "background_disclosure_reviewed": {
+      "confirmed": false,
+      "evidence_file": "[GERÇEK BİLGİ GEREKLİ]"
+    },
+    "ios_archive_privacy_verified": {
+      "confirmed": false,
+      "evidence_file": "[GERÇEK BİLGİ GEREKLİ]"
+    },
+    "final_artwork_approved": {
+      "confirmed": false,
+      "evidence_file": "[GERÇEK BİLGİ GEREKLİ]"
+    },
+    "review_account_prepared": {
+      "confirmed": false,
+      "evidence_file": "[GERÇEK BİLGİ GEREKLİ]"
+    },
+    "retention_policy_reviewed": {
+      "confirmed": false,
+      "evidence_file": "[GERÇEK BİLGİ GEREKLİ]"
+    },
+    "live_urls_verified": {
+      "confirmed": false,
+      "evidence_file": "[GERÇEK BİLGİ GEREKLİ]"
+    },
+    "child_safety_operations_verified": {
+      "confirmed": false,
+      "evidence_file": "[GERÇEK BİLGİ GEREKLİ]"
+    }
+  }
+}

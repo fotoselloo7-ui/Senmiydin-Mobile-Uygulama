@@ -1,0 +1,225 @@
+import 'package:image_picker/image_picker.dart';
+
+import 'account_api.dart';
+import 'models.dart';
+import 'social_api.dart';
+
+class ReportTarget {
+  const ReportTarget(this.type, this.id, this.label);
+  final String type, label;
+  final int id;
+}
+
+class DirectMessage {
+  DirectMessage(Map<String, dynamic> json)
+    : id = json['id'] as int,
+      body = json['body'] as String,
+      mine = json['mine'] == true,
+      image = ApiClient.mediaUrl(json['image'] as String?),
+      read = json['read_at'] != null,
+      date = DateTime.parse(json['created_at'] as String).toLocal(),
+      preview = json['type'] == 'image' ? 'Fotoğraf' : json['body'] as String;
+  final int id;
+  final String body, image, preview;
+  final bool mine, read;
+  final DateTime date;
+}
+
+class DirectConversation {
+  DirectConversation(
+    Map<String, dynamic> json,
+    Person Function(Map<String, dynamic>) person,
+  ) : id = json['id'] as int?,
+      status = json['status'] as String,
+      peer = person(json['peer'] as Map<String, dynamic>),
+      outgoing = json['outgoing'] == true,
+      canSend = json['can_send'] == true,
+      recentlyActive = json['recently_active'] == true,
+      unread = json['unread'] as int? ?? 0,
+      last = json['last_message'] == null
+          ? null
+          : DirectMessage(json['last_message'] as Map<String, dynamic>);
+  final int? id;
+  final String status;
+  final Person peer;
+  final bool outgoing, canSend, recentlyActive;
+  final int unread;
+  final DirectMessage? last;
+}
+
+class InboxNotification {
+  InboxNotification(
+    Map<String, dynamic> json,
+    Person Function(Map<String, dynamic>) person,
+  ) : id = json['id'] as int,
+      type = json['type'] as String,
+      route = json['route'] as String,
+      entity = json['entity_id'] as int?,
+      actor = json['actor'] == null
+          ? null
+          : person(json['actor'] as Map<String, dynamic>),
+      text = json['text'] as String,
+      announcementBody = json['announcement_body'] as String?,
+      read = json['read'] == true,
+      available = json['available'] != false,
+      time = socialTime(json['created_at'] as String);
+  final int id;
+  final int? entity;
+  final String type, route, text, time;
+  final String? announcementBody;
+  final Person? actor;
+  final bool read;
+  final bool available;
+}
+
+int accountId(String id) => int.parse(id.replaceFirst('account-', ''));
+
+class CommunicationApi {
+  CommunicationApi(this.client, this.person) : social = SocialService(client);
+  final ApiClient client;
+  final SocialService social;
+  final Person Function(Map<String, dynamic>) person;
+
+  Future<SocialPage<DirectConversation>> conversations(
+    int page,
+    bool requests,
+    String query,
+  ) async => (await social.page(
+    'conversations',
+    page,
+    query: {
+      'requests': requests ? '1' : '0',
+      if (query.trim().isNotEmpty) 'q': query.trim(),
+    },
+  )).map((json) => DirectConversation(json, person));
+
+  Future<DirectConversation> conversation(
+    String id, {
+    required bool byPeer,
+  }) async => DirectConversation(
+    await social.object(
+      'GET',
+      byPeer ? 'users/${accountId(id)}/conversation' : 'conversations/$id',
+    ),
+    person,
+  );
+
+  Future<({List<DirectMessage> items, bool more})> messages(
+    int id, {
+    int? before,
+    int? after,
+  }) async {
+    final data = await client.send(
+      'GET',
+      'conversations/$id/messages',
+      authenticated: true,
+      query: {'before': ?before?.toString(), 'after': ?after?.toString()},
+    ) as Map<String, dynamic>;
+    return (
+      items: (data['items'] as List)
+          .cast<Map<String, dynamic>>()
+          .map(DirectMessage.new)
+          .toList(),
+      more: data['has_more'] == true,
+    );
+  }
+
+  Future<(DirectConversation, DirectMessage)> send(
+    Person peer,
+    String body,
+    String requestId,
+    XFile? image,
+  ) async {
+    final data = await client.send(
+      'POST',
+      'users/${accountId(peer.id)}/messages',
+      authenticated: true,
+      body: {'body': body, 'request_id': requestId},
+      messageImage: image,
+    ) as Map<String, dynamic>;
+    return (
+      DirectConversation(data['conversation'] as Map<String, dynamic>, person),
+      DirectMessage(data['message'] as Map<String, dynamic>),
+    );
+  }
+
+  Future<DirectConversation> respond(int id, bool accept) async =>
+      DirectConversation(
+        await social.object(
+          'POST',
+          'conversations/$id/request/${accept ? 'accept' : 'reject'}',
+        ),
+        person,
+      );
+
+  Future<void> readMessages(int id, int through) async {
+    await client.send(
+      'PUT',
+      'conversations/$id/read',
+      authenticated: true,
+      body: {'through': through},
+    );
+  }
+
+  Future<void> hide(int id) => social.delete('conversations/$id');
+  Future<void> deleteMessage(int id, int message) =>
+      social.delete('conversations/$id/messages/$message');
+
+  Future<SocialPage<InboxNotification>> inbox(int page, bool unread) async =>
+      (await social.page(
+        'notifications',
+        page,
+        query: {'unread': unread ? '1' : '0'},
+      )).map((json) => InboxNotification(json, person));
+
+  Future<InboxNotification> notification(int id) async => InboxNotification(
+    await social.object('GET', 'notifications/$id'),
+    person,
+  );
+
+  Future<void> readNotification([int? id]) async {
+    await client.send(
+      'PUT',
+      id == null ? 'notifications/read' : 'notifications/$id/read',
+      authenticated: true,
+    );
+  }
+
+  Future<Map<String, dynamic>> counts() =>
+      social.object('GET', 'unread-counts');
+
+  Future<SocialPage<Person>> blocks(int page) async =>
+      (await social.page('blocks', page)).map(person);
+
+  Future<void> block(String id, bool value) async {
+    await client.send(
+      value ? 'PUT' : 'DELETE',
+      'blocks/${accountId(id)}',
+      authenticated: true,
+    );
+  }
+
+  Future<void> report(
+    ReportTarget target,
+    String reason,
+    String description,
+  ) async {
+    await client.send(
+      'POST',
+      'reports',
+      authenticated: true,
+      body: {
+        'target_type': target.type,
+        'target_id': target.id,
+        'reason': reason,
+        'description': description,
+      },
+    );
+  }
+
+  Future<void> disableDevice(String id) => social.delete('push-device/$id');
+
+  Future<void> registerDevice(Map<String, Object?> fields) async {
+    await client.send('PUT', 'push-device', authenticated: true, body: fields);
+  }
+}

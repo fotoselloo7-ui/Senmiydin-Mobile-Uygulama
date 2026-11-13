@@ -1,0 +1,807 @@
+{
+  "checked_at": "2026-11-09T10:08:52.580272+00:00",
+  "overall": "MISSING",
+  "scope": "Store documentation/source/runtime audit; no submission or credential creation.",
+  "counts": {
+    "READY": 56,
+    "WAITING": 6,
+    "MISSING": 29
+  },
+  "checks": [
+    {
+      "check": "Document: GOOGLE_PLAY_SUBMISSION.md",
+      "status": "READY",
+      "detail": "Required store document."
+    },
+    {
+      "check": "Document: APP_STORE_SUBMISSION.md",
+      "status": "READY",
+      "detail": "Required store document."
+    },
+    {
+      "check": "Document: GOOGLE_PLAY_DATA_SAFETY.md",
+      "status": "READY",
+      "detail": "Required store document."
+    },
+    {
+      "check": "Document: APPLE_PRIVACY_LABELS.md",
+      "status": "READY",
+      "detail": "Required store document."
+    },
+    {
+      "check": "Document: PERMISSIONS.md",
+      "status": "READY",
+      "detail": "Required store document."
+    },
+    {
+      "check": "Document: BACKGROUND_LOCATION_DECLARATION.md",
+      "status": "READY",
+      "detail": "Required store document."
+    },
+    {
+      "check": "Document: BACKGROUND_LOCATION_REVIEW_VIDEO.md",
+      "status": "READY",
+      "detail": "Required store document."
+    },
+    {
+      "check": "Document: UGC_MODERATION.md",
+      "status": "READY",
+      "detail": "Required store document."
+    },
+    {
+      "check": "Document: ACCOUNT_DELETION.md",
+      "status": "READY",
+      "detail": "Required store document."
+    },
+    {
+      "check": "Document: CONTENT_RATING.md",
+      "status": "READY",
+      "detail": "Required store document."
+    },
+    {
+      "check": "Document: SCREENSHOT_PLAN.md",
+      "status": "READY",
+      "detail": "Required store document."
+    },
+    {
+      "check": "Document: FEATURE_GRAPHIC_BRIEF.md",
+      "status": "READY",
+      "detail": "Required store document."
+    },
+    {
+      "check": "Document: REQUIRED_REAL_INFORMATION.md",
+      "status": "READY",
+      "detail": "Required store document."
+    },
+    {
+      "check": "Document: REVIEW_ACCOUNT.md",
+      "status": "READY",
+      "detail": "Required store document."
+    },
+    {
+      "check": "Document: SDK_AUDIT.md",
+      "status": "READY",
+      "detail": "Required store document."
+    },
+    {
+      "check": "Document: DATA_EVIDENCE.md",
+      "status": "READY",
+      "detail": "Required store document."
+    },
+    {
+      "check": "Document: STORE_URL_SETTINGS.md",
+      "status": "READY",
+      "detail": "Required store document."
+    },
+    {
+      "check": "Document: PUBLIC_LEGAL_AUDIT.md",
+      "status": "READY",
+      "detail": "Required store document."
+    },
+    {
+      "check": "Document: README.md",
+      "status": "READY",
+      "detail": "Required store document."
+    },
+    {
+      "check": "Branding requirements",
+      "status": "READY",
+      "detail": "Master requirements; no artwork generated."
+    },
+    {
+      "check": "Metadata limits",
+      "status": "READY",
+      "detail": "Character and Apple UTF-8 byte limits passed."
+    },
+    {
+      "check": "Copy consistency: google_play",
+      "status": "READY",
+      "detail": "Copy blocks match machine-readable metadata."
+    },
+    {
+      "check": "Copy consistency: app_store",
+      "status": "READY",
+      "detail": "Copy blocks match machine-readable metadata."
+    },
+    {
+      "check": "Application IDs and version",
+      "status": "READY",
+      "detail": "com.senmiydin.app; 0.1.0+1."
+    },
+    {
+      "check": "Release API has no debug endpoint",
+      "status": "READY",
+      "detail": "HTTPS release default and runtime URI guard; actual live domain remains unverified."
+    },
+    {
+      "check": "Normal app authentication guards",
+      "status": "READY",
+      "detail": "Real API is default; Explore does not open mock home for unauthenticated API users."
+    },
+    {
+      "check": "Device-test suffix source",
+      "status": "READY",
+      "detail": "No timestamp suffix in active device fixture sources."
+    },
+    {
+      "check": "Onboarding disclosure before permission",
+      "status": "READY",
+      "detail": "Normal onboarding disclosure precedes device permission action."
+    },
+    {
+      "check": "Platform location disclosure",
+      "status": "READY",
+      "detail": "Purpose, off-device transfer and iOS foreground-only scope stated."
+    },
+    {
+      "check": "Background disclosure prominence",
+      "status": "WAITING",
+      "detail": "Normal onboarding and activation disclosure present; final Google policy/video review remains open. No Home/new screen added."
+    },
+    {
+      "check": "iOS permission configuration",
+      "status": "READY",
+      "detail": "When In Use; no background location/ATT. Remote-notification is distinct."
+    },
+    {
+      "check": "Merged release permissions",
+      "status": "READY",
+      "detail": "Location FGS present; no ads/background/camera/wide-media permissions."
+    },
+    {
+      "check": "Required Android configuration",
+      "status": "READY",
+      "detail": "Expected location/notification permissions; release cleartext disabled."
+    },
+    {
+      "check": "Android audit evidence freshness",
+      "status": "READY",
+      "detail": "Evidence timestamps cover current native inputs."
+    },
+    {
+      "check": "Android ads/analytics SDK audit",
+      "status": "READY",
+      "detail": "Resolved release dependency tree inspected. Measurement connector is not the Analytics engine."
+    },
+    {
+      "check": "Source iOS SDK privacy manifests",
+      "status": "READY",
+      "detail": "8 iOS/Darwin source manifests inspected; not an aggregate archive report."
+    },
+    {
+      "check": "iOS archive / SDK signatures / Privacy Report",
+      "status": "WAITING",
+      "detail": "Requires Mac/Xcode and resolved native frameworks; no fabricated app-level reason declarations."
+    },
+    {
+      "check": "Final branding / store screenshots",
+      "status": "WAITING",
+      "detail": "Approved square/horizontal masters and final store artwork not supplied; none generated."
+    },
+    {
+      "check": "Review account",
+      "status": "WAITING",
+      "detail": "Production normal-role accounts must be created manually; no password stored in source."
+    },
+    {
+      "check": "Production log / backup retention",
+      "status": "MISSING",
+      "detail": "Real operator retention/processor policy is required, including search query logs."
+    },
+    {
+      "check": "Live HTTPS legal/support URLs",
+      "status": "MISSING",
+      "detail": "Source routes exist; domain ownership, TLS and published real operator content require deployment."
+    },
+    {
+      "check": "Child safety contact and response protocol",
+      "status": "MISSING",
+      "detail": "Real safety contact and response/reporting process are required."
+    },
+    {
+      "check": "Android release signing",
+      "status": "MISSING",
+      "detail": "Real signing configuration absent. No key generated."
+    },
+    {
+      "check": "Mobile provider configuration",
+      "status": "MISSING",
+      "detail": "Real Firebase/OAuth public identifiers absent."
+    },
+    {
+      "check": "Backend runtime",
+      "status": "READY",
+      "detail": "Read-only database/settings audit."
+    },
+    {
+      "check": "Real support contact",
+      "status": "MISSING",
+      "detail": "Backend support contact configuration."
+    },
+    {
+      "check": "Moderation filter configuration",
+      "status": "MISSING",
+      "detail": "Filtering mechanism exists; curated real word policy must be configured."
+    },
+    {
+      "check": "app_store_url",
+      "status": "WAITING",
+      "detail": "Blank link is legitimate; public UI must show Yakında."
+    },
+    {
+      "check": "play_store_url",
+      "status": "WAITING",
+      "detail": "Blank link is legitimate; public UI must show Yakında."
+    },
+    {
+      "check": "Real legal CMS",
+      "status": "MISSING",
+      "detail": "Default/filler legal content must not be accepted as production ready."
+    },
+    {
+      "check": "Published CSAE standard",
+      "status": "MISSING",
+      "detail": "Social app child-safety standard and real operational contact required."
+    },
+    {
+      "check": "Current local Demo suffix",
+      "status": "READY",
+      "detail": "Only known local Demo identities inspected; no records modified."
+    },
+    {
+      "check": "Production: APP_ENV production",
+      "status": "MISSING",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: APP_DEBUG disabled",
+      "status": "READY",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: APP_URL HTTPS",
+      "status": "MISSING",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: Public website matches APP_URL",
+      "status": "MISSING",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: APP_KEY valid length",
+      "status": "READY",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: Database connection configured",
+      "status": "READY",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: Database reachable and migrations installed",
+      "status": "READY",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: Persistent cache driver",
+      "status": "READY",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: Persistent queue driver",
+      "status": "MISSING",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: Queue timeout below retry_after",
+      "status": "READY",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: Secure encrypted HTTP-only session",
+      "status": "MISSING",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: Session same-site policy",
+      "status": "READY",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: Explicit CORS origins",
+      "status": "READY",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: Private avatar_disk",
+      "status": "MISSING",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: Private post_media_disk",
+      "status": "READY",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: Default filesystem configured",
+      "status": "READY",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: Storage and bootstrap cache writable",
+      "status": "READY",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: Public storage link absent or audited",
+      "status": "READY",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: Cron scheduler installed (operator confirmation)",
+      "status": "MISSING",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: Queue worker installed (operator confirmation)",
+      "status": "MISSING",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: Production SMTP",
+      "status": "MISSING",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: Firebase FCM live provider",
+      "status": "MISSING",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: Google OAuth audiences",
+      "status": "MISSING",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: Apple OAuth audiences and signing",
+      "status": "MISSING",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: Final brand supplied",
+      "status": "MISSING",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: Real support email",
+      "status": "MISSING",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: app_store_url",
+      "status": "MISSING",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: play_store_url",
+      "status": "MISSING",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: Operator identity and reviewed legal CMS",
+      "status": "MISSING",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: No development administrator",
+      "status": "MISSING",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: No demo or QA member data",
+      "status": "MISSING",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Production: Production super administrator exists",
+      "status": "MISSING",
+      "detail": "Existing app:check result; local development is not production."
+    },
+    {
+      "check": "Local public route /gizlilik",
+      "status": "READY",
+      "detail": "GET HTTP 200; local only, no form submitted."
+    },
+    {
+      "check": "Local public route /kvkk",
+      "status": "READY",
+      "detail": "GET HTTP 200; local only, no form submitted."
+    },
+    {
+      "check": "Local public route /kullanim-kosullari",
+      "status": "READY",
+      "detail": "GET HTTP 200; local only, no form submitted."
+    },
+    {
+      "check": "Local public route /topluluk-kurallari",
+      "status": "READY",
+      "detail": "GET HTTP 200; local only, no form submitted."
+    },
+    {
+      "check": "Local public route /hesap-silme",
+      "status": "READY",
+      "detail": "GET HTTP 200; local only, no form submitted."
+    },
+    {
+      "check": "Local public route /iletisim",
+      "status": "READY",
+      "detail": "GET HTTP 200; local only, no form submitted."
+    },
+    {
+      "check": "Empty store CTA safety",
+      "status": "READY",
+      "detail": "No empty href in rendered local page; source renders disabled Yakında for blank settings."
+    }
+  ],
+  "evidence": {
+    "metadata_lengths": {
+      "google_play": {
+        "name": {
+          "characters": 10,
+          "utf8_bytes": 10
+        },
+        "short_description": {
+          "characters": 76,
+          "utf8_bytes": 83
+        },
+        "description": {
+          "characters": 1838,
+          "utf8_bytes": 2043
+        },
+        "category": {
+          "characters": 6,
+          "utf8_bytes": 6
+        }
+      },
+      "app_store": {
+        "name": {
+          "characters": 10,
+          "utf8_bytes": 10
+        },
+        "subtitle": {
+          "characters": 28,
+          "utf8_bytes": 31
+        },
+        "promotional_text": {
+          "characters": 157,
+          "utf8_bytes": 179
+        },
+        "description": {
+          "characters": 1726,
+          "utf8_bytes": 1922
+        },
+        "keywords": {
+          "characters": 66,
+          "utf8_bytes": 74
+        },
+        "primary_category": {
+          "characters": 17,
+          "utf8_bytes": 17
+        },
+        "secondary_category": {
+          "characters": 9,
+          "utf8_bytes": 9
+        }
+      }
+    },
+    "android_permissions": [
+      "android.permission.ACCESS_COARSE_LOCATION",
+      "android.permission.ACCESS_FINE_LOCATION",
+      "android.permission.ACCESS_NETWORK_STATE",
+      "android.permission.FOREGROUND_SERVICE",
+      "android.permission.FOREGROUND_SERVICE_LOCATION",
+      "android.permission.INTERNET",
+      "android.permission.POST_NOTIFICATIONS",
+      "android.permission.WAKE_LOCK",
+      "com.google.android.c2dm.permission.RECEIVE",
+      "com.senmiydin.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+    ],
+    "ios_source_manifests": [
+      {
+        "package": "firebase_messaging",
+        "version": "16.0.0",
+        "path": "ios/firebase_messaging/Sources/firebase_messaging/Resources/PrivacyInfo.xcprivacy",
+        "tracking": false,
+        "required_reason_apis": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "CA92.1"
+            ]
+          }
+        ]
+      },
+      {
+        "package": "flutter_secure_storage_darwin",
+        "version": "0.4.3",
+        "path": "darwin/flutter_secure_storage_darwin/Sources/flutter_secure_storage_darwin/Resources/PrivacyInfo.xcprivacy",
+        "tracking": false,
+        "required_reason_apis": []
+      },
+      {
+        "package": "geolocator_apple",
+        "version": "2.4.3",
+        "path": "darwin/geolocator_apple/Sources/geolocator_apple/PrivacyInfo.xcprivacy",
+        "tracking": false,
+        "required_reason_apis": []
+      },
+      {
+        "package": "google_sign_in_ios",
+        "version": "6.4.0",
+        "path": "darwin/google_sign_in_ios/Sources/google_sign_in_ios/Resources/PrivacyInfo.xcprivacy",
+        "tracking": false,
+        "required_reason_apis": []
+      },
+      {
+        "package": "image_picker_ios",
+        "version": "0.8.13+14",
+        "path": "ios/image_picker_ios/Sources/image_picker_ios/Resources/PrivacyInfo.xcprivacy",
+        "tracking": false,
+        "required_reason_apis": []
+      },
+      {
+        "package": "package_info_plus",
+        "version": "10.2.2",
+        "path": "ios/package_info_plus/Sources/package_info_plus/PrivacyInfo.xcprivacy",
+        "tracking": false,
+        "required_reason_apis": []
+      },
+      {
+        "package": "share_plus",
+        "version": "13.3.1",
+        "path": "ios/share_plus/Sources/share_plus/PrivacyInfo.xcprivacy",
+        "tracking": false,
+        "required_reason_apis": []
+      },
+      {
+        "package": "url_launcher_ios",
+        "version": "6.4.2",
+        "path": "ios/url_launcher_ios/Sources/url_launcher_ios/Resources/PrivacyInfo.xcprivacy",
+        "tracking": false,
+        "required_reason_apis": []
+      }
+    ],
+    "source_hashes": {
+      "pubspec.lock": "b76c345d2bf37cc5b097b56253eb23eb263d9ff9b205e34ba51d1754adb73c64",
+      "android/app/src/main/AndroidManifest.xml": "16f0cfdb2f34d337fc62e428eb8c9e7167d2a0707e6070c8a2c4e09dbe576ac4",
+      "ios/Runner/Info.plist": "9a0270f6ed2e140985299b59e0159015e1e94c66c6297e244652c08ce58abb86",
+      "lib/screens/settings.dart": "8022310582178ea60849026fc13285d0dcb3a96dc2f629cdef8cbe8d20246fb2",
+      "lib/screens/auth.dart": "df807b4cbd0d7d8f0ff8671930255e7f4cd3f881c35dc493108895ce95a41546",
+      "lib/core/navigation.dart": "47bee27ca374b38f317525a624d07cafad1d44c85eb669a760b478b4bb20cfd3"
+    },
+    "backend": {
+      "status": "READY",
+      "environment": "local",
+      "settings": {
+        "minimum_age": 18,
+        "support_email_real": false,
+        "banned_words_configured": false,
+        "blocked_domains_configured": false,
+        "app_store_url": {
+          "configured": false,
+          "valid": true
+        },
+        "play_store_url": {
+          "configured": false,
+          "valid": true
+        }
+      },
+      "legal": {
+        "gizlilik": {
+          "uses_default": true,
+          "placeholder": false,
+          "csae_standard": false
+        },
+        "kvkk": {
+          "uses_default": true,
+          "placeholder": false,
+          "csae_standard": false
+        },
+        "kullanim-kosullari": {
+          "uses_default": true,
+          "placeholder": false,
+          "csae_standard": false
+        },
+        "topluluk-kurallari": {
+          "uses_default": true,
+          "placeholder": false,
+          "csae_standard": false
+        }
+      },
+      "visible_demo_suffix_free": true,
+      "readiness": [
+        {
+          "check": "APP_ENV production",
+          "status": "MISSING",
+          "category": "configuration"
+        },
+        {
+          "check": "APP_DEBUG disabled",
+          "status": "OK",
+          "category": "configuration"
+        },
+        {
+          "check": "APP_URL HTTPS",
+          "status": "MISSING",
+          "category": "external"
+        },
+        {
+          "check": "Public website matches APP_URL",
+          "status": "MISSING",
+          "category": "configuration"
+        },
+        {
+          "check": "APP_KEY valid length",
+          "status": "OK",
+          "category": "credential"
+        },
+        {
+          "check": "Database connection configured",
+          "status": "OK",
+          "category": "configuration"
+        },
+        {
+          "check": "Database reachable and migrations installed",
+          "status": "OK",
+          "category": "runtime"
+        },
+        {
+          "check": "Persistent cache driver",
+          "status": "OK",
+          "category": "configuration"
+        },
+        {
+          "check": "Persistent queue driver",
+          "status": "MISSING",
+          "category": "configuration"
+        },
+        {
+          "check": "Queue timeout below retry_after",
+          "status": "OK",
+          "category": "configuration"
+        },
+        {
+          "check": "Secure encrypted HTTP-only session",
+          "status": "MISSING",
+          "category": "configuration"
+        },
+        {
+          "check": "Session same-site policy",
+          "status": "OK",
+          "category": "configuration"
+        },
+        {
+          "check": "Explicit CORS origins",
+          "status": "OK",
+          "category": "configuration"
+        },
+        {
+          "check": "Private avatar_disk",
+          "status": "MISSING",
+          "category": "configuration"
+        },
+        {
+          "check": "Private post_media_disk",
+          "status": "OK",
+          "category": "configuration"
+        },
+        {
+          "check": "Default filesystem configured",
+          "status": "OK",
+          "category": "configuration"
+        },
+        {
+          "check": "Storage and bootstrap cache writable",
+          "status": "OK",
+          "category": "runtime"
+        },
+        {
+          "check": "Public storage link absent or audited",
+          "status": "OK",
+          "category": "configuration"
+        },
+        {
+          "check": "Cron scheduler installed (operator confirmation)",
+          "status": "MISSING",
+          "category": "external"
+        },
+        {
+          "check": "Queue worker installed (operator confirmation)",
+          "status": "MISSING",
+          "category": "external"
+        },
+        {
+          "check": "Production SMTP",
+          "status": "MISSING",
+          "category": "credential"
+        },
+        {
+          "check": "Firebase FCM live provider",
+          "status": "MISSING",
+          "category": "credential"
+        },
+        {
+          "check": "Google OAuth audiences",
+          "status": "MISSING",
+          "category": "credential"
+        },
+        {
+          "check": "Apple OAuth audiences and signing",
+          "status": "MISSING",
+          "category": "credential"
+        },
+        {
+          "check": "Final brand supplied",
+          "status": "MISSING",
+          "category": "brand"
+        },
+        {
+          "check": "Real support email",
+          "status": "MISSING",
+          "category": "external"
+        },
+        {
+          "check": "app_store_url",
+          "status": "MISSING",
+          "category": "external"
+        },
+        {
+          "check": "play_store_url",
+          "status": "MISSING",
+          "category": "external"
+        },
+        {
+          "check": "Operator identity and reviewed legal CMS",
+          "status": "MISSING",
+          "category": "external"
+        },
+        {
+          "check": "No development administrator",
+          "status": "MISSING",
+          "category": "data"
+        },
+        {
+          "check": "No demo or QA member data",
+          "status": "MISSING",
+          "category": "data"
+        },
+        {
+          "check": "Production super administrator exists",
+          "status": "MISSING",
+          "category": "external"
+        }
+      ]
+    }
+  }
+}

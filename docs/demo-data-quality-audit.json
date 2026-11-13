@@ -1,0 +1,34 @@
+{
+  "demo_suffix_free": true,
+  "stories": [
+    {
+      "title": "Sahilde ikinci merhaba",
+      "participant_avatars": 2,
+      "media_count": 0,
+      "verified_scene_photos": []
+    },
+    {
+      "title": "Birlikte bir sahil yürüyüşü",
+      "participant_avatars": 2,
+      "media_count": 2,
+      "verified_scene_photos": [
+        "coast.jpg",
+        "sunset.jpg"
+      ]
+    }
+  ],
+  "normal_demo_feed_posts_inspected": 17,
+  "visible_internal_text_leaks": 0,
+  "duplicate_demo_post_bodies": 0,
+  "inspected_to_feed_end": true,
+  "featured_media_pages_verified": [
+    "1/2",
+    "2/2"
+  ],
+  "feed_media_pages_verified": [
+    "1/2",
+    "2/2"
+  ],
+  "final_normal_demo_home_open": true,
+  "final_screenshot": "docs/screenshots/pixel6a-current.png"
+}

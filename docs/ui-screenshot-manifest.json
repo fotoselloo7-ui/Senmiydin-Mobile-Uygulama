@@ -1,0 +1,165 @@
+﻿{
+    "count":  32,
+    "screenshots":  [
+                        {
+                            "sha256":  "6e608e9d6fbe48e43615d11831906eede0827bd59661196d8e8ec45e0a6e59bb",
+                            "file":  "01-home.png",
+                            "size":  359640
+                        },
+                        {
+                            "sha256":  "0e11d80cabd94193c8a8ce314fc6e2060ce38bf8657f2dc488adc2c819db0a4b",
+                            "file":  "02-map.png",
+                            "size":  792229
+                        },
+                        {
+                            "sha256":  "ab4fafe7591d0de1046e09903ad7599eed10536d2e26653ab66467882738955b",
+                            "file":  "03-filters.png",
+                            "size":  156947
+                        },
+                        {
+                            "sha256":  "16ca4addc90b13ebf6cb614aca3d486ba4d10734c6c31db324556d8d2d2620a9",
+                            "file":  "04-search.png",
+                            "size":  85483
+                        },
+                        {
+                            "sha256":  "8d8a9c7e162cfdc97e7ab41e7af87eb2b4b4e05ae8aa123e7440a73ab2e3ed8c",
+                            "file":  "05-compose-normal.png",
+                            "size":  164145
+                        },
+                        {
+                            "sha256":  "82fc1756b2823228066359404d8c8359b4b1747d660bee512b41525eac934d91",
+                            "file":  "06-compose-encounter.png",
+                            "size":  187378
+                        },
+                        {
+                            "sha256":  "67ac21517af8cee1361934dc032c37aad0c605c2981b041840119761433d74d4",
+                            "file":  "07-compose-travel.png",
+                            "size":  161930
+                        },
+                        {
+                            "sha256":  "f0843f9e638fd1cf1c7cbb96cfb2c1749bfc6392c727b2d9bbc6c16abc99aa6e",
+                            "file":  "08-post-detail.png",
+                            "size":  92672
+                        },
+                        {
+                            "sha256":  "1b6a55c485555267e60b474a2c73f8c1d109cb7e3e6b2cb603fdeae74629b7fd",
+                            "file":  "09-profile-own.png",
+                            "size":  229434
+                        },
+                        {
+                            "sha256":  "d2cd453a6960c26d52bbaf937697ced94452439a07720350e5e0f48d98b4af89",
+                            "file":  "10-profile-other.png",
+                            "size":  202865
+                        },
+                        {
+                            "sha256":  "9ce7886e75c0e4a1031462036257560b85f7c24470900a5f3745e7fd1561f762",
+                            "file":  "11-encounters.png",
+                            "size":  77847
+                        },
+                        {
+                            "sha256":  "cb756ba5c210ecf10fb111307775d3f4bfd92b1c8edff2abd3730a07ebb6327a",
+                            "file":  "12-saved.png",
+                            "size":  68311
+                        },
+                        {
+                            "sha256":  "4baa6eef2b6085aec8367b5154e9a5e911c960a145f97e4e488fd75b733d4f5c",
+                            "file":  "13-notifications.png",
+                            "size":  61108
+                        },
+                        {
+                            "sha256":  "a4f949ecf71d81c9dd91b27125a3f0675158a69f961f805f92af592f4de82140",
+                            "file":  "14-messages.png",
+                            "size":  98111
+                        },
+                        {
+                            "sha256":  "fce3894f014aa2236b5d6fd1cc9eff505859abb01c905709ddb1ef7689d42a96",
+                            "file":  "15-chat.png",
+                            "size":  79008
+                        },
+                        {
+                            "sha256":  "3ae6184d7e7b33951375692ce33483eb9caa26d993f4fa8c1ec482cf52dabecd",
+                            "file":  "16-settings.png",
+                            "size":  143836
+                        },
+                        {
+                            "sha256":  "17daeee7d4ec6ee9c9a7f28ec30bf62e3cc71e79f6685f45d80e2babd30effaf",
+                            "file":  "17-privacy-location.png",
+                            "size":  150715
+                        },
+                        {
+                            "sha256":  "6e5df6934da39916df628a22faef36302d0523886af17f93cbad1bf500a64bc4",
+                            "file":  "18-blocked.png",
+                            "size":  84199
+                        },
+                        {
+                            "sha256":  "f131df06fa816c20b095ab86f21564198d530c86fb643426405d7a31bd4aa2e2",
+                            "file":  "19-report.png",
+                            "size":  153879
+                        },
+                        {
+                            "sha256":  "edcef67aebd9798f8dc49d136e054ad26244f386d18a596c972ab4a4376ebbde",
+                            "file":  "20-account-delete.png",
+                            "size":  136746
+                        },
+                        {
+                            "sha256":  "00bb6fd42aced3e27465303186b7995eba1f856afa3bb49ab2299777b99b6777",
+                            "file":  "21-login.png",
+                            "size":  126425
+                        },
+                        {
+                            "sha256":  "c9d0cdc4cd378fb0c7d94c995683826694c37c0fc759d484edfaf20d1041a1ae",
+                            "file":  "22-register.png",
+                            "size":  126313
+                        },
+                        {
+                            "sha256":  "cfc53ca728ac5f77dddd2ddac28a6ef7f6ede1acec8dfab6893ec2717fc0f7c8",
+                            "file":  "23-interests.png",
+                            "size":  156491
+                        },
+                        {
+                            "sha256":  "7215770da1b4a40090ed682666e8c09b80fedb9cd0213810c84d99a3669c90e7",
+                            "file":  "24-permission-onboarding.png",
+                            "size":  203327
+                        },
+                        {
+                            "sha256":  "3c425712cbc038e7b549b884179b69cfb6b9f5834a5202ed55a43bac3dc8dc55",
+                            "file":  "25-comments.png",
+                            "size":  97335
+                        },
+                        {
+                            "sha256":  "6a867f1d7435f365c16f9dea618d913aef8b30d3a6b9951a931b3ba501c50e5e",
+                            "file":  "26-native-share.png",
+                            "size":  156453
+                        },
+                        {
+                            "sha256":  "710bc8dc0039b08a938f792c7a15c9636aa39dc2aec40764ff5e163ebf3933ca",
+                            "file":  "27-profile-edit.png",
+                            "size":  240786
+                        },
+                        {
+                            "sha256":  "bec6513af388721c2275e15554716b6a2908614ab45213b8c5655449a24ef83a",
+                            "file":  "28-encounters-approved.png",
+                            "size":  150874
+                        },
+                        {
+                            "sha256":  "b8b1b994d698f08e680a08121d435a96b47b8e266cff6ed65def8b7b42ae6ce7",
+                            "file":  "29-complete-profile.png",
+                            "size":  136442
+                        },
+                        {
+                            "sha256":  "1f79432f3eb25f5e8097330afab3e6850dcecb47a1a6b111d47659d49aec4671",
+                            "file":  "30-featured-media.png",
+                            "size":  647945
+                        },
+                        {
+                            "sha256":  "b134cff5788c5e7d10ff0c7a26e8f9ac81bae7f2b573f7cbbdad6413eaf5e2d8",
+                            "file":  "31-featured-second-image.png",
+                            "size":  467884
+                        },
+                        {
+                            "sha256":  "d83e1ad10f8141d0f470048c5fbbd5279e33b6c817272685722a697447fe3b16",
+                            "file":  "32-feed.png",
+                            "size":  928782
+                        }
+                    ]
+}

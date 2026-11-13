@@ -1,0 +1,823 @@
+# SenMiydin? — Ürün Tanımı ve Uygulama Kuralları
+
+## 1. Ürün Özeti
+
+**SenMiydin?**, gerçek hayatta aynı şehirde, aynı bölgede, bir yolculukta, kafede, sahilde, parkta veya başka bir yerde yolları kesişen insanların yarım kalan karşılaşmalarını yeniden buluşturmayı hedefleyen; aynı zamanda düşünce, itiraf, anı ve sosyal paylaşımları konumla ilişkilendiren bir sosyal medya uygulamasıdır.
+
+Ürün klasik bir flört uygulaması olarak konumlandırılmamalıdır. Ana deneyim, gerçek hayattaki karşılaşmaların, konum temelli sosyal keşfin ve şehir içi sosyal paylaşımların birleşimidir.
+
+Temel örnekler:
+
+- “Bugün sahilde yürürken yanımdan geçen o kişi… Sen miydin?”
+- “Otobüste göz göze geldiğimiz o an hâlâ aklımda.”
+- “Kafede aynı şarkıda birbirimize baktık.”
+- “Ankara–Erzincan yolculuğundayım, aynı otobüsteysen molada kahve içelim mi?”
+- “Bugün burada şunu düşündüm…”
+- “Bu şehirde bunu söylemek istedim…”
+
+---
+
+## 2. Temel Ürün Kuralları
+
+### 2.1 Şehir bazlı görünürlük
+
+Profildeki yaşanılan şehir ile aktif keşif şehri ayrıdır. Cihazın güncel koordinatı güvenilir sınır verisinde çözüldüğünde aktif şehir değişir; profil şehri değişmez. Konum izni yoksa veya şehir çözülemiyorsa kullanıcı manuel şehir seçebilir, akışı kullanabilir ve gönderi oluşturabilir. Bilinmeyen koordinata profil şehri atanarak cihaz şehriymiş gibi sunulmaz.
+
+Bir paylaşım yalnızca çok küçük bir kilometre çemberine hapsedilmez.
+
+Varsayılan davranış:
+
+- Paylaşım, kullanıcının bulunduğu şehirdeki uygun kullanıcılara gösterilebilir.
+- Yakınlık, görünürlüğü tamamen engelleyen bir bariyer değil; sıralama ve keşif sinyalidir.
+- 350 metre uzaktaki bir paylaşım “Yakın” akışında 8 km uzaktaki bir paylaşımdan daha üstte gösterilebilir.
+- Kullanıcı isterse filtrelerle tüm şehir, 5 km, 10 km, 25 km gibi kapsamlar seçebilir.
+
+Kesin GPS koordinatları diğer kullanıcılara açık biçimde gösterilmez.
+
+### 2.2 Sosyal medya hissi
+
+Ana akış klasik sosyal medya rahatlığında olmalıdır.
+
+- Metin paylaşımı yapılabilir.
+- Fotoğraf zorunlu değildir.
+- Fotoğraf varsa metnin altında tam genişlikte gösterilir.
+- Bir gönderide en fazla 10 fotoğraf kullanılabilir; çoklu fotoğraf yatay kaydırılabilir.
+- Görsel sayacı `1/4` gibi gösterilebilir.
+- Beğeni, yorum, paylaş ve kaydet aksiyonları bulunur.
+- İçerik kartları çok ağır veya birbirinden kopuk görünmemelidir.
+- Akış rahat, sade ve hızlı okunabilir olmalıdır.
+
+### 2.3 Kategoriler arka planda kalmalı
+
+İçerik türleri vardır ancak ana sayfada büyük kategori blokları olarak kullanıcıya dayatılmaz.
+
+İçerik türleri:
+
+- Anı
+- Karşılaşma
+- İtiraf
+- Düşünce
+- Yolculuk
+
+Bu türler:
+
+- Paylaşım oluştururken seçilebilir.
+- Filtrelerde kullanılabilir.
+- Gönderide küçük bir etiket olarak gösterilebilir.
+- Ana sosyal akışın önüne geçmez.
+
+---
+
+## 3. Ana Sayfa
+
+Onaylı ana sayfa referans görseli uygulamanın görsel ve yapısal ana referansıdır.
+
+Ana sayfada:
+
+- Üst bar
+- SenMiydin? marka kullanımı
+- Akış
+- Yakın
+- Popüler
+- Şehir seçimi
+- Yakın çevredeki yeni paylaşımlar bilgisi
+- Haritada Gör
+- Yakınındaki İnsanlar
+- Öne Çıkan Karşılaşmalar
+- Hızlı paylaşım alanı
+- Normal sosyal akış
+- Metin gönderileri
+- Fotoğraflı gönderiler
+- Çoklu fotoğraf slider
+- Beğeni
+- Yorum
+- Paylaş
+- Kaydet
+- Alt navigasyon
+
+bulunur.
+
+Alt navigasyon:
+
+- Ana Sayfa
+- Harita
+- Ortada büyük `+`
+- Mesajlar
+- Profil
+
+---
+
+## 4. Yakınındaki İnsanlar
+
+Ana sayfada yatay kaydırılabilir bir modüldür.
+
+Sadece bu özelliğin görünürlüğüne izin veren kullanıcılar burada yer alabilir.
+
+Gösterilebilecek bilgiler:
+
+- Profil fotoğrafı
+- Ad
+- Kullanıcı adı gerektiğinde
+- Yaklaşık mesafe
+
+Gösterilmeyecek bilgi:
+
+- Kesin koordinat
+- Açık adres
+- Kullanıcının gerçek zamanlı kesin rotası
+
+Kullanıcı ayarlardan bu görünürlüğü kapatabilmelidir.
+
+Bu modül “yakındaki herkes” anlamına gelmez. Uygun ve görünür profillerden seçki sunar.
+
+---
+
+## 5. Karşılaşma Sistemi
+
+### 5.1 Karşılaşılan kişiyi etiketleme
+
+Paylaşım oluştururken kullanıcı “Karşılaştığım kişiyi etiketle” seçeneğini kullanabilir.
+
+Bu özellik büyük bir kullanıcı listesi göstermemelidir.
+
+Arama yöntemi:
+
+`@kullanıcıadı ara`
+
+Arama sonucu:
+
+- Profil fotoğrafı
+- Ad
+- @kullanıcıadı
+- Şehir
+
+İsim ile yardımcı arama yapılabilir.
+
+Sistem çok büyük kullanıcı sayılarında da arama/API tabanlı çalışacak şekilde tasarlanmalıdır.
+
+### 5.2 Karşılaşma isteği
+
+Bir kullanıcı başka bir kullanıcıyı karşılaşmada etiketlediğinde karşı tarafa bildirim gider.
+
+Örnek:
+
+“Ahmet D. seni bir karşılaşmada etiketledi.”
+
+Karşı taraf:
+
+- Karşılaşmayı Onayla
+- Reddet
+
+seçeneklerini görür.
+
+Karşı taraf onaylamadan bu olay doğrulanmış karşılaşma sayılmaz.
+
+### 5.3 Doğrulanmış karşılaşma
+
+Karşı taraf onaylarsa iki kullanıcı aynı karşılaşma kaydına bağlanır.
+
+Ardından isterlerse ortak bir karşılaşma paylaşımı oluşturabilirler.
+
+Bu paylaşımda:
+
+- İki profil fotoğrafı
+- `Karşılaşıldı ✓`
+- Başlık
+- Kısa açıklama
+- İsteğe bağlı fotoğraf
+- İsteğe bağlı çoklu fotoğraf
+
+bulunabilir.
+
+Örnek:
+
+Başlık:
+`Birbirimizi bulduk`
+
+Açıklama:
+`Kahveler içildi. ☕✨`
+
+### 5.4 Öne Çıkan Karşılaşmalar
+
+Ana sayfada yatay kaydırılabilir bir modül olarak gösterilir.
+
+Kartta:
+
+- İki profil fotoğrafı
+- Karşılaşıldı durumu
+- Ortak başlık
+- Ortak açıklama
+- Varsa görsel
+
+bulunur.
+
+Doğrulanmış karşılaşmalar normal akışta da paylaşılabilir.
+
+İki küçük profil avatarı kimlik alanıdır; hikâye medyası yerine kullanılamaz. Ortak hikâyeye fotoğraf eklenmemişse hem öne çıkan hem normal akış kartında büyük görsel, boş medya alanı, fotoğraf sayacı veya fotoğraf oku bulunmaz; kart içeriğin doğal yüksekliğinde kalır. Fotoğraf eklenmişse carousel yalnız gerçek post/story medyasını sayar. Demo ve cihaz testlerinde görünen metinlere timestamp, UUID veya debug son eki eklenmez.
+
+---
+
+## 6. Paylaşım Oluşturma
+
+Paylaşım oluşturma ekranında:
+
+- Metin alanı
+- Fotoğraf ekleme
+- Kamera
+- Çoklu fotoğraf
+- Fotoğraf sıralama
+- Fotoğraf silme
+- Konum
+- Paylaşım türü
+- Karşılaştığım kişiyi etiketle
+- Şehir görünürlüğü
+- İsteğe bağlı anonim paylaşım
+- Karakter sınırı
+- Paylaşım önizlemesi
+
+bulunabilir.
+
+Fotoğraf zorunlu değildir.
+
+Paylaşım türleri:
+
+- Anı
+- Karşılaşma
+- İtiraf
+- Düşünce
+- Yolculuk
+
+---
+
+## 7. Anonim Paylaşım
+
+Kullanıcı isterse paylaşımını anonim olarak yayınlayabilir.
+
+Diğer kullanıcılara:
+
+- Ad
+- Kullanıcı adı
+- Profil fotoğrafı
+
+gösterilmez.
+
+Ancak sistem ve yetkili admin hesabın gerçek sahibini bilir.
+
+Anonimlik taciz, spam veya ihlal için denetimsiz bir alan değildir.
+
+---
+
+## 8. Yolculuk Kullanımı
+
+Yolculuk türünün isteğe bağlı ayrı detayları vardır: ulaşım türü (Otobüs, Tren, Uçak, Feribot, Diğer), kalkış ve varış şehri, yaklaşık kalkış saati, firma, sefer kodu ve isteğe bağlı plaka/araç tanımlayıcısı. Detayların gönderiyi görenlere açık olması ayrıca seçilir; varsayılan kapalıdır. Kullanıcının açıkça paylaştığı araç bilgisi admin moderasyonuna tabidir. Canlı araç takibi veya araç/plaka arama indeksi yoktur.
+
+Yolculuk için ek katılım, seyahat odası, otobüs grubu veya eşleşme havuzu bulunmaz. İzinli geçmişte kalkış/varış şehri ve yaklaşık saat örtüşmesi öneriyi güçlendirebilir; sistem aynı araçta bulunulduğunu iddia etmez.
+
+Uygulama şehir içi karşılaşmaların yanında yolculuk senaryolarını da destekler.
+
+Örnek:
+
+“Ankara–Erzincan otobüsündeyim. Aynı yolculuktaysan molada kahve içelim mi?”
+
+Desteklenen bağlamlar:
+
+- Otobüs
+- Tren
+- Uçak
+- Feribot
+- Diğer yolculuklar
+
+Kullanıcının canlı rotası veya açık konumu herkese açık şekilde yayınlanmaz.
+
+---
+
+## 9. Konum ve Harita
+
+Harita ayrı ana ekrandır.
+
+Desteklenecek filtreler:
+
+- Tüm şehir
+- 5 km
+- 10 km
+- 25 km
+- En yakın
+- Yeni
+- Popüler
+
+Harita noktaları gerektiğinde yaklaşıklaştırılır.
+
+Kesin konum başka kullanıcılara gösterilmez.
+
+Açık ve mümkün olduğunca maliyetsiz harita altyapısı tercih edilmelidir.
+
+---
+
+## 10. Geçilen Yerler ve Konum Bildirimleri
+
+Geçtiğim Yerler varsayılan kapalıdır. Kullanıcı açınca yaklaşık bölgeler en fazla mevcut 7 günlük varsayılan saklama süresi boyunca tutulur; kapatınca örnek toplama durur ve kendi geçmiş/eşleşme kayıtları temizlenir. Geçmiş kaydetmek ve “Geçtiğim Yerlerden Haber Ver” bildirim tercihi ayrı ayarlardır. Yakın bölge aktiviteleri de ayrı bildirim kategorisidir.
+
+Paylaşım oluştururken “Şu an bulunduğum yer”, “Geçtiğim yerlerden seç” ve “Haritadan yaklaşık yer seç” seçenekleri bulunur. Geçmiş yer seçimi yalnızca kullanıcının kendi izinli ve süresi dolmamış kayıtlarından yapılır. Liste yaklaşık bölge ve yuvarlanmış saat gösterir. Harita noktası sunucuda yaklaşıklaştırılır.
+
+Olayın gerçekleştiği occurred_at, gönderinin created_at yayın saatinden ayrıdır. Karşılaşma ve Yolculukta “Ne zaman oldu?” alanı Şimdi, Az önce, Bugün veya tarih/saat seçimini sunar. Geçmiş bölge seçildiğinde yaklaşık geçmiş saat başlangıç değeri olur ve değiştirilebilir.
+
+Konum-zaman motoru önce SQL düzeyinde şehir/bölge/zaman filtresi uygular, sonra aynı kullanıcı/gönderi için tek eşleşme saklar. Güçlü eşleşme yaklaşık 500 m ve ±60 dakika; orta eşleşme 2 km ve ±4 saat; zayıf eşleşme aynı yerel gün ve 5 km sınırındadır. Kurallar merkezi yapılandırmadadır. Geçmişi kapalı kullanıcı eşleştirilmez. Eşleşme şehir görünürlüğünü kısıtlamaz; sıralamaya sınırlı destek sağlar. İzinli güçlü eşleşmede tek in-app bildirim oluşturulur; push credential olmasa da bildirim merkezi çalışır.
+
+Location match bir olasılıktır; “Geçtiğin bir bölgeden” ifadesi kullanılır. Kullanıcı adıyla gönderilen ve diğer kişi tarafından kabul edilen doğrulanmış karşılaşmadan ayrıdır; otomatik “Karşılaşıldı ✓” üretmez. Başka bir kullanıcının geçmişi, kesin koordinatı veya eşleşen geçmiş saati response'a konmaz.
+
+Kullanıcı ilgili izni ve ayarı açarsa konum temelli bildirimler alabilir.
+
+Örnek bildirimler:
+
+- “Bulunduğun bölgede yeni bir paylaşım var.”
+- “Geçtiğin bir yerde yeni bir iz bırakıldı.”
+- “Birine denk gelmiş olabilirsin.”
+
+Bildirim özellikleri kullanıcı tarafından ayrı ayrı kapatılabilmelidir.
+
+Arka plan konumu yalnızca gerçekten gerekli özellikler için kullanılmalıdır.
+
+---
+
+## 11. Filtreler
+
+Filtre ekranı:
+
+### Konum
+- Tüm şehir
+- 5 km
+- 10 km
+- 25 km
+
+### Sıralama
+- En yakın
+- Yeni
+- Popüler
+
+### İçerik
+- Tüm paylaşımlar
+- Fotoğraflı
+- Yazılı
+- Karşılaşmalar
+- Etiketli içerikler
+
+### İlgi alanları
+Kullanıcının seçtiği hobiler ve genel ilgi alanları.
+
+Ek seçenekler:
+
+- Sadece yakınımdakileri göster
+- Fotoğraflı paylaşımları önceliklendir
+- Karşılaşma hikâyelerini öne çıkar
+- Filtreleri temizle
+- Uygula
+
+---
+
+## 12. Kayıt ve Giriş
+
+Kayıt ekranı:
+
+- Ad Soyad
+- Kullanıcı Adı
+- E-posta
+- Şifre
+- Doğum Tarihi
+- Şehir
+
+Alternatif giriş:
+
+- Google
+- Apple
+
+Ayrıca:
+
+- Giriş Yap
+- Şifremi Unuttum
+- Kullanım Koşulları
+- Gizlilik Politikası
+- Yaş kontrolü
+
+bulunmalıdır.
+
+---
+
+## 13. Profil Oluşturma
+
+Kullanıcı profilini tamamlayabilir.
+
+Alanlar:
+
+- Profil fotoğrafı
+- Kısa biyografi
+- Meslek / okul
+- Yaşadığı şehir
+- İlgi alanları
+- Kullanıcı adı
+- Aradığı bağlantı türleri
+
+Bağlantı tercihleri örneği:
+
+- Arkadaşlık
+- Karşılaşmalar
+- Sohbet
+- Yeni insanlarla tanışma
+
+Ayarlar:
+
+- Konumumu şehir içinde göster
+- Yakınımdaki karşılaşmaları öner
+
+---
+
+## 14. Hobiler ve İlgi Alanları
+
+Hobiler aranabilir ve çoklu seçilebilir.
+
+Başlangıç örnekleri:
+
+- Kahve
+- Müzik
+- Kitap
+- Seyahat
+- Sahil yürüyüşü
+- Sinema
+- Fotoğraf
+- Fitness
+- Kamp
+- Yemek
+- Bisiklet
+- Kediler
+- Köpekler
+- Oyun
+- Girişimcilik
+- Teknoloji
+- Sanat
+- Doğa
+- Spor
+- Etkinlik
+- Gece yürüyüşü
+
+Admin panelinden:
+
+- Yeni hobi eklenebilir
+- Hobi pasifleştirilebilir
+- Hobi sırası değiştirilebilir
+
+---
+
+## 15. Profil
+
+Kullanıcı profilinde:
+
+- Profil fotoğrafı
+- Kapak alanı
+- Ad
+- @kullanıcıadı
+- Şehir
+- Biyografi
+- İlgi alanları
+- Paylaşım sayısı
+- Karşılaşma sayısı
+- Takipçi
+- Takip edilen
+- Paylaşımlar
+- Karşılaşmalarım
+- Kaydedilenler
+- Profil düzenle
+- Ayarlar
+
+bulunur.
+
+---
+
+## 16. Takip Sistemi
+
+Kullanıcılar birbirlerini takip edebilir.
+
+- Takip Et
+- Takibi Bırak
+- Takipçi
+- Takip Edilen
+
+Takip sistemi ürünün ana karşılaşma deneyimini gölgelememelidir.
+
+---
+
+## 17. Mesajlaşma
+
+İlk sürüm için:
+
+- Mesaj listesi
+- Özel sohbet
+- Mesaj isteği
+- Karşılaşma sonrası sohbet başlatma
+- Okundu bilgisi
+- Engelle
+- Şikâyet
+- Push bildirimi
+
+bulunur.
+
+İlk sürümde sesli veya görüntülü arama gerekli değildir.
+
+---
+
+## 18. Bildirim Merkezi
+
+Bildirim türleri:
+
+- Beğeni
+- Yorum
+- Takip
+- Mesaj
+- Etiket
+- Karşılaşma isteği
+- Karşılaşma onayı
+- Yakın bölge aktivitesi
+- Sistem duyurusu
+
+Kullanıcı bildirim türlerini ayarlardan yönetebilir.
+
+---
+
+## 19. Arama
+
+Arama şunları destekleyebilir:
+
+- Kullanıcı adı
+- Ad
+- İnsanlar
+- Paylaşımlar
+- Şehir
+
+Karşılaşma etiketleme ekranındaki arama, kullanıcı aramasının özel bir kullanım şeklidir.
+
+---
+
+## 20. Güvenlik ve Moderasyon
+
+Uygulamada:
+
+- Şikâyet
+- Engelle
+- İçerik kaldırma
+- Kullanıcı askıya alma
+- Kullanıcı yasaklama
+- Spam kontrolü
+- Uygunsuz kelime/URL kontrolü
+- Tekrarlayan paylaşım kontrolü
+- İçerik moderasyonu
+- Kesin konum gizliliği
+
+bulunmalıdır.
+
+Başka bir kişinin açık adresi veya kesin konumu paylaşılmamalıdır.
+
+---
+
+## 21. Web Sitesi
+
+Ana alan adı:
+
+`senmiydin.com`
+
+Public web sitesi:
+
+- Ürün tanıtımı
+- Nasıl çalışır?
+- Özellikler
+- App Store bağlantısı
+- Google Play bağlantısı
+- Gizlilik Politikası
+- KVKK
+- Kullanım Koşulları
+- Topluluk Kuralları
+- İletişim
+- Hesap Silme Talebi
+
+içermelidir.
+
+İlk sürümde mobil uygulamanın tüm sosyal işlevlerini web'e taşımak zorunlu değildir.
+
+---
+
+## 22. Admin Paneli
+
+Admin girişi normal kullanıcı girişinden tamamen ayrı olmalıdır.
+
+Yetki yapısında en az Super Admin bulunmalıdır.
+
+Admin panelinden:
+
+### Kullanıcılar
+- Arama
+- Profil inceleme
+- Askıya alma
+- Yasaklama
+- Hesap durumu
+
+### İçerik
+- Paylaşımlar
+- Yorumlar
+- Anonim paylaşımlar
+- Karşılaşmalar
+- Öne çıkan karşılaşmalar
+- İçerik kaldırma
+
+### Moderasyon
+- Şikâyetler
+- Kullanıcı şikâyetleri
+- İçerik şikâyetleri
+- Mesaj şikâyetleri
+- Engelleme kayıtları
+
+### İçerik yapılandırması
+- Hobiler
+- İçerik türleri
+- Şehirler
+- Ana sayfa modülleri
+- Öne çıkarılan içerikler
+
+### Bildirimler
+- Push duyuruları
+- Sistem duyuruları
+
+### Sistem
+- Temel istatistikler
+- Uygulama ayarları
+- Web içerikleri
+- App Store / Google Play bağlantıları
+- KVKK metni
+- Gizlilik metni
+- Kullanım koşulları
+- Topluluk kuralları
+- Bakım modu
+- Audit log
+
+yönetilebilir olmalıdır.
+
+Uygulamanın kritik ayarlarında kontrol admin panelinde olmalıdır.
+
+---
+
+## 23. Tasarım Sistemi
+
+Onaylı referans ekranlar tasarım açısından tek kaynaktır.
+
+Temel görsel dil:
+
+- Beyaz ana arka plan
+- Canlı mavi ana vurgu
+- Koyu lacivert metin
+- Açık mavi yardımcı yüzeyler
+- Hafif mavi gölgeler
+- Bol beyaz alan
+- Yuvarlatılmış kartlar
+- Modern outline ikonlar
+- Kalın ve rahat okunan tipografi
+- Sade ve premium sosyal medya hissi
+
+Uygulama karmaşık görünmemelidir.
+
+### Tasarım kuralları
+
+- Onaylı ana sayfa yapısı değiştirilmez.
+- Yeni bir tema icat edilmez.
+- Koyu tema ilk sürüm için zorunlu değildir.
+- Rastgele gradient kullanılmaz.
+- Her şehre özel şehir fotoğrafı gerektiren bir tasarım kurulmaz.
+- Fotoğraf yalnızca gerçekten içerik veya modül gerektiriyorsa kullanılır.
+- İçerik okunabilirliği dekorasyondan önemlidir.
+- Header ve alt navigasyon tutarlı kalır.
+- Aynı spacing, radius ve buton sistemi tüm ekranlarda kullanılır.
+- Ekranlar farklı ürünlerden alınmış gibi görünmemelidir.
+
+---
+
+## 24. Mobil Ekranlar
+
+Mobil uygulamada en az şu ekranlar bulunacaktır:
+
+1. Splash
+2. Karşılama / Onboarding
+3. Giriş
+4. Kayıt
+5. Profil Tamamlama
+6. Hobiler / İlgi Alanları
+7. Konum ve Bildirim İzinleri
+8. Ana Sayfa
+9. Harita
+10. Filtreler
+11. Arama
+12. Paylaşım Oluştur
+13. Karşılaştığım Kişiyi Etiketle
+14. Karşılaşma Onayı / Red
+15. Paylaşım Detayı
+16. Yorumlar
+17. Diğer Kullanıcı Profili
+18. Kendi Profilim
+19. Profil Düzenle
+20. Karşılaşmalarım
+21. Kaydedilenler
+22. Bildirimler
+23. Mesajlar
+24. Sohbet
+25. Ayarlar
+26. Gizlilik / Konum / Bildirim Ayarları
+27. Engellenen Kullanıcılar
+28. Şikâyet
+29. Hesap Silme
+
+---
+
+## 25. Çalışan Sistem ve Test Verisi
+
+Mobil uygulama Laravel API, Sanctum ve MySQL ile çalışır. Kayıt/giriş, kalıcı oturum, sosyal içerik, konum, karşılaşmalar, mesajlar, bildirimler ve moderasyon gerçek servisleri kullanır. Mock önizleme ayrı geliştirme/test amacı taşır; canlı sağlayıcı veya production kullanıcı verisi gibi sunulmaz.
+
+Development senaryoları production seed ile oluşturulmaz. Cihaz testleri ayrı disposable hesapları kullanır ve sonunda yalnızca kendi verilerini temizler. Fotoğraflar sunucuda decode/re-encode edilerek EXIF/GPS metadatasından temizlenir; dosya adları rastgele sunucu kimlikleridir.
+
+İlk sürümde Reels, video feed, yeni story ürünü, premium, ödeme, reklam, grup sohbeti veya sesli/görüntülü arama yoktur. İki kişinin onaylı ortak karşılaşma hikâyesi mevcut ürün davranışıdır.
+
+---
+
+## 26. Teknik Yön
+
+Mobil:
+
+- Flutter
+- iOS + Android tek kod tabanı
+
+Backend:
+
+- Laravel tabanlı API uygun bir tercihtir.
+
+Veritabanı:
+
+- Konum sorgularını destekleyecek yapı kullanılmalıdır.
+
+Bildirim:
+
+- iOS ve Android push bildirim altyapısı.
+
+Harita:
+
+- Mümkün olduğunca açık ve maliyetsiz çözüm.
+
+Web:
+
+- Public tanıtım sitesi
+- Ayrı admin paneli
+
+---
+
+## 27. Yayına Hazırlık
+
+Final sürüm öncesinde:
+
+- Mobil UI kontrolü
+- Responsive kontrol
+- API hata yönetimi
+- Güvenlik
+- Konum izin metinleri
+- Bildirim izinleri
+- Gizlilik
+- Hesap silme
+- Moderasyon
+- Android release
+- iOS release
+- Store metinleri
+- Production ayarları
+- Veritabanı migrationları
+- Deploy dokümantasyonu
+
+tamamlanmalıdır.
+
+---
+
+## 28. Referans Görseller
+
+Proje kökünde bulunan:
+
+`Ekran Görüntüleri`
+
+klasörü SenMiydin? uygulamasının onaylanmış görsel referanslarını içerir.
+
+Arayüz geliştirilirken bu klasördeki görseller temel alınmalıdır.
+
+Referans ekranlarda görülen:
+
+- renkler
+- tipografi yaklaşımı
+- header
+- bottom navigation
+- kart yapıları
+- buton yapıları
+- spacing
+- radius
+- gölgeler
+- içerik hiyerarşisi
+
+uygulama genelinde tutarlı biçimde devam ettirilmelidir.
+
+Referansların dışında yeni bir görsel kimlik oluşturulmamalıdır.

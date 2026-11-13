@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 320" fill="none">
+  <!-- Flock of 3 birds in the sky -->
+  <path d="M120 140 Q135 130 150 140 Q165 130 180 140 Q165 136 150 144 Q135 136 120 140 Z" fill="#9381BF" opacity="0.85"/>
+  <path d="M170 165 Q182 157 195 165 Q207 157 220 165 Q207 162 195 168 Q182 162 170 165 Z" fill="#9381BF" opacity="0.85"/>
+  <path d="M220 135 Q232 127 245 135 Q257 127 270 135 Q257 132 245 138 Q232 132 220 135 Z" fill="#9381BF" opacity="0.85"/>
+
+  <!-- Distant subtle hills and skyline wash -->
+  <path d="M0 280 C60 270 120 265 180 275 C240 285 300 275 360 270 C420 265 460 275 500 280 L500 320 L0 320 Z" fill="#9D8BC9" opacity="0.35"/>
+
+  <!-- Historic Istanbul Skyline Silhouette: Mosques, Domes, Minarets and Galata Tower -->
+  <path d="
+    M0 320 
+    L0 295
+    C20 292 40 294 50 288
+    L55 288 L55 272 L58 272 L58 288
+    L70 288 C75 284 85 282 95 282 C105 282 115 284 120 288
+    L128 288 L128 268 L130 268 L130 252 L131 252 L131 245 L132 245 L132 268 L134 268 L134 288
+    L145 288 C150 280 162 274 175 274 C188 274 200 280 205 288
+    L210 288 L210 260 L212 260 L212 248 L213 248 L213 240 L214 240 L214 260 L216 260 L216 288
+    L230 288 C238 283 250 280 262 280 C274 280 286 283 294 288
+    L305 288
+
+    /* Galata Tower Base and Body */
+    L312 288 L312 250
+    L315 250 L315 210
+    L318 210 L318 175
+    L322 175 L322 165
+    /* Observation Balcony */
+    L314 165 L314 158 L320 158 L320 135 L324 135
+    /* Upper Gallery & Windows */
+    L326 135 L326 115 L328 115 L328 95
+    /* Conical Cap and Spire */
+    L322 95 L345 35 L347 18 L348 18 L350 35 L372 95
+    L366 95 L366 115 L368 115 L368 135 L370 135
+    L374 135 L374 158 L380 158 L380 165 L372 165
+    L372 175 L376 175 L376 210
+    L379 210 L379 250 L382 250 L382 288
+
+    /* Eastern Peninsula Buildings & Minarets */
+    L395 288 L395 272 L397 272 L397 288
+    L410 288 C418 282 430 278 442 278 C454 278 466 282 474 288
+    L485 288 L485 240 L487 240 L487 220 L488 220 L488 210 L489 210 L489 240 L491 240 L491 288
+    L500 288 L500 320 Z
+  " fill="#9D8BC9" opacity="0.92"/>
+
+  <!-- Galata Tower Windows and Details -->
+  <g fill="#EDE5FF" opacity="0.85">
+    <circle cx="340" cy="148" r="2.5"/>
+    <circle cx="348" cy="148" r="2.5"/>
+    <circle cx="356" cy="148" r="2.5"/>
+    <rect x="345" y="122" width="5" height="8" rx="2.5"/>
+  </g>
+</svg>
+

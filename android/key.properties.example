@@ -1,0 +1,5 @@
+# Copy to key.properties outside version control and fill with your upload key.
+storeFile=/absolute/path/to/upload-keystore.jks
+storePassword=
+keyAlias=upload
+keyPassword=
