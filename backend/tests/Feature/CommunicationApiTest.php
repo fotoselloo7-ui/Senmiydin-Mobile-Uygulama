@@ -122,6 +122,38 @@ class CommunicationApiTest extends TestCase
         $this->assertDatabaseHas('messages', ['id' => $data['id'], 'type' => 'image']);
     }
 
+    public function test_block_also_filters_notifications_conversations_unread_counts_and_unblock_restores_normal_behaviour(): void
+    {
+        // elif interacts with deniz: follow + message request + like, all producing notifications for deniz.
+        $post = $this->publish($this->demo);
+        $this->asUser($this->elif)->postJson('/api/v1/users/deniz/follow')->assertOk();
+        $this->postJson('/api/v1/posts/'.$post['id'].'/like')->assertOk();
+        $chat = $this->send($this->elif, $this->demo, 'Merhaba')->json('data.conversation.id');
+
+        $this->asUser($this->demo)->postJson('/api/v1/conversations/'.$chat.'/request/accept')->assertOk();
+        $before = $this->getJson('/api/v1/notifications')->assertOk()->json('data.items');
+        $this->assertGreaterThanOrEqual(3, count($before));
+        $this->getJson('/api/v1/conversations')->assertJsonCount(1, 'data.items');
+        $unreadBefore = $this->getJson('/api/v1/unread-counts')->json('data');
+        $this->assertGreaterThan(0, $unreadBefore['notifications'] + $unreadBefore['messages']);
+
+        $this->putJson('/api/v1/blocks/'.$this->elif->id)->assertOk();
+        $this->getJson('/api/v1/notifications')->assertOk()->assertJsonCount(0, 'data.items');
+        $this->getJson('/api/v1/conversations')->assertOk()->assertJsonCount(0, 'data.items');
+        $this->getJson('/api/v1/conversations/'.$chat)->assertNotFound();
+        $this->getJson('/api/v1/unread-counts')->assertJsonPath('data.notifications', 0)->assertJsonPath('data.messages', 0);
+        // The blocked account cannot raise new notifications for the blocker either.
+        $this->asUser($this->elif)->postJson('/api/v1/posts/'.$post['id'].'/like')->assertNotFound();
+
+        // Blocking purges the old interaction records; unblocking restores normal behaviour for new ones only.
+        $this->assertDatabaseCount('app_notifications', 0);
+        $this->asUser($this->demo)->deleteJson('/api/v1/blocks/'.$this->elif->id)->assertOk();
+        $this->getJson('/api/v1/notifications')->assertOk()->assertJsonCount(0, 'data.items');
+        $this->asUser($this->elif)->postJson('/api/v1/users/deniz/follow')->assertOk();
+        $this->asUser($this->demo)->getJson('/api/v1/notifications')->assertOk()->assertJsonCount(1, 'data.items')
+            ->assertJsonPath('data.items.0.type', 'follow');
+    }
+
     public function test_block_hides_profiles_search_nearby_feed_and_cancels_pending_requests(): void
     {
         $this->asUser($this->demo)->postJson('/api/v1/users/elif/follow')->assertOk();

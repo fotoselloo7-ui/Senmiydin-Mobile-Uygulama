@@ -34,6 +34,29 @@ class DeliveryReadinessTest extends TestCase
         $this->assertInstanceOf(\Illuminate\Contracts\Queue\ShouldBeEncrypted::class, new \App\Notifications\PasswordResetCode('test-token'));
     }
 
+    public function test_log_push_driver_never_writes_notification_identifiers_in_production(): void
+    {
+        $user = User::create(['name' => 'Deniz', 'username' => 'deniz', 'email' => 'deniz@example.test',
+            'password' => 'Account12345!', 'birth_date' => '1995-01-01', 'city_id' => City::first()->id]);
+        $token = $user->createToken('mobile');
+        $id = DB::table('app_notifications')->insertGetId(['user_id' => $user->id, 'actor_id' => null, 'type' => 'system', 'created_at' => now()]);
+        DB::table('user_devices')->insert([
+            'user_id' => $user->id, 'personal_access_token_id' => $token->accessToken->id,
+            'platform' => 'android', 'device_identifier' => (string) Str::uuid(),
+            'push_token' => Crypt::encryptString('device-token'), 'token_hash' => hash('sha256', 'device-token'),
+            'last_seen_at' => now(), 'is_active' => true,
+        ]);
+        config(['push.driver' => 'log']);
+        \Illuminate\Support\Facades\Log::spy();
+        $this->app['env'] = 'production';
+        app(PushDelivery::class)->send($id);
+        \Illuminate\Support\Facades\Log::shouldNotHaveReceived('info');
+
+        $this->app['env'] = 'local';
+        app(PushDelivery::class)->send($id);
+        \Illuminate\Support\Facades\Log::shouldHaveReceived('info')->once();
+    }
+
     public function test_fcm_delivery_respects_preferences_valid_sessions_and_private_token_handling(): void
     {
         Http::preventStrayRequests();

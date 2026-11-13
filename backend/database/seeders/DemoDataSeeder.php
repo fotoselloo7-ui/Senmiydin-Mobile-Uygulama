@@ -23,6 +23,62 @@ class DemoDataSeeder extends Seeder
 
     public const LONGITUDE = 32.000;
 
+    public const PEOPLE = [
+        ['demo', 'Demo Kullanıcı', 36.544, 32.000, 'Şehirdeki küçük ayrıntıları ve sahil yürüyüşlerini seviyorum.'],
+        ['ahmet', 'Ahmet D.', 36.544, 32.004, 'Sahilde bu akşam hava çok güzeldi.'],
+        ['elif', 'Elif B.', 36.548, 32.005, 'Sabah kahvemi sahile karşı içtim.'],
+        ['deniz', 'Deniz A.', 36.550, 32.012, 'Bisikletle şehir turu yaptım.'],
+        ['zeynep', 'Zeynep D.', 36.563, 32.023, 'Bugün yeni bir yürüyüş rotası buldum.'],
+        ['kaan', 'Kaan Y.', 36.555, 32.047, 'Deniz kenarında bir kitap bitirdim.'],
+        ['selin', 'Selin K.', 36.562, 32.065, 'Akşam ışığı görülmeye değerdi.'],
+        ['mert', 'Mert A.', 36.580, 32.080, 'Şehirden uzaklaşınca sessizlik iyi geldi.'],
+        ['ece', 'Ece Y.', 36.594, 32.092, 'Yeni bir kahve molası noktası keşfettim.'],
+        ['burak', 'Burak S.', 36.578, 32.115, 'Güneş batarken yola çıktım.'],
+        ['ceren', 'Ceren A.', 36.615, 32.120, 'Bugün şehir manzarasını fotoğrafladım.'],
+        ['duru', 'Duru Ç.', 36.620, 32.145, 'Hafta sonu gezisi kısa ama güzeldi.'],
+        ['arda', 'Arda E.', 36.888, 30.707, 'Antalya’da sahil yürüyüşü.'],
+        ['elifdemo', 'Elif B.', 36.548, 32.006, 'Sahile yakın bir kahve molası.'],
+    ];
+
+    public static function username(string $handle): string
+    {
+        return match ($handle) {
+            'demo', 'elifdemo' => $handle,
+            default => 'demo_'.$handle,
+        };
+    }
+
+    public static function email(string $handle): string
+    {
+        return ($handle === 'elifdemo' ? 'elif' : self::username($handle)).'@senmiydin.local';
+    }
+
+    /**
+     * Deterministically (re)writes the live-location row of every seeded demo account with its fixture
+     * coordinates and an explicit city, so a stale or unresolved row can never leave city_id NULL.
+     */
+    public static function restoreLocations(): int
+    {
+        $cities = City::whereIn('slug', ['alanya', 'antalya'])->pluck('id', 'slug');
+        $restored = 0;
+        foreach (self::PEOPLE as [$handle, , $latitude, $longitude]) {
+            $user = User::where('email', self::email($handle))->first();
+            $city = $cities[$handle === 'arda' ? 'antalya' : 'alanya'] ?? null;
+            if (! $user || ! $city) {
+                continue;
+            }
+            DB::table('user_locations')->upsert([[
+                'user_id' => $user->id, 'city_id' => $city,
+                'latitude' => $latitude, 'longitude' => $longitude, 'accuracy' => 35,
+                'recorded_at' => now(), 'visibility' => (bool) $user->nearby_visible,
+                'created_at' => now(), 'updated_at' => now(),
+            ]], ['user_id'], ['city_id', 'latitude', 'longitude', 'accuracy', 'recorded_at', 'visibility', 'updated_at']);
+            $restored++;
+        }
+
+        return $restored;
+    }
+
     public function run(): void
     {
         if (! app()->environment('local', 'development')) {
@@ -32,29 +88,10 @@ class DemoDataSeeder extends Seeder
         $alanya = City::where('slug', 'alanya')->firstOrFail();
         $antalya = City::where('slug', 'antalya')->firstOrFail();
         $interests = Interest::orderBy('sort_order')->limit(6)->pluck('id');
-        $people = [
-            ['demo', 'Demo Kullanıcı', 36.544, 32.000, 'Şehirdeki küçük ayrıntıları ve sahil yürüyüşlerini seviyorum.'],
-            ['ahmet', 'Ahmet D.', 36.544, 32.004, 'Sahilde bu akşam hava çok güzeldi.'],
-            ['elif', 'Elif B.', 36.548, 32.005, 'Sabah kahvemi sahile karşı içtim.'],
-            ['deniz', 'Deniz A.', 36.550, 32.012, 'Bisikletle şehir turu yaptım.'],
-            ['zeynep', 'Zeynep D.', 36.563, 32.023, 'Bugün yeni bir yürüyüş rotası buldum.'],
-            ['kaan', 'Kaan Y.', 36.555, 32.047, 'Deniz kenarında bir kitap bitirdim.'],
-            ['selin', 'Selin K.', 36.562, 32.065, 'Akşam ışığı görülmeye değerdi.'],
-            ['mert', 'Mert A.', 36.580, 32.080, 'Şehirden uzaklaşınca sessizlik iyi geldi.'],
-            ['ece', 'Ece Y.', 36.594, 32.092, 'Yeni bir kahve molası noktası keşfettim.'],
-            ['burak', 'Burak S.', 36.578, 32.115, 'Güneş batarken yola çıktım.'],
-            ['ceren', 'Ceren A.', 36.615, 32.120, 'Bugün şehir manzarasını fotoğrafladım.'],
-            ['duru', 'Duru Ç.', 36.620, 32.145, 'Hafta sonu gezisi kısa ama güzeldi.'],
-            ['arda', 'Arda E.', 36.888, 30.707, 'Antalya’da sahil yürüyüşü.'],
-            ['elifdemo', 'Elif B.', 36.548, 32.006, 'Sahile yakın bir kahve molası.'],
-        ];
 
-        foreach ($people as $index => [$handle, $name, $latitude, $longitude, $body]) {
-            $username = match ($handle) {
-                'demo', 'elifdemo' => $handle,
-                default => 'demo_'.$handle,
-            };
-            $email = ($handle === 'elifdemo' ? 'elif' : $username).'@senmiydin.local';
+        foreach (self::PEOPLE as $index => [$handle, $name, $latitude, $longitude, $body]) {
+            $username = self::username($handle);
+            $email = self::email($handle);
             $city = $handle === 'arda' ? $antalya : $alanya;
             $existing = User::where('username', $username)->first();
             if ($existing && $existing->email !== $email) {
@@ -77,11 +114,6 @@ class DemoDataSeeder extends Seeder
             ])->save();
             $user->interests()->sync($interests);
             LocationData::clearHistory($user->id);
-            DB::table('user_locations')->upsert([[
-                'user_id' => $user->id, 'city_id' => $city->id,
-                'latitude' => $latitude, 'longitude' => $longitude, 'accuracy' => 35,
-                'recorded_at' => now(), 'visibility' => true, 'created_at' => now(), 'updated_at' => now(),
-            ]], ['user_id'], ['city_id', 'latitude', 'longitude', 'accuracy', 'recorded_at', 'visibility', 'updated_at']);
 
             if ($index === 0) {
                 continue;
@@ -96,6 +128,7 @@ class DemoDataSeeder extends Seeder
                 ])->save();
             }
         }
+        self::restoreLocations();
         $this->stories($alanya->id);
     }
 

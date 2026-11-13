@@ -2,7 +2,36 @@
 
 > **Güncel kaynak bu dosyanın ilk bölümüdür (13 Kasım 2026).** "Tarihsel kayıt" bölümü 10 Kasım 2026 çalışmasını olduğu gibi korur; oradaki sayılar ve tasarım ifadeleri (ör. mavi marka dili, herkese açık profildeki ilgi etiketleri) güncel durum değildir.
 
-## Güncel doğrulama — 13 Kasım 2026
+## Release candidate sertleştirme — 13 Kasım 2026 (2. tur, güncel)
+
+Başlangıç `23125a5` (109 test / 1405 assertion, Flutter 98, analyze temiz, Pixel 9/9, location-time 3/3 doğrulandı). Yeni özellik eklenmedi; yalnız gerçek cihaz / güvenlik denetiminde bulunan iç sorunlar düzeltildi.
+
+| Kontrol | Final |
+|---|---|
+| Laravel | **117 test / 1545 assertion geçti** (`release_check` içinde `composer test`) |
+| Flutter | **99 test geçti**; `flutter analyze`: No issues found |
+| Pixel 6a entegrasyon | **9/9 geçti**, fixture temizliği `clean=true` |
+| Pixel 6a location-time | **3/3 geçti** |
+| `tool/release_check.ps1` | Teknik adımların hepsi OK (analyze, testler, composer, migration, paket kimlikleri, seeder koruması, secret taraması). `MISSING` olanlar yalnız dış bağımlılık / production yapılandırması: Android signing, SMTP, FCM, Google/Apple OAuth, APP_URL HTTPS, mağaza URL'leri, operatör/legal, production yönetici |
+
+Bulunan ve düzeltilen gerçek problemler:
+
+1. **Pixel fixture otomasyonu** — `demo_ahmet`'in `user_locations.city_id` değeri NULL kalabiliyor ve yakınındakiler testi elle DB düzeltmesi gerektiriyordu. Kök neden: `demo:refresh-locations` yalnız zaman damgasını yeniliyordu, koordinat/şehri geri yazmıyordu. `DemoDataSeeder::restoreLocations()` artık her tohum hesabın koordinat ve açık şehrini deterministik yazıyor; seeder ve komut ortak kullanıyor (`DemoFixtureTest`). Regresyon elle müdahalesiz geçti.
+2. **Onboarding metni** — "İlgi alanların profilinde görünsün" final kararla (public profilde hobi yok) çelişiyordu; metin düzeltildi.
+3. **Profil hata durumu** — sunucu kapalıyken Profil sekmesi düz mavi metin gösteriyordu; mevcut `InlineState` + "Tekrar Dene" kartına geçti ve uygulama yeniden başlatılmadan toparlanıyor (`profile_refresh_test`).
+4. **`PushDelivery` log sürücüsü** production'da bildirim kimliklerini loga yazabiliyordu; production'da yazmıyor (`DeliveryReadinessTest`).
+5. **`tool/release_common.ps1`** — Windows PowerShell 5.1'de Composer'ın stderr satırı yönlendirilmiş komutu sahte "FAIL" yapıyordu. Yalnız çıkış kodu belirleyici oldu; teknik hata ile dış bekleme ayrımı doğru raporlanıyor.
+6. **Eksik regresyon testleri**: kapak güvenliği (`CoverSecurityTest`: sahte uzantı, MIME uyuşmazlığı, SVG, bozuk görüntü, boyut/8 MB, EXIF GPS, dosya adı sızıntısı, eski kapak silme, hesap silmede temizlik, askıya alınmış/yasaklı hesap, traversal) ve block'un bildirim / sohbet / okunmamış sayaç filtrelemesi + unblock.
+
+Gerçek Pixel 6a senaryoları (normal debug uygulama, local API): clean install (Splash → onboarding → kayıt → profil → ilgi alanları → izin açıklamaları → Ana Sayfa); konum izni DENY ile uygulama kullanılabilir, manuel şehir Alanya, akış görünür, anonim gönderi yayımlandı, izin döngüsü yok; bildirim izni reddi ile uygulama içi bildirim merkezi çalışıyor; Geçtiğim Yerler varsayılan KAPALI, açınca örnek yazıldı, uygulama arka plana alınınca location foreground service (tip 0x8) sürdü ve yeni örnek geldi, kapatınca geçmiş ve eşleşmeler silindi, servis durdu, yeni örnek gelmedi; process kill sonrası token geri yüklendi ve Ana Sayfa açıldı; duyuru admin panelinden oluşturuldu → Bildirimler'de göründü → dokununca duyuru ayrıntısı → pasifleştirince "Bu içerik artık kullanılamıyor"; minimum sürüm: admin formu resmî mağaza bağlantısı olmadan minimum sürümü reddediyor ("Minimum sürüm için resmî mağaza bağlantısı gerekli"); doğrulamayı atlayıp değer doğrudan yazıldığında uygulama kırık bağlantı açmamak için kapıyı kurmadı ve Ana Sayfa'ya devam etti — sahte mağaza bağlantısı üretilmediğinden gerçek cihazda "Güncelleme gerekli" ekranı gösterilemedi (EXTERNAL: gerçek Play adresi); kapı mantığı mevcut `production_test.dart` widget testiyle doğrulanır, değer geri alındı; API durdurulunca Ana Sayfa / Mesajlar / Bildirimler "İçerik yüklenemedi · Tekrar Dene" gösterdi, API açılınca yeniden başlatmadan toparlandı; polling ölçümü (API günlüğü): açık sohbette ~4,5 sn (7 istek / 32 sn, yalnız sohbet uçları), kök sayaçlar ~8 sn (4 istek / 32 sn), arka planda 0 istek, ön plana dönüşte hemen 1 sayaç isteği; yazı taslağı arka plana gidip gelince korundu; 1,6× yazı tipinde Ana Sayfa, Profil, Mesajlar ve Compose'da taşma yok; anonim gönderi başka hesaptan `author:null`, ad / kullanıcı adı / avatar / e-posta sızmıyor; hesap silme sonrası token 401, profil 404, arama ve yakında listesinde yok, konum / geçmiş / eşleşme / cihaz / token kayıtları silindi, cihazda oturum login ekranına döndü.
+
+Sınırlar: hesap silme formundaki "SİL" onay metninin noktalı İ harfi `adb input text` ile yazılamadığı için bu turda elle yazılmadı; aynı form her Pixel regresyonunda (`account_test.dart`) gerçek UI'dan çalıştırılıp geçiyor. Silme bu turda uygulamanın gönderdiği aynı gövdeyle API üzerinden çağrılıp cihazdaki etkisi gözlendi. Tam TalkBack sertifikasyonu iddia edilmez (Flutter semantics widget testleriyle, 1,6× yazıyla görsel olarak denetlendi). Force-stop sonrası konum kaydı iddia edilmez.
+
+Kapak dosyaları `GET /api/v1/covers/{uuid}.jpg` ile kimlik doğrulamasız sunulur — bilinçli: herkese açık profil kapağı. Yalnız aktif bir kullanıcının `covers/` altındaki bağlı dosyası sunulur; UUID regex'i, traversal / yetim dosya / askıya alınmış / yasaklı / silinmiş hesap için 404 testlidir.
+
+---
+
+## Ürün tamamlama doğrulaması — 13 Kasım 2026 (1. tur)
 
 Başlangıç (`db90b1e`, değişiklik öncesi) ile final karşılaştırması:
 

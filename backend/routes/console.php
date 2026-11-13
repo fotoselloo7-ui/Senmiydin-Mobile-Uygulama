@@ -97,9 +97,13 @@ Artisan::command('demo:refresh-locations', function (): int {
         $this->error('REFUSE: development-only command.');
         return 1;
     }
-    $ids = DB::table('users')->where('email', 'like', '%@senmiydin.local')
+    // Deterministic fixture rows (explicit city + coordinates) for the seeded demo accounts...
+    $restored = Database\Seeders\DemoDataSeeder::restoreLocations();
+    // ...and a fresh timestamp for any other local fixture account that already has a location row.
+    $seeded = collect(Database\Seeders\DemoDataSeeder::PEOPLE)->map(fn ($p) => Database\Seeders\DemoDataSeeder::email($p[0]));
+    $ids = DB::table('users')->where('email', 'like', '%@senmiydin.local')->whereNotIn('email', $seeded)
         ->where('account_status', 'active')->pluck('id');
     DB::table('user_locations')->whereIn('user_id', $ids)->update(['recorded_at' => now(), 'updated_at' => now()]);
-    $this->info('Existing development location timestamps refreshed; coordinates and accounts unchanged.');
+    $this->info("Development location fixtures refreshed ({$restored} seeded accounts restored with explicit city); no account was created or removed.");
     return 0;
-})->purpose('Refresh existing development location fixtures without seeding or replacing user data');
+})->purpose('Restore deterministic development location fixtures (explicit city) without seeding or replacing user data');

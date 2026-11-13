@@ -8,7 +8,11 @@ function Find-ReleaseTool([string]$Name, [string]$Fallback='') {
     throw "Required tool missing: $Name"
 }
 function Invoke-ReleaseNative([string]$Executable, [string[]]$Arguments) {
-    & $Executable @Arguments
+    # Windows PowerShell 5.1 turns ANY stderr line of a redirected native command (e.g. Composer's progress
+    # text) into a terminating error under 'Stop'. Only the real exit code decides success.
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try { & $Executable @Arguments } finally { $ErrorActionPreference = $previous }
     if ($LASTEXITCODE -ne 0) { throw "Command failed (exit $LASTEXITCODE): $([IO.Path]::GetFileName($Executable))" }
 }
 function Assert-ReleaseSigning {

@@ -37,7 +37,10 @@ class PushDelivery
             })->get();
         foreach ($devices as $device) {
             if (config('push.driver') === 'log') {
-                Log::info('Push notification', ['device_id' => $device->id, 'data' => $payload]);
+                // Development-only sink: production never writes notification identifiers to logs.
+                if (! app()->environment('production')) {
+                    Log::info('Push notification', ['device_id' => $device->id, 'data' => $payload]);
+                }
             } elseif (config('push.driver') === 'fcm') {
                 $this->deliver($device, $message, $payload);
             }

@@ -74,4 +74,71 @@ void main() {
     expect(find.text('Güncel Ad'), findsOneWidget);
     expect(find.text('Önceki Ad'), findsNothing);
   });
+
+  testWidgets('A failed public profile load shows a friendly retry card and recovers without restart', (
+    tester,
+  ) async {
+    FlutterSecureStorage.setMockInitialValues({});
+    Map<String, Object?> profile() => {
+      'id': 1,
+      'name': 'Pixel',
+      'username': 'pixel',
+      'city': {'id': 1, 'name': 'Alanya'},
+      'avatar': null,
+      'bio': '',
+      'occupation_school': '',
+      'connections': [],
+      'interests': [],
+      'onboarding_step': 3,
+      'nearby_visible': false,
+      'encounter_suggestions': false,
+      'city_discovery': true,
+      'location_history_enabled': false,
+    };
+    var online = false;
+    final client = ApiClient(
+      httpClient: MockClient((request) async {
+        final path = request.url.path;
+        if (path.endsWith('/auth/login')) {
+          return http.Response(
+            jsonEncode({'success': true, 'data': {'token': 't', 'user': profile()}}),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+        if (path.endsWith('/users/pixel') && !online) {
+          return http.Response('<html>Laravel stack trace /var/www</html>', 500);
+        }
+        return http.Response(
+          jsonEncode({'success': true, 'data': path.endsWith('/users/pixel') ? profile() : {'items': [], 'next_page': null}}),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      }),
+    );
+    final store = AppStore(api: client);
+    addTearDown(() async {
+      await tester.pumpWidget(const SizedBox.shrink());
+      store.dispose();
+    });
+    await store.signIn('login', {'identifier': 'pixel', 'password': 'test-password'});
+    await tester.pumpWidget(
+      StoreScope(
+        store: store,
+        child: MaterialApp(
+          home: Scaffold(body: ProfileContent(personId: store.me.id)),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Profil yüklenemedi'), findsOneWidget);
+    expect(find.text('Tekrar Dene'), findsOneWidget);
+    expect(find.textContaining('Laravel'), findsNothing);
+    expect(find.textContaining('500'), findsNothing);
+    online = true;
+    await tester.tap(find.text('Tekrar Dene'));
+    await tester.pumpAndSettle();
+    expect(find.text('Profil yüklenemedi'), findsNothing);
+    expect(find.text('Pixel'), findsWidgets);
+  });
 }

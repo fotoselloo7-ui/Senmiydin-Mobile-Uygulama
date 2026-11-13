@@ -1376,7 +1376,7 @@ class _InterestsPageState extends State<InterestsPage>
                   ),
                   const SizedBox(height: Space.sm),
                   const Text(
-                    'İlgi alanların profilinde görünsün ve ortak noktalarımız bizi buluştursun.',
+                    'İlgi alanların sana uygun paylaşımları bulmak için kullanılır; profilinde herkese gösterilmez.',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: AppColors.muted),
                   ),

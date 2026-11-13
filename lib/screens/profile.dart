@@ -210,11 +210,17 @@ class _ProfileContentState extends State<ProfileContent> {
       builder: (context, snapshot) {
         final error = snapshot.error;
         if (error is ApiFailure) {
-          return Center(
-            child: TextButton(
-              onPressed: () => setState(() => profileKey = null),
-              child: Text('${error.detail} Tekrar dene.'),
-            ),
+          return ListView(
+            padding: Space.page,
+            children: [
+              InlineState(
+                icon: Icons.wifi_off_outlined,
+                title: 'Profil yüklenemedi',
+                description: error.detail,
+                actionLabel: 'Tekrar Dene',
+                onAction: () => setState(() => profileKey = null),
+              ),
+            ],
           );
         }
         return profileBody(
