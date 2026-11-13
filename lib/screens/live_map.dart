@@ -1,9 +1,9 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../core/navigation.dart';
 import '../core/theme.dart';
@@ -13,6 +13,7 @@ import '../data/location_api.dart';
 import '../data/map_notes_api.dart';
 import '../widgets/common.dart';
 import '../widgets/location_ui.dart';
+import '../widgets/map_attribution.dart';
 import '../widgets/map_note_widgets.dart';
 
 enum _MapMode { people, posts, notes }
@@ -28,14 +29,6 @@ class _LiveMapContentState extends State<LiveMapContent> {
     'MAP_TILE_URL',
     defaultValue: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
   );
-  static const attribution = String.fromEnvironment(
-    'MAP_ATTRIBUTION',
-    defaultValue: 'OpenStreetMap contributors',
-  );
-  static const attributionUrl = String.fromEnvironment(
-    'MAP_ATTRIBUTION_URL',
-    defaultValue: 'https://www.openstreetmap.org/copyright',
-  );
 
   final mapController = MapController();
   _MapMode mode = _MapMode.posts;
@@ -43,13 +36,23 @@ class _LiveMapContentState extends State<LiveMapContent> {
   bool get posts => mode == _MapMode.posts;
   int tileRevision = 0;
   Object? query, noteQuery;
-  Future<MapNoteMarkers>? noteRequest;
   Future<LocationResults<MapPostPoint>>? request;
+
+  // Map notes live in plain state (not in a FutureBuilder) so the FlutterMap is never unmounted while the markers
+  // refresh: the camera must survive every reload. Responses are matched by token, newest request wins.
+  List<MapNoteMarker> noteMarkers = const [];
+  bool noteLoading = false,
+      noteLocationRequired = false,
+      needsInitialFocus = true;
+  String? noteError, highlightGroup;
+  int noteToken = 0;
+  Timer? highlightTimer;
   Timer? debounce;
 
   @override
   void dispose() {
     debounce?.cancel();
+    highlightTimer?.cancel();
     mapController.dispose();
     super.dispose();
   }
@@ -68,15 +71,81 @@ class _LiveMapContentState extends State<LiveMapContent> {
 
   void requestNotes(AppStore store, Object key) {
     noteQuery = key;
+    final token = ++noteToken;
+    noteLoading = true;
     debounce?.cancel();
-    debounce = Timer(const Duration(milliseconds: 250), () {
-      if (mounted) {
+    debounce = Timer(
+      const Duration(milliseconds: 250),
+      () => loadNotes(store, token),
+    );
+  }
+
+  Future<void> loadNotes(AppStore store, int token) async {
+    if (!mounted || token != noteToken) return;
+    try {
+      final data = await store.loadMapNotes();
+      // A newer request (or a fresh create) owns the screen.
+      if (!mounted || token != noteToken) return;
+      setState(() {
+        noteMarkers = data.items;
+        noteLocationRequired = data.locationRequired;
+        noteError = null;
+        noteLoading = false;
+      });
+    } on ApiFailure catch (error) {
+      if (mounted && token == noteToken) {
         setState(() {
-          // The error is handed to the FutureBuilder; ignore() keeps a fast failure from being reported as unhandled.
-          noteRequest = store.loadMapNotes()..ignore();
+          noteError = error.detail;
+          noteLoading = false;
         });
       }
+    } catch (_) {
+      if (mounted && token == noteToken) {
+        setState(() {
+          noteError = 'Bir sorun oluştu. Tekrar dene.';
+          noteLoading = false;
+        });
+      }
+    }
+  }
+
+  /// "Buraya Not Bırak": the composer returns the server's authoritative note, never its own guess.
+  Future<void> leaveNote() async {
+    final camera = mapController.camera;
+    final created = await openPage<MapNoteItem>(context, '/map-note-compose', (
+      camera.center,
+      camera.zoom,
+    ));
+    if (!mounted || created == null) return;
+    final store = StoreScope.of(context);
+    final target = LatLng(created.latitude, created.longitude);
+    noteToken++; // anything still in flight was requested before this note existed
+    final index = noteMarkers.indexWhere((m) => m.group == created.group);
+    final existing = index < 0 ? null : noteMarkers[index];
+    final marker = MapNoteMarker(
+      group: created.group,
+      latitude: created.latitude,
+      longitude: created.longitude,
+      count: (existing?.count ?? 0) + 1,
+      newestAt: created.createdAt,
+    );
+    highlightTimer?.cancel();
+    setState(() {
+      mode = _MapMode.notes;
+      noteLocationRequired = false;
+      noteError = null;
+      noteMarkers = [
+        marker,
+        for (final (i, m) in noteMarkers.indexed)
+          if (i != index) m,
+      ];
+      highlightGroup = created.group;
     });
+    mapController.move(target, math.max(mapController.camera.zoom, 14));
+    highlightTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => highlightGroup = null);
+    });
+    store.mapNotesChanged(); // reload the real markers; the optimistic one above is replaced, not duplicated
   }
 
   @override
@@ -156,46 +225,54 @@ class _LiveMapContentState extends State<LiveMapContent> {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              TextButton.icon(
-                onPressed: () => setState(() => mode = _MapMode.people),
-                icon: const Icon(Icons.people_outline),
-                label: Text(
-                  'İnsanlar',
-                  style: TextStyle(
-                    color: mode == _MapMode.people ? AppColors.blue : AppColors.muted,
-                  ),
-                ),
-              ),
-              TextButton.icon(
-                onPressed: () => setState(() => mode = _MapMode.posts),
-                icon: const Icon(Icons.chat_bubble_outline),
-                label: Text(
-                  'Paylaşımlar',
-                  style: TextStyle(
-                    color: posts ? AppColors.blue : AppColors.muted,
-                  ),
-                ),
-              ),
-              if (store.mapNotes != null)
+          // The three tabs shrink a little on very narrow screens instead of being cut off.
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Row(
+              children: [
                 TextButton.icon(
-                  key: const Key('map-notes-tab'),
-                  onPressed: () => setState(() {
-                    mode = _MapMode.notes;
-                    noteQuery = null;
-                  }),
-                  icon: const Icon(Icons.mail_outline_rounded),
+                  onPressed: () => setState(() => mode = _MapMode.people),
+                  icon: const Icon(Icons.people_outline),
                   label: Text(
-                    'Notlar',
+                    'İnsanlar',
                     style: TextStyle(
-                      color: mode == _MapMode.notes
-                          ? AppColors.brandPurple
+                      color: mode == _MapMode.people
+                          ? AppColors.blue
                           : AppColors.muted,
                     ),
                   ),
                 ),
-            ],
+                TextButton.icon(
+                  onPressed: () => setState(() => mode = _MapMode.posts),
+                  icon: const Icon(Icons.chat_bubble_outline),
+                  label: Text(
+                    'Paylaşımlar',
+                    style: TextStyle(
+                      color: posts ? AppColors.blue : AppColors.muted,
+                    ),
+                  ),
+                ),
+                if (store.mapNotes != null)
+                  TextButton.icon(
+                    key: const Key('map-notes-tab'),
+                    onPressed: () => setState(() {
+                      mode = _MapMode.notes;
+                      noteQuery = null;
+                      needsInitialFocus = true;
+                    }),
+                    icon: const Icon(Icons.mail_outline_rounded),
+                    label: Text(
+                      'Notlar',
+                      style: TextStyle(
+                        color: mode == _MapMode.notes
+                            ? AppColors.brandPurple
+                            : AppColors.muted,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
         Expanded(
@@ -206,46 +283,48 @@ class _LiveMapContentState extends State<LiveMapContent> {
               child: mode == _MapMode.notes
                   ? notesView(store)
                   : FutureBuilder(
-                future: request,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting ||
-                      request == null) {
-                    return const Padding(
-                      padding: Space.page,
-                      child: LoadingState(
-                        key: Key('map-loading'),
-                        label: 'Harita yükleniyor',
-                      ),
-                    );
-                  }
-                  final error = snapshot.error;
-                  if (error != null) {
-                    return EmptyState(
-                      error is ApiFailure
-                          ? error.detail
-                          : 'Harita yüklenemedi.',
-                      'Tekrar deneyebilirsin.',
-                      action: SecondaryButton(
-                        'Tekrar Dene',
-                        onPressed: () => setState(() => query = null),
-                      ),
-                    );
-                  }
-                  final data =
-                      snapshot.data ?? const LocationResults<MapPostPoint>([]);
-                  if (data.permissionRequired) {
-                    return EmptyState(
-                      'Mesafe filtresi için cihaz konumu gerekli.',
-                      store.location!.state.message,
-                      action: SecondaryButton(
-                        'Konumu Kontrol Et',
-                        onPressed: store.location!.activateFromUi,
-                      ),
-                    );
-                  }
-                  return map(store, data.items);
-                },
-              ),
+                      future: request,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                                ConnectionState.waiting ||
+                            request == null) {
+                          return const Padding(
+                            padding: Space.page,
+                            child: LoadingState(
+                              key: Key('map-loading'),
+                              label: 'Harita yükleniyor',
+                            ),
+                          );
+                        }
+                        final error = snapshot.error;
+                        if (error != null) {
+                          return EmptyState(
+                            error is ApiFailure
+                                ? error.detail
+                                : 'Harita yüklenemedi.',
+                            'Tekrar deneyebilirsin.',
+                            action: SecondaryButton(
+                              'Tekrar Dene',
+                              onPressed: () => setState(() => query = null),
+                            ),
+                          );
+                        }
+                        final data =
+                            snapshot.data ??
+                            const LocationResults<MapPostPoint>([]);
+                        if (data.permissionRequired) {
+                          return EmptyState(
+                            'Mesafe filtresi için cihaz konumu gerekli.',
+                            store.location!.state.message,
+                            action: SecondaryButton(
+                              'Konumu Kontrol Et',
+                              onPressed: store.location!.activateFromUi,
+                            ),
+                          );
+                        }
+                        return map(store, data.items);
+                      },
+                    ),
             ),
           ),
         ),
@@ -253,48 +332,20 @@ class _LiveMapContentState extends State<LiveMapContent> {
     );
   }
 
-  Widget notesView(AppStore store) => FutureBuilder<MapNoteMarkers>(
-    future: noteRequest,
-    builder: (context, snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting ||
-          noteRequest == null) {
-        return const Padding(
-          padding: Space.page,
-          child: LoadingState(
-            key: Key('map-notes-loading'),
-            label: 'Notlar yükleniyor',
-          ),
-        );
-      }
-      final error = snapshot.error;
-      if (error != null) {
-        return Padding(
-          padding: Space.page,
-          child: InlineState(
-            icon: Icons.wifi_off_outlined,
-            title: 'Notlar yüklenemedi',
-            description: error is ApiFailure
-                ? error.detail
-                : 'Bir sorun oluştu. Tekrar dene.',
-            actionLabel: 'Tekrar Dene',
-            onAction: () => setState(() => noteQuery = null),
-          ),
-        );
-      }
-      final data = snapshot.data ?? const MapNoteMarkers([]);
-      if (data.locationRequired) {
-        return EmptyState(
-          'Mesafe filtresi için cihaz konumu gerekli.',
-          store.location!.state.message,
-          action: SecondaryButton(
-            'Konumu Kontrol Et',
-            onPressed: store.location!.activateFromUi,
-          ),
-        );
-      }
-      return map(store, const [], notes: data.items);
-    },
-  );
+  Widget notesView(AppStore store) {
+    if (noteLocationRequired) {
+      return EmptyState(
+        'Mesafe filtresi için cihaz konumu gerekli.',
+        store.location!.state.message,
+        action: SecondaryButton(
+          'Konumu Kontrol Et',
+          onPressed: store.location!.activateFromUi,
+        ),
+      );
+    }
+    // The map stays mounted for loading, errors and refreshes, so the camera (and the new note) never disappear.
+    return map(store, const [], notes: noteMarkers);
+  }
 
   void openNotePoint(MapNoteMarker marker) {
     openPage(context, '/map-notes', (marker.group, marker.count));
@@ -323,6 +374,16 @@ class _LiveMapContentState extends State<LiveMapContent> {
             : points.isEmpty
             ? LatLng(notes.first.latitude, notes.first.longitude)
             : LatLng(points.first.latitude, points.first.longitude));
+    if (mode == _MapMode.notes && needsInitialFocus && !noteLoading) {
+      // First load of this view: without a device position the map would sit on the country view (z5).
+      needsInitialFocus = false;
+      if (own == null && notes.isNotEmpty) {
+        final first = LatLng(notes.first.latitude, notes.first.longitude);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) mapController.move(first, 12);
+        });
+      }
+    }
     final groups = <(double, double), List<MapPostPoint>>{};
     for (final point in points) {
       (groups[(point.latitude, point.longitude)] ??= []).add(point);
@@ -334,7 +395,7 @@ class _LiveMapContentState extends State<LiveMapContent> {
           key: ValueKey((
             store.city,
             store.radiusMeters,
-            own == null && empty,
+            mode == _MapMode.notes ? false : own == null && empty,
           )),
           options: MapOptions(
             initialCenter: center,
@@ -401,6 +462,7 @@ class _LiveMapContentState extends State<LiveMapContent> {
                       child: MapNotePin(
                         key: ValueKey('map-note-${note.group}'),
                         count: note.count,
+                        highlighted: note.group == highlightGroup,
                         onPressed: () => openNotePoint(note),
                       ),
                     ),
@@ -419,28 +481,15 @@ class _LiveMapContentState extends State<LiveMapContent> {
                   ),
               ],
             ),
-            Align(
-              alignment: Alignment.bottomRight,
-              child: TextButton(
-                style: TextButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: AppColors.navy,
-                  textStyle: AppTypography.metadata,
-                ),
-                onPressed: () => launchUrl(
-                  Uri.parse(attributionUrl),
-                  mode: LaunchMode.externalApplication,
-                ),
-                child: Text('© $attribution', textAlign: TextAlign.right),
-              ),
-            ),
+            const MapAttribution(),
           ],
         ),
         if (tileUnavailable)
           Positioned(
             left: Space.md,
             right: 76,
-            bottom: 54,
+            // Above the note button in notes mode, beside the location button otherwise.
+            bottom: mode == _MapMode.notes ? 84 : Space.md,
             child: Material(
               color: Colors.white,
               borderRadius: AppShape.rounded,
@@ -469,7 +518,7 @@ class _LiveMapContentState extends State<LiveMapContent> {
           ),
         Positioned(
           right: Space.md,
-          bottom: 44,
+          bottom: Space.md,
           child: Material(
             color: Colors.white,
             shape: const CircleBorder(),
@@ -488,7 +537,7 @@ class _LiveMapContentState extends State<LiveMapContent> {
         ),
         if (mode == _MapMode.people)
           Positioned(
-            top: 8,
+            top: MapAttribution.clearance,
             left: 8,
             right: 8,
             child: NearbyResults(
@@ -535,15 +584,43 @@ class _LiveMapContentState extends State<LiveMapContent> {
           )
         else if (mode == _MapMode.posts && points.isEmpty)
           const Positioned(
-            top: 8,
+            top: MapAttribution.clearance,
             left: 8,
             right: 8,
             child: InfoNote('Bu alanda konum eklenmiş paylaşım bulunamadı.'),
           )
         else if (mode == _MapMode.notes) ...[
-          if (notes.isEmpty)
+          if (noteError != null)
+            Positioned(
+              top: MapAttribution.clearance,
+              left: 8,
+              right: 8,
+              child: Material(
+                borderRadius: AppShape.rounded,
+                child: InlineState(
+                  icon: Icons.wifi_off_outlined,
+                  title: 'Notlar yüklenemedi',
+                  description: noteError,
+                  actionLabel: 'Tekrar Dene',
+                  onAction: () => setState(() => noteQuery = null),
+                ),
+              ),
+            )
+          else if (noteLoading && notes.isEmpty)
             const Positioned(
-              top: 8,
+              top: 0,
+              left: 0,
+              right: 0,
+              child: LinearProgressIndicator(
+                key: Key('map-notes-loading'),
+                minHeight: 3,
+                color: AppColors.brandPurple,
+                backgroundColor: AppColors.surfaceLilac,
+              ),
+            )
+          else if (notes.isEmpty)
+            const Positioned(
+              top: MapAttribution.clearance,
               left: 8,
               right: 8,
               child: InfoNote(
@@ -553,7 +630,7 @@ class _LiveMapContentState extends State<LiveMapContent> {
           Positioned(
             left: Space.md,
             right: 76,
-            bottom: 44,
+            bottom: Space.md,
             child: FilledButton.icon(
               key: const Key('leave-map-note'),
               style: FilledButton.styleFrom(
@@ -561,15 +638,12 @@ class _LiveMapContentState extends State<LiveMapContent> {
                 foregroundColor: Colors.white,
               ),
               icon: const Icon(Icons.mail_outline_rounded, size: 19),
-              label: const Text('Buraya Not Bırak'),
-              onPressed: () {
-                final camera = mapController.camera;
-                openPage(
-                  context,
-                  '/map-note-compose',
-                  (camera.center, camera.zoom),
-                );
-              },
+              label: const Text(
+                'Buraya Not Bırak',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              onPressed: leaveNote,
             ),
           ),
         ],

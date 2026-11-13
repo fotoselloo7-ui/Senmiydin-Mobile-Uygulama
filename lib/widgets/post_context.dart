@@ -10,6 +10,7 @@ import '../data/post_context.dart';
 import '../data/social_api.dart';
 import '../widgets/account_action.dart';
 import 'common.dart';
+import 'map_attribution.dart';
 
 Future<DateTime?> selectContextTime(
   BuildContext context, {
@@ -315,19 +316,7 @@ class _ApproximatePlacePageState extends State<ApproximatePlacePage> {
                       ),
                     ],
                   ),
-                const Align(
-                  alignment: Alignment.bottomRight,
-                  child: ColoredBox(
-                    color: Colors.white,
-                    child: Padding(
-                      padding: EdgeInsets.all(4),
-                      child: Text(
-                        '© OpenStreetMap contributors',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ),
-                  ),
-                ),
+                const MapAttribution(),
               ],
             ),
           ),

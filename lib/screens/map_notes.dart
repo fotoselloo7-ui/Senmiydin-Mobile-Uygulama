@@ -14,6 +14,7 @@ import '../data/map_notes_api.dart';
 import '../data/social_api.dart';
 import '../widgets/account_action.dart';
 import '../widgets/common.dart';
+import '../widgets/map_attribution.dart';
 import '../widgets/map_note_widgets.dart';
 import '../widgets/social_page.dart';
 
@@ -506,7 +507,9 @@ class _MapNoteComposePageState extends State<MapNoteComposePage>
       error = null;
     });
     try {
-      await store.mapNotes!.create(
+      // The server snaps the point to its own grid and answers with the final coordinate; that answer, not
+      // the local selection, is what the map shows next.
+      final created = await store.mapNotes!.create(
         body: body,
         anonymous: anonymous,
         cityId: await store.cityId(store.city),
@@ -514,9 +517,8 @@ class _MapNoteComposePageState extends State<MapNoteComposePage>
         longitude: picked.longitude,
         requestId: requestId,
       );
-      store.mapNotesChanged();
       if (mounted) {
-        Navigator.pop(context, true);
+        Navigator.pop(context, created);
         toast(context, 'Notun haritaya bırakıldı.');
       }
     } on ApiFailure catch (failure) {
@@ -592,7 +594,7 @@ class _MapNoteComposePageState extends State<MapNoteComposePage>
             ),
             const SectionHeader('Yaklaşık yer', icon: Icons.location_on_outlined),
             const Text(
-              'Haritayı kaydırarak işaretin altına notun yerini getir. Seçtiğin nokta sunucuda yaklaşık bir bölgeye yuvarlanır; kesin adres paylaşılmaz.',
+              'Haritayı kaydırarak mor noktayı notun yerine getir. Not, seçtiğin noktaya yakın yaklaşık bir bölgeye bırakılır; kesin adres paylaşılmaz.',
               style: AppTypography.metadata,
             ),
             const SizedBox(height: Space.sm),
@@ -611,7 +613,9 @@ class _MapNoteComposePageState extends State<MapNoteComposePage>
                         minZoom: 4,
                         maxZoom: 17,
                         backgroundColor: AppColors.pale,
-                        onPositionChanged: (camera, _) => picked = camera.center,
+                        onPositionChanged: (camera, _) {
+                          picked = camera.center;
+                        },
                       ),
                       children: [
                         TileLayer(
@@ -619,17 +623,42 @@ class _MapNoteComposePageState extends State<MapNoteComposePage>
                           userAgentPackageName: 'com.senmiydin.app',
                           panBuffer: 0,
                         ),
+                        const MapAttribution(),
                       ],
                     ),
-                    const IgnorePointer(
-                      child: Padding(
-                        padding: EdgeInsets.only(bottom: 24),
-                        child: Icon(
-                          Icons.mail_outline_rounded,
-                          size: 38,
-                          color: AppColors.brandPurple,
-                          semanticLabel: 'Seçilen yaklaşık yer',
-                        ),
+                    // The saved coordinate is exactly the map centre, so the target dot sits exactly there; the
+                    // envelope is lifted above it and never moves the selection.
+                    IgnorePointer(
+                      child: Stack(
+                        alignment: Alignment.center,
+                        clipBehavior: Clip.none,
+                        children: [
+                          Transform.translate(
+                            offset: const Offset(0, -26),
+                            child: const Icon(
+                              Icons.mail_outline_rounded,
+                              size: 34,
+                              color: AppColors.brandPurple,
+                              semanticLabel: 'Seçilen yaklaşık yer',
+                            ),
+                          ),
+                          Container(
+                            key: const Key('map-note-target'),
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: AppColors.brandPurple,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2.5),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.brandPurple.withValues(alpha: .35),
+                                  blurRadius: 6,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],

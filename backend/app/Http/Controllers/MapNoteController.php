@@ -147,7 +147,7 @@ class MapNoteController extends Controller
                 }
             }
             app(ContentGuard::class)->check($viewer->id, $body, 'map_notes');
-            $grid = config('location.post_grid');
+            $grid = (float) config('map_notes.location_grid');
             $city = DB::table('cities')->where('id', $data['city_id'])->value('name');
             $note = MapNote::create([
                 'user_id' => $viewer->id, 'city_id' => $data['city_id'], 'body' => $body,

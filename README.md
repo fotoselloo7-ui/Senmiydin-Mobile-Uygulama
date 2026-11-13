@@ -134,7 +134,7 @@ Demo girişinde `demo@senmiydin.local` veya `demo` ile `Demo1234!` kullan. Yakı
 
 Konum iznini kayıt sonundaki Cihaz Konumu satırından, Ana Sayfa'daki yakınlık kartından veya gizlilik ayarlarından verebilirsin. Geçtiğim Yerler açıkken Android, uygulama görünürken konum servisini başlatır ve uygulama arka plana geçtiğinde konum kaydı sürer. Bu kayıt, Android’in görünür konum servisine bağlıdır. iOS yapılandırması uygulama açıkken konum kullanımı içindir.
 
-Harita için `MAP_TILE_URL`, `MAP_ATTRIBUTION` ve `MAP_ATTRIBUTION_URL` Flutter derleme ayarları kullanılabilir. Varsayılan harita OpenStreetMap kullanır. [Karo kullanım kuralları](https://operations.osmfoundation.org/policies/tiles/)
+Harita için `MAP_TILE_URL`, `MAP_ATTRIBUTION` ve `MAP_ATTRIBUTION_URL` Flutter derleme ayarları kullanılabilir. Varsayılan harita OpenStreetMap kullanır; görünür atıf haritanın sol üstünde `© OpenStreetMap` olarak gösterilir ve telif sayfasına bağlanır. [Karo kullanım kuralları](https://operations.osmfoundation.org/policies/tiles/)
 
 ## Mesajlaşma ve güvenlik doğrulaması
 

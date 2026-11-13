@@ -4,6 +4,15 @@ import 'social_api.dart';
 
 /// One marker = all active notes at one server-side approximate grid point.
 class MapNoteMarker {
+  const MapNoteMarker({
+    required this.group,
+    required this.latitude,
+    required this.longitude,
+    required this.count,
+    required this.newestAt,
+    this.meters,
+  });
+
   MapNoteMarker.fromJson(Map<String, dynamic> json)
     : group = json['group'] as String,
       latitude = (json['latitude'] as num).toDouble(),

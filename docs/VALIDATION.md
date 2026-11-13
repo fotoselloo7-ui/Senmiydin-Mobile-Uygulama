@@ -1,8 +1,36 @@
 # Doğrulama
 
-> **Güncel kaynak bu dosyanın ilk bölümüdür (14 Kasım 2026).** Altındaki bölümler önceki turların tarihsel kayıtlarıdır; oradaki sayılar güncel durum değildir.
+> **Güncel kaynak bu dosyanın ilk bölümüdür (14 Kasım 2026, yerleştirme düzeltmesi).** Altındaki bölümler önceki turların tarihsel kayıtlarıdır; oradaki sayılar güncel durum değildir.
 
-## Harita Notları / Dijital Mektuplar — 14 Kasım 2026 (güncel)
+## Harita notu yerleştirme düzeltmesi + arayüz E2E + harita düzeni — 14 Kasım 2026 (en güncel)
+
+Başlangıç `a9320b5`: Laravel 139 test / 1919 assertion, Flutter 112, analyze temiz, Pixel 9/9, location-time 3/3.
+
+| Kontrol | Final |
+|---|---|
+| Laravel `php artisan test` | **142 test / 2098 assertion geçti** (+3 yerleştirme testi) |
+| `flutter analyze` | **No issues found** |
+| Flutter `flutter test` | **125 test geçti** (+2 yerleştirme / kamera, +11 harita düzeni ve atıf) |
+| Pixel 6a entegrasyon | **9/9 geçti**, `clean=true` |
+| Pixel 6a location-time | **3/3 geçti** |
+
+**Kök neden.** Not konumu `location.post_grid` (0,005° ≈ 555 m K-G, ≈ 445 m D-B) ızgarasına yuvarlanıyordu: seçilen nokta 357 m'ye kadar kayabiliyordu. Gerçek cihaz örneği: gönderilen `36.43840723535241 / 32.206634040900184` → saklanan ve dönen `36.44 / 32.205` (≈ 229 m). Ana harita kamerası eski yerinde kaldığı için işaret görünür alanın kenarına düşüyordu ve görsel seçici gerçek merkezden kaymıştı. Ayrıca yükleme sırasında harita yeniden kurulabiliyor ve geç gelen eski yanıt yeni işareti silebiliyordu (bu kısım gerçek cihazda yeniden üretilemedi; kod yolu analiz edilip düzeltildi, widget testiyle kapsandı).
+
+**Düzeltme.** Notlara özel ızgara `config/map_notes.php` → `location_grid` = **0,0005°** (≈ 55 m K-G, ≈ 45 m D-B, seçime en fazla ≈ 36 m); normal paylaşımlar `post_grid` ile aynen kalır. Eski kaba ızgara notları geçerli nokta olarak çalışır; aynı ızgara noktası = tek işaret + sayaç. Haversine testi: seçilen nokta ile saklanan nokta arasındaki fark ≤ 37 m, ham koordinat yanıtta ve veritabanında yok. Konum seçicide merkez nokta kaydedilen koordinatın kendisidir (zarf noktanın üstünde). Oluşturma yanıtı esastır: compose sayfası oluşturulan `MapNoteItem`'ı `Navigator.pop` ile döndürür, ana harita notlar modunda kalır, kamerayı sunucu koordinatına taşır (zoom ≥ 14), `mapNotesChanged()` çağrılır, yeni işaret ≈ 2 sn halelenir. Yükleme belirteci (token) eski yanıtların yeni durumu ezmesini önler.
+
+**Gerçek Pixel 6a ölçümü.** Gönderilen (36.43840723535241, 32.206634040900184) eski ızgarada 36.44/32.205'e gidiyordu. Düzeltmeden sonra seçilen nokta DB'de ve yanıtta (36.4465, 32.1695) ince ızgarada saklandı; uygulama anında yeni işarete, zoom ≈ 14, halo ve "Notun haritaya bırakıldı." mesajıyla döndü; işarete dokununca "Bu noktaya bırakılan notlar" listesinde yeni not göründü. Yanlış şehirdeki seçim kullanıcı dilinde reddedildi. `docs/screenshots/ui-audit/map-note-location-selected.png`.
+
+**Arayüzden arayüze yanıt E2E (API ile yanıt oluşturulmadı).** Demo UI'dan açık not bıraktı → çıkış → Elif UI'dan giriş → Harita → Notlar → işaret → nota dokun → "Anonim yanıt" seçip yanıt yazdı ve gönderdi → çıkış → Demo UI'dan giriş → Bildirimler → "Notuna bir cevap geldi." → dokununca not detayı, yanıt "Anonim" olarak görünüyor (ad / kullanıcı adı yok). `map-note-replies.png`. adb `input text` Türkçe karakter yazamadığı için metinler ASCII; bu bir uygulama hatası değildir.
+
+**Admin tarayıcı E2E** (gerçek panel, tek kullanımlık notlar): liste açık ve anonim notu gösterir (anonimde gerçek sahip yönetici görünümünde: Elif B. @elifdemo · "Kullanıcılara ANONİM görünür"), detayda yanıtlar ve yazarları, "Notu haritadan kaldır" → durum Kaldırıldı + moderasyon geçmişi, "Geri aç" → Aktif, yanıt kaldırma, `/admin/audit` içinde "Harita notu · kaldırıldı" ve "geri açıldı" kayıtları. Test verisi sonunda temizlendi. Admin tasarımı değiştirilmedi.
+
+**Harita düzeni (yalnız layout).** "Buraya Not Bırak", sağ alttaki konum butonu ve `© OpenStreetMap contributors` kutusu birbirine çok yakındı. Ortak `MapAttribution` bileşeni: haritanın sol üstünde küçük, yarı saydam beyaz hap (10 px, lacivert/muted), görünür metin `© OpenStreetMap`, telif URL'sine tıklanabilir (`MAP_ATTRIBUTION_URL`), erişilebilirlik etiketi tam sağlayıcı adı. Uygulamadaki tüm OSM haritaları (ana harita – İnsanlar / Paylaşımlar / Notlar, yaklaşık yer seçimi, not yerleştirme) aynı bileşeni kullanır; not yerleştirme haritasında atıf daha önce hiç yoktu, eklendi. Alt alan artık CTA (sol) ve konum butonu (sağ) tek satırda, aralarında 12 px boşlukla. Üstteki katmanlar (boş durum, hata, İnsanlar şeridi) atfı örtmemesi için 30 px aşağıdan başlar. 320 dp'de üç sekme (İnsanlar / Paylaşımlar / Notlar) kesilmek yerine hafifçe küçülür (`FittedBox`, daha önce taşıyordu). Widget testleri 320 / 360 / 390 / 430 px (dolu ve boş), 320 px + 1,5× yazı, atıf tıklanabilirliği ve not yerleştirme haritası. Pixel 6a: `map-attribution-layout-411dp.png`, `map-attribution-layout-320dp.png` (`wm size 840x1866`, sonra sıfırlandı).
+
+Sınırlar: 7 günlük süre gerçek 7 gün beklenerek değil test saatiyle doğrulandı. Harita yeniden kurulma yarışı gerçek cihazda yeniden üretilemedi; kod + widget testi ile kapsandı.
+
+---
+
+## Harita Notları / Dijital Mektuplar — 14 Kasım 2026 (önceki tur)
 
 Başlangıç `dfa95a1`: Laravel 117 test / 1545 assertion, Flutter 99, analyze temiz, Pixel 9/9, location-time 3/3 (doğrulandı).
 

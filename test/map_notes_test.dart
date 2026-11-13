@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -520,5 +523,274 @@ void main() {
     await tester.pumpAndSettle();
     expect(routed, ['/map-note:42']);
     expect(inbox(available: true).subtitle, 'Birisi bulunduğun bölgede dijital bir not bıraktı.');
+  });
+
+  group('Placement and camera after leaving a note', () {
+    // Server answer: the coordinate the backend snapped the selection to (point C).
+    const snappedLat = 36.4385, snappedLng = 32.2065, snappedGroup = '36.43850_32.20650';
+
+    Map<String, dynamic> created() => {
+      ...noteJson(id: 9, body: 'Konum dogrulama notu', mine: true),
+      'group': snappedGroup,
+      'latitude': snappedLat,
+      'longitude': snappedLng,
+    };
+
+    Map<String, dynamic> markers(List<Map<String, dynamic>> items) => {'items': items, 'location_required': false};
+
+    Map<String, dynamic> snappedMarker() => {
+      'group': snappedGroup, 'latitude': snappedLat, 'longitude': snappedLng,
+      'count': 1, 'newest_at': '2026-11-14T11:15:00Z', 'distance_meters': null,
+    };
+
+    Widget app(AppStore store) => StoreScope(
+      store: store,
+      child: MaterialApp(
+        onGenerateRoute: (settings) => MaterialPageRoute<dynamic>(
+          settings: settings,
+          builder: (_) => switch (settings.name) {
+            '/map-note-compose' => switch (settings.arguments) {
+              (LatLng center, double zoom) => MapNoteComposePage(center: center, zoom: zoom),
+              _ => const MapNoteComposePage(),
+            },
+            _ => const Scaffold(body: LiveMapContent()),
+          },
+        ),
+        initialRoute: '/',
+      ),
+    );
+
+    MapCamera camera(WidgetTester tester) => MapCamera.of(tester.element(find.byType(MarkerLayer)));
+
+    testWidgets('The map goes to the SERVER snapped point C, not to its old camera A or the composer selection B', (tester) async {
+      tester.view.physicalSize = const Size(800, 2200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      Map<String, dynamic>? posted;
+      var serverMarkers = <Map<String, dynamic>>[];
+      final store = await connected((request) async {
+        final path = request.url.path;
+        if (path.endsWith('/auth/login')) return ok({'token': 't', 'user': account()});
+        if (path.endsWith('/cities')) return ok([{'id': 1, 'name': 'Alanya'}]);
+        if (path.endsWith('/map/notes') && request.method == 'GET') return ok(markers(serverMarkers));
+        if (path.endsWith('/map-notes') && request.method == 'POST') {
+          posted = jsonDecode(request.body) as Map<String, dynamic>;
+          serverMarkers = [snappedMarker()];
+          return http.Response(
+            jsonEncode({'success': true, 'data': created()}),
+            201,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+        return ok({'items': [], 'location_required': false});
+      });
+      addTearDown(store.dispose);
+      await tester.pumpWidget(app(store));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('map-notes-tab')));
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+      final cameraA = camera(tester).center;
+
+      await tester.tap(find.byKey(const Key('leave-map-note')));
+      await tester.pumpAndSettle();
+      // The visual target is exactly the map centre, i.e. exactly the coordinate that is saved.
+      expect(tester.getCenter(find.byKey(const Key('map-note-target'))), tester.getCenter(find.byType(FlutterMap)));
+      await tester.drag(find.byType(FlutterMap), const Offset(-180, 120));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.enterText(find.byKey(const Key('map-note-field')), 'Konum dogrulama notu');
+      await tester.tap(find.text('Notu Bırak'));
+      await tester.pumpAndSettle();
+
+      final selected = LatLng(posted!['latitude'] as double, posted!['longitude'] as double);
+      expect(selected, isNot(cameraA), reason: 'The composer map was panned away from A.');
+      expect((selected.latitude - snappedLat).abs(), greaterThan(0.5), reason: 'B is nowhere near the snapped answer C in this scenario.');
+
+      final now = camera(tester);
+      expect(now.center.latitude, closeTo(snappedLat, 1e-6), reason: 'Camera follows the server answer C.');
+      expect(now.center.longitude, closeTo(snappedLng, 1e-6));
+      expect(now.center, isNot(cameraA));
+      expect(now.center.latitude, isNot(closeTo(selected.latitude, 0.01)), reason: 'B is not authoritative.');
+      expect(now.zoom, greaterThanOrEqualTo(14));
+      // The pin exists exactly once at C and is inside the visible map.
+      final pin = find.byKey(const ValueKey('map-note-$snappedGroup'));
+      expect(pin, findsOneWidget);
+      final mapRect = tester.getRect(find.byType(FlutterMap));
+      expect(mapRect.contains(tester.getCenter(pin)), isTrue);
+      expect(find.byKey(const Key('map-note-halo')), findsOneWidget, reason: 'A fresh note is briefly highlighted.');
+      await tester.pump(const Duration(seconds: 3));
+      expect(find.byKey(const Key('map-note-halo')), findsNothing, reason: 'The halo disappears after about two seconds.');
+      expect(find.byKey(const ValueKey('map-note-$snappedGroup')), findsOneWidget);
+      expect(find.text('Notlar'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    testWidgets('A reload that was started before the note existed can never remove the new marker', (tester) async {
+      tester.view.physicalSize = const Size(800, 2200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final stale = Completer<http.Response>();
+      var calls = 0;
+      final store = await connected((request) async {
+        final path = request.url.path;
+        if (path.endsWith('/auth/login')) return ok({'token': 't', 'user': account()});
+        if (path.endsWith('/cities')) return ok([{'id': 1, 'name': 'Alanya'}]);
+        if (path.endsWith('/map/notes') && request.method == 'GET') {
+          calls++;
+          if (calls == 1) return stale.future; // in flight while the user leaves a note
+          return ok(markers([snappedMarker()]));
+        }
+        if (path.endsWith('/map-notes') && request.method == 'POST') {
+          return http.Response(
+            jsonEncode({'success': true, 'data': created()}),
+            201,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+        return ok({'items': [], 'location_required': false});
+      });
+      addTearDown(store.dispose);
+      await tester.pumpWidget(app(store));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('map-notes-tab')));
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(calls, 1);
+      expect(find.byKey(const Key('map-notes-loading')), findsOneWidget);
+      expect(find.byType(FlutterMap), findsOneWidget, reason: 'Loading never unmounts the map.');
+
+      await tester.tap(find.byKey(const Key('leave-map-note')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('map-note-field')), 'Konum dogrulama notu');
+      await tester.tap(find.text('Notu Bırak'));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 600));
+      // Optimistic marker is visible before the reload answers.
+      expect(find.byKey(const ValueKey('map-note-$snappedGroup')), findsOneWidget);
+
+      // The old snapshot (no notes) arrives late: it must be ignored.
+      stale.complete(ok(markers([])));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('map-note-$snappedGroup')), findsOneWidget);
+      expect(calls, greaterThanOrEqualTo(2));
+      expect(camera(tester).center.latitude, closeTo(snappedLat, 1e-6));
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  });
+
+  group('Map controls and the OpenStreetMap attribution', () {
+    Future<AppStore> mapStore({required bool withNotes}) => connected((request) async {
+          final path = request.url.path;
+          if (path.endsWith('/auth/login')) return ok({'token': 't', 'user': account()});
+          if (path.endsWith('/cities')) return ok([{'id': 1, 'name': 'Alanya'}]);
+          if (path.endsWith('/map/notes')) {
+            return ok({
+              'items': withNotes
+                  ? [
+                      {'group': '36.54500_32.00000', 'latitude': 36.545, 'longitude': 32.0, 'count': 5, 'newest_at': '2026-11-14T11:15:00Z', 'distance_meters': null},
+                    ]
+                  : [],
+              'location_required': false,
+            });
+          }
+          return ok({'items': [], 'location_required': false});
+        });
+
+    for (final width in [320.0, 360.0, 390.0, 430.0]) {
+      for (final withNotes in [true, false]) {
+        testWidgets('Notlar at $width px (${withNotes ? 'with notes' : 'empty'}): short attribution top-left, CTA and location button never overlap', (tester) async {
+          tester.view.physicalSize = Size(width, 760);
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.reset);
+          final store = await mapStore(withNotes: withNotes);
+          addTearDown(store.dispose);
+          await tester.pumpWidget(host(store, const Scaffold(body: LiveMapContent())));
+          await tester.pumpAndSettle();
+          await tester.ensureVisible(find.byKey(const Key('map-notes-tab')));
+          await tester.tap(find.byKey(const Key('map-notes-tab')));
+          await tester.pump(const Duration(milliseconds: 400));
+          await tester.pumpAndSettle();
+
+          expect(tester.takeException(), isNull, reason: 'No overflow at $width px.');
+          expect(find.text('© OpenStreetMap'), findsOneWidget);
+          expect(find.textContaining('contributors'), findsNothing);
+
+          final map = tester.getRect(find.byType(FlutterMap));
+          final pill = tester.getRect(find.descendant(of: find.byKey(const Key('map-attribution')), matching: find.byType(DecoratedBox)).first);
+          final cta = tester.getRect(find.byKey(const Key('leave-map-note')));
+          final locate = tester.getRect(find.byTooltip('Cihaz konumunu kontrol et'));
+
+          expect(map.contains(pill.topLeft) && map.contains(pill.bottomRight), isTrue, reason: 'Attribution stays inside the map.');
+          expect(pill.left - map.left, lessThan(16), reason: 'Top-left corner.');
+          expect(pill.top - map.top, lessThan(16));
+          expect(pill.height, lessThan(30), reason: 'A small pill, not a box.');
+          expect(pill.width, lessThan(200), reason: 'Even in the wide test font the pill stays compact.');
+          expect(pill.overlaps(cta), isFalse);
+          expect(pill.overlaps(locate), isFalse);
+          expect(cta.overlaps(locate), isFalse);
+          expect(locate.left - cta.right, greaterThanOrEqualTo(8), reason: 'Breathing room between the CTA and the location button.');
+          expect(cta.left, greaterThanOrEqualTo(map.left));
+          expect(locate.right, lessThanOrEqualTo(map.right));
+          expect((cta.center.dy - locate.center.dy).abs(), lessThan(8), reason: 'They sit on one row.');
+          if (!withNotes) {
+            final info = tester.getRect(find.text('Bu bölgede henüz bir not yok. İlk notu sen bırakabilirsin.'));
+            expect(info.overlaps(pill), isFalse, reason: 'Top overlays never cover the attribution.');
+          }
+          await tester.pumpWidget(const SizedBox.shrink());
+        });
+      }
+    }
+
+    testWidgets('At 320 px with 1.5x text the CTA label shrinks instead of overflowing', (tester) async {
+      tester.view.physicalSize = const Size(320, 760);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final store = await mapStore(withNotes: true);
+      addTearDown(store.dispose);
+      await tester.pumpWidget(host(store, MediaQuery(data: const MediaQueryData(size: Size(320, 760), textScaler: TextScaler.linear(1.5)), child: const Scaffold(body: LiveMapContent()))));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const Key('map-notes-tab')));
+          await tester.tap(find.byKey(const Key('map-notes-tab')));
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(tester.getRect(find.byKey(const Key('leave-map-note'))).overlaps(tester.getRect(find.byTooltip('Cihaz konumunu kontrol et'))), isFalse);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    testWidgets('The attribution is tappable and the people and posts views carry the same one', (tester) async {
+      tester.view.physicalSize = const Size(390, 760);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final store = await mapStore(withNotes: true);
+      addTearDown(store.dispose);
+      await tester.pumpWidget(host(store, const Scaffold(body: LiveMapContent())));
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+      expect(find.text('© OpenStreetMap'), findsOneWidget);
+      expect(tester.widget<GestureDetector>(find.byKey(const Key('map-attribution'))).onTap, isNotNull);
+      expect(tester.getSemantics(find.byKey(const Key('map-attribution'))).label, contains('OpenStreetMap'));
+      await tester.ensureVisible(find.text('Paylaşımlar'));
+      await tester.tap(find.text('Paylaşımlar'));
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+      expect(find.text('© OpenStreetMap'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    testWidgets('The note composer map carries the same attribution', (tester) async {
+      tester.view.physicalSize = const Size(390, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final store = await mapStore(withNotes: true);
+      addTearDown(store.dispose);
+      await tester.pumpWidget(host(store, const MapNoteComposePage(center: LatLng(36.5, 32.0), zoom: 14)));
+      await tester.pumpAndSettle();
+      expect(find.text('© OpenStreetMap'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
   });
 }

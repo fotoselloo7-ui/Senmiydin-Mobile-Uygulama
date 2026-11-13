@@ -90,7 +90,10 @@ Ayrı ürün modülü; ayrıntılı karar metni SENMIYDIN_URUN_TANIMI.md §29. A
 | Alan | Durum | Kanıt |
 |---|---|---|
 | Model, 7 günlük yaşam döngüsü, saklama + zamanlanmış temizlik | COMPLETE | `map_notes` / `map_note_replies`, `config/map_notes.php`, `map-notes:purge` (günlük), `MapNotesTest` (6 gün 23:59 görünür, 7 gün sonrası kapalı, yanıt süreyi uzatmaz, scheduler kaydı) |
-| Yaklaşık konum, ızgaraya yuvarlama, şehir doğrulama, gruplama | COMPLETE | `MapNoteController@store/map/group`; ham koordinat yanıtta ve veritabanında yok; yanlış şehir kullanıcı dilinde reddedilir |
+| Yaklaşık konum, ızgaraya yuvarlama, şehir doğrulama, gruplama | COMPLETE | `MapNoteController@store/map/group`; ham koordinat yanıtta ve veritabanında yok; yanlış şehir kullanıcı dilinde reddedilir. **Yerleştirme hatası düzeltildi:** notlar artık `map_notes.location_grid` (0,0005° ≈ 55 m / 45 m) kullanır; eski `post_grid` (0,005°) notu ~230 m'ye kadar (en çok ~357 m) kaydırıyordu. Haversine testi + gerçek Pixel ölçümü |
+| Konum seçici = kaydedilen koordinat, oluşturma yanıtı esas, kamera yeni nota gider, yarış koruması | COMPLETE | `MapNoteComposePage` (merkez nokta), `LiveMapContent.leaveNote`, `test/map_notes_test.dart` ("Placement and camera after leaving a note"), Pixel 6a: `map-note-location-selected.png` |
+| Arayüzden arayüze yanıt E2E (Demo not → Elif UI yanıt → Demo bildirim) | COMPLETE | Pixel 6a, API ile yanıt oluşturulmadan; `docs/VALIDATION.md` |
+| Admin tarayıcı E2E (liste, anonim sahip, yanıtlar, kaldır / geri aç, işlem günlüğü) | COMPLETE | Tarayıcıda gerçek panel, tek kullanımlık notlarla; `docs/VALIDATION.md` |
 | Açık / anonim kimlik, sızıntı yok | COMPLETE | `test_open_notes_...anonymous_notes_leak_nothing`; Pixel'da ikinci hesap çağrısıyla doğrulandı |
 | Yanıt dizisi (tek seviye, eskiden yeniye, açık / anonim) | COMPLETE | `MapNotesTest`, `test/map_notes_test.dart`; Pixel 6a |
 | Bildirimler: yakınındaki not (tek sefer, merkezi yarıçap), nota yanıt, tercihler, hedef erişilemez | COMPLETE | `test_nearby_notification_...`, `test_nearby_radius_comes_from_central_config...`; Pixel'da yanıt bildirimi ve silinmiş hedef |
@@ -99,4 +102,5 @@ Ayrı ürün modülü; ayrıntılı karar metni SENMIYDIN_URUN_TANIMI.md §29. A
 | Flutter: Notlar sekmesi, zarf pini + sayaç, nokta listesi, mektup, yanıt, ayarlar | COMPLETE | `test/map_notes_test.dart` (13 test), Pixel ekran görüntüleri `docs/screenshots/ui-audit/map-note*.png`, `map-notes-*.png` |
 | Ölü ayar: `encounter_suggestions` | **PARTIAL → COMPLETE** | Önceden kaydediliyor ama eşleştiricide kullanılmıyordu. Artık kapalıysa güçlü otomatik öneri üretilmez; manuel @kullanıcıadı encounter etkilenmez (`test_encounter_suggestions_switch_...`) |
 | Ölü ayar: `city_discovery` | **PARTIAL → COMPLETE** | Artık kapalıysa otomatik yakın / rota önerisi üretilmez; Harita, Nearby ve manuel şehir etkilenmez, GPS kill-switch değildir (`test_city_discovery_switch_...`) |
+| Harita düzeni: kısa OSM atfı (`© OpenStreetMap`, sol üst hap, tıklanabilir), CTA / konum butonu aralığı, tüm OSM haritalarında ortak atıf | COMPLETE | `lib/widgets/map_attribution.dart`; widget testleri 320 / 360 / 390 / 430 px; Pixel 6a `map-attribution-layout-*.png` |
 | Ana Sayfa "Yakınında yeni notlar" modülü | NOT_REQUIRED_FOR_V1 | Bu görevde bilinçli olarak eklenmedi |

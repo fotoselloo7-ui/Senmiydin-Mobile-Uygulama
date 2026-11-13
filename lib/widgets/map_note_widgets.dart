@@ -12,8 +12,14 @@ const mapNotePaper = Color(0xFFFFFCF8);
 /// Brand-purple envelope pin. A single note is a plain envelope, several notes at the same approximate
 /// point add a count badge. Standalone outline icon, never an emoji.
 class MapNotePin extends StatelessWidget {
-  const MapNotePin({super.key, required this.count, required this.onPressed});
+  const MapNotePin({
+    super.key,
+    required this.count,
+    required this.onPressed,
+    this.highlighted = false,
+  });
   final int count;
+  final bool highlighted;
   final VoidCallback onPressed;
 
   @override
@@ -33,6 +39,20 @@ class MapNotePin extends StatelessWidget {
             clipBehavior: Clip.none,
             alignment: Alignment.center,
             children: [
+              if (highlighted)
+                // A brief halo for a freshly left note; no animation, it is removed after about two seconds.
+                Container(
+                  key: const Key('map-note-halo'),
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.brandLilac.withValues(alpha: .22),
+                    border: Border.all(
+                      color: AppColors.brandLilac.withValues(alpha: .55),
+                    ),
+                  ),
+                ),
               Container(
                 width: 38,
                 height: 38,
