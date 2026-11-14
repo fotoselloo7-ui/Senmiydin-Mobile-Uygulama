@@ -888,3 +888,27 @@ Referansların dışında yeni bir görsel kimlik oluşturulmamalıdır.
 ## 35. Yaş / Mağaza Hazırlığı
 
 Üretim minimum yaşı **18** olarak kalır; değer tek yapılandırmadır (`config/mobile.php` → `MINIMUM_AGE`, panelde 16–25) ve backend doğrulaması, `/app-config`, Flutter tarih seçici / metinleri birlikte güncellenir. 16–17 desteği için yaş bandı güvenlik planı, Apple yaş derecelendirme beyanı ve Google Play hedef kitle notları `docs/AGE_AND_STORE_READINESS.md` içindedir. Doğum tarihini yalnız 18 → 16 yapmak kabul edilmez; 13–15 kapsam dışıdır.
+
+
+## 36. Yorum ve Yanıt Beğenileri
+
+- Hem ana yorum hem yorum yanıtı beğenilebilir: `POST` / `DELETE /posts/{post}/comments/{comment}/like` (idempotent). Beğeniler ayrı `comment_likes` tablosundadır; her yorum yanıtı `likes_count` ve `liked_by_me` taşır.
+- **Arayüz:** her yorumun ve yanıtın altındaki mevcut küçük eylem satırına outline kalp + sayı eklenir (`♡ 4  Yanıtla`; yanıtta yalnız kalp). Beğenilince gönderi beğenisindeki dolu kalp / `encounterPink` durumuna geçer. Durum anında değişir (iyimser), sunucu sayısı esas alınır, hata olursa geri alınır.
+- **Bildirim `comment_like`:** "Yorumunu beğendi." — yorumun (veya yanıtın) sahibine; kendi beğenisi bildirim üretmez; beğen → geri al → beğen aynı kişi için ikinci bildirim üretmez; engel ilişkisi varsa bildirim ve beğeni yok. Mevcut "Beğeni" bildirim tercihiyle yönetilir. Dokununca ilgili yazının yorum ekranı açılır; silinmiş / modere / yetim hedefte güvenli "bu içerik artık kullanılamıyor".
+- **Temizlik:** silinen veya modere edilen yorumun (ve yanıtlarının) beğeni kayıtları hemen silinir, herkese açık sayaçlarda yaşamaz; hesap silme hem kullanıcının attığı hem aldığı beğenileri temizler. Engelli kullanıcıların beğenileri birbirinin sayacına girmez.
+
+## 37. Kaydedilen Koleksiyonları
+
+- Normal yer imi davranışı aynı: dokununca gönderi **Kaydedilenler**'e girer. Üzerine kullanıcının **tamamen özel** koleksiyonları gelir (`saved_collections`, `saved_collection_posts`). Hazır koleksiyon üretilmez.
+- Kurallar: ad en çok 40 karakter, kullanıcı başına en çok 30 koleksiyon, aynı kullanıcıda ad büyük / küçük harfe duyarsız tekrar edemez. Bir gönderi birden çok koleksiyonda olabilir; koleksiyona yalnız kaydedilmiş gönderi eklenebilir. Başka kullanıcı hiçbir uçtan koleksiyon adını veya hangi gönderinin nerede olduğunu göremez (başkasının koleksiyonu "yok" gibi 404).
+- **Kaydedilenler ekranı:** üstte kompakt yatay çip satırı `Tümü | koleksiyonlar… | +` (320 dp'de taşmaz, çoksa kayar). Seçili koleksiyonda yeniden adlandır ve sil eylemleri. Tümü ve her koleksiyon sayfalıdır; engelli, silinmiş, modere, askıdaki yazarın ve erişilemeyen gönderiler görünmez ve sayılmaz.
+- **Yönetim:** oluştur, yeniden adlandır, sil. Koleksiyonu silmek gönderiyi **Tümü**'nden kaldırmaz. Ana yer imi kaldırılırsa gönderi tüm koleksiyonlardan da çıkar. Gönderi ⋮ menüsünde kaydedilmiş gönderi için **Koleksiyona Ekle** → mevcut alt sayfa dilinde onay kutulu liste + "Yeni koleksiyon oluştur". Hesap silme koleksiyonları da siler.
+
+## 38. Dayanıklı Paylaşım Taslağı
+
+- Compose'da yazılan, yayınlanmadan bırakılan içerik cihazda **özel uygulama depolamasında** (`getApplicationSupportDirectory()/compose_drafts/<hesap>/`) tutulur; sunucuya hiçbir şey gönderilmez. Normal, bağlı paylaşım için geçerlidir (ortak karşılaşma hikâyesi ve çevrimdışı demo taslak tutmaz).
+- **Kaydedilen alanlar:** metin, paylaşım türü, anonim, şehir görünürlüğü, şehir, yaklaşık konum eki ve yer seçimi, olay zamanı, karşılaşma etiketi, istek kimliği ve **Yolculuk** alanlarının tümü (ulaşım, firma, sefer, araç, çıkış / varış, zaman, herkese açık), fotoğraf sırası.
+- **Fotoğraflar:** seçici önbelleğindeki geçici yola güvenilmez; her fotoğraf taslak klasörüne (`media/`) kopyalanır, yeniden açılışta aynı sırayla gelir. Taslak silinince / yayınlanınca / hesap silinince kopyalar da silinir. Taslakta olmayan kopyalar her kayıtta temizlenir.
+- **Otomatik kaydetme:** 800 ms debounce (her tuşta disk yazılmaz); uygulama arka plana gidince ve Compose kapanırken bekleyen değişiklik hemen yazılır. Yazma "yaz-sonra-yeniden adlandır" ile yapılır; süreç ortada ölse bile önceki taslak bozulmaz. Yazmalar sıraya alınır.
+- **Çıkış ve devam:** yayınlamadan çıkışta taslak korunur ("taslağın silinecek" uyarısı yoktur). Sonraki **Paylaşım Oluştur** açılışında "Kaydedilmiş bir taslağın var." — **Devam Et** (tüm desteklenen alanlar, fotoğraflar, Yolculuk, anonim seçimi, metin) / **Sil** (JSON ve fotoğraf kopyaları silinir, temiz açılır). Soru açıkken boş Compose saklı taslağı asla ezmez / silmez. Başarılı yayın taslağı tamamen siler.
+- **Hesap ayrımı:** klasör hesap kimliğiyle ayrılır; Demo taslağı Elif girişinde görünmez. Bozuk, kesik, sürümü uyumsuz veya boş taslak sessizce yok sayılır ve temizlenir; uygulama çökmez.

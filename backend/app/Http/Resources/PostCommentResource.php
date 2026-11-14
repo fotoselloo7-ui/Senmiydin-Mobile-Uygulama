@@ -16,6 +16,8 @@ class PostCommentResource extends JsonResource
             'mine' => $this->user_id === $request->user()->id,
             'body' => $this->body,
             'parent_id' => $this->parent_id,
+            'likes_count' => (int) ($this->likes_total ?? 0),
+            'liked_by_me' => (bool) ($this->liked_by_me ?? false),
             'created_at' => $this->created_at->toISOString(),
             ...($this->parent_id === null ? [
                 'reply_count' => (int) ($this->reply_total ?? 0),

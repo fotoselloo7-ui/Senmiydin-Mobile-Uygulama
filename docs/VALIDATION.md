@@ -1,8 +1,34 @@
 # Doğrulama
 
-> **Güncel kaynak bu dosyanın ilk bölümüdür (14 Kasım 2026, sosyal derinlik).** Altındaki bölümler önceki turların tarihsel kayıtlarıdır; oradaki sayılar güncel durum değildir.
+> **Güncel kaynak bu dosyanın ilk bölümüdür (14 Kasım 2026, yorum beğenileri, koleksiyonlar ve taslak).** Altındaki bölümler önceki turların tarihsel kayıtlarıdır; oradaki sayılar güncel durum değildir.
 
-## Sosyal derinlik: Takip, yorum yanıtları, Mektuplarım, yakındaki yeni mektuplar — 14 Kasım 2026 (en güncel)
+## Yorum beğenileri, kaydedilen koleksiyonları ve dayanıklı taslak — 14 Kasım 2026 (en güncel)
+
+Başlangıç `11721d2` (gerçekten çalıştırıldı): Laravel 162 test / 2627 assertion, Flutter 142, analyze temiz.
+
+| Kontrol | Final |
+|---|---|
+| Laravel `php artisan test` | **170 test / 2844 assertion geçti** (+8 `CommentLikesAndCollectionsTest`) |
+| `flutter analyze` | **No issues found** |
+| Flutter `flutter test` | **165 test geçti** (+23 `test/comment_likes_collections_drafts_test.dart`) |
+| Pixel 6a entegrasyon | **9/9 geçti**, `clean=true` |
+| Pixel 6a location-time | **3/3 geçti** (ilk denemede bayat `kernel_blob.bin` paketleme çakışması; `build/app` temizlenip yeniden koşuldu) |
+
+**Gerçek Pixel 6a E2E (arayüz üzerinden, ASCII metin):**
+
+- *Yorum beğenisi:* Elif yorum yazdı → Demo bildirimden yorum ekranını açtı → ♡ 0 `Yanıtla` satırı → kalbe dokununca dolu kalp ve 1; DB'de `comment_likes` satırı ve Elif için `comment_like` bildirimi ("Yorumunu beğendi.", hedef yazı, `/comments`) → tekrar dokununca geri alındı, sayaç 0, ek bildirim yok (`comment-likes.png`).
+- *Koleksiyonlar:* Demo bir gönderiyi kaydetti → ⋮ → **Koleksiyona Ekle** → "Yeni koleksiyon oluştur" → `Alanya` → gönderi koleksiyonda (`collection-add-sheet.png`) → Kaydedilenler: `Tümü | Alanya | +` → Alanya'da gönderi (`saved-collection.png`) → koleksiyonu sil (onay: "içindeki gönderiler Kaydedilenler'de kalır") → koleksiyon yok, gönderi **Tümü**'nde ve `post_saves`'te duruyor.
+- *Taslak + süreç öldürme:* Compose → uzun metin + **Yolculuk** türü + galeriden gerçek fotoğraf + Yolculuk bilgileri → 800 ms sonra uygulamanın özel `files/compose_drafts/account-16/` klasöründe `draft.json` ve `media/<n>.jpg` → `am force-stop` (süreç öldürme) → yeniden aç → Compose → "Kaydedilmiş bir taslağın var." → **Devam Et**: metin, tür, fotoğraf (görüntü) geri geldi (`draft-restore-prompt.png`, `draft-restored.png`) → yayınla → klasör silindi, Compose tekrar açılınca uyarı yok.
+- *Hesap ayrımı:* Demo taslak bıraktı → çıkış → Elif girişi → Compose temiz, uyarı yok; Demo'nun klasörü diskte durdu.
+- Test verisi (yazı, yorum, beğeni, koleksiyon, kayıt, bildirim, taslak klasörü, galeri fotoğrafı) sonunda temizlendi; uygulama normal debug sürümüyle Demo girişli bırakıldı.
+
+**Gerçek cihazda bulunan ve düzeltilen hata:** ilk uygulamada, kullanıcı "Kaydedilmiş bir taslağın var" sorusunu cevaplamadan önce arkadaki boş Compose saklı taslağı ezebiliyordu (yeniden açınca taslak yoktu). Soru açıkken kayıt kilitlendi, kaydetme yalnız gerçek bir değişiklikten sonra çalışır; iki regresyon testi eklendi.
+
+**Sınırlar:** Compose'un galeri seçici ve Android sistem davranışı emülatörde doğrulandı; kamera ile çekilen fotoğrafın aynı kopyalama yolundan geçtiği kod ve depolama testiyle kapsanır, ayrıca cihazda denenmedi. Takip (anonim hariç), Harita Notu ve önceki turların davranışları değişmedi.
+
+---
+
+## Sosyal derinlik: Takip, yorum yanıtları, Mektuplarım, yakındaki yeni mektuplar — 14 Kasım 2026 (önceki tur)
 
 Başlangıç `135987f` (gerçekten çalıştırıldı): Laravel 146 test / 2375 assertion, Flutter 125, analyze temiz.
 

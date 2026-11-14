@@ -7,6 +7,7 @@ import '../data/communication_api.dart';
 import '../data/account_api.dart';
 import '../data/models.dart';
 import '../widgets/account_action.dart';
+import '../widgets/collections.dart';
 import '../widgets/common.dart';
 import '../widgets/social.dart';
 import '../widgets/social_page.dart';
@@ -487,28 +488,64 @@ class _CommentsPageState extends State<CommentsPage>
                 ),
                 const SizedBox(height: 4),
                 Text(comment.text),
-                if (!reply &&
-                    post.remote &&
-                    post.commentsEnabled &&
-                    comment.id != null)
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
-                      key: ValueKey('reply-${comment.id}'),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 2),
-                        minimumSize: const Size(0, 34),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        textStyle: AppTypography.metadata.copyWith(
-                          fontWeight: FontWeight.w800,
+                if (post.remote && comment.id != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Outline heart + count; the same icon and colours as the post like.
+                        TextButton.icon(
+                          key: ValueKey('like-comment-${comment.id}'),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 2),
+                            minimumSize: const Size(0, 34),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            foregroundColor: comment.liked
+                                ? AppColors.encounterPink
+                                : const Color(0xFF334766),
+                            textStyle: AppTypography.metadata.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          onPressed: () => socialAction(
+                            context,
+                            () => store.toggleCommentLike(post, comment),
+                          ),
+                          icon: Icon(
+                            comment.liked
+                                ? Icons.favorite_rounded
+                                : Icons.favorite_border_rounded,
+                            size: 17,
+                            semanticLabel: comment.liked
+                                ? 'Beğeniyi geri al'
+                                : 'Beğen',
+                          ),
+                          label: Text('${comment.likes}'),
                         ),
-                      ),
-                      onPressed: busy ? null : () => startReply(comment),
-                      icon: const Icon(
-                        Icons.subdirectory_arrow_right_rounded,
-                        size: 16,
-                      ),
-                      label: const Text('Yanıtla'),
+                        if (!reply && post.commentsEnabled) ...[
+                          const SizedBox(width: 10),
+                          TextButton.icon(
+                            key: ValueKey('reply-${comment.id}'),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 2,
+                              ),
+                              minimumSize: const Size(0, 34),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              textStyle: AppTypography.metadata.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            onPressed: busy ? null : () => startReply(comment),
+                            icon: const Icon(
+                              Icons.subdirectory_arrow_right_rounded,
+                              size: 16,
+                            ),
+                            label: const Text('Yanıtla'),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
               ],
@@ -520,38 +557,172 @@ class _CommentsPageState extends State<CommentsPage>
   }
 }
 
-class SavedPage extends StatelessWidget {
+class SavedPage extends StatefulWidget {
   const SavedPage({super.key});
+  @override
+  State<SavedPage> createState() => _SavedPageState();
+}
+
+class _SavedPageState extends State<SavedPage> {
+  int? collectionId;
+  List<SavedCollection> collections = const [];
+  int loadedVersion = -1;
+  bool askedOnce = false;
+
+  Future<void> loadCollections(AppStore store) async {
+    final version = store.collectionsVersion;
+    try {
+      final items = await store.loadCollections();
+      if (!mounted) return;
+      setState(() {
+        collections = items;
+        loadedVersion = version;
+        // A collection that vanished (deleted elsewhere) falls back to Tümü.
+        if (collectionId != null && !items.any((c) => c.id == collectionId)) {
+          collectionId = null;
+        }
+      });
+    } catch (_) {
+      // The list below keeps working without the chip row.
+      if (mounted) setState(() => loadedVersion = version);
+    }
+  }
+
+  SavedCollection? get current {
+    for (final collection in collections) {
+      if (collection.id == collectionId) return collection;
+    }
+    return null;
+  }
+
+  Future<void> create(AppStore store) async {
+    final name = await askCollectionName(context);
+    if (name == null || !mounted) return;
+    await collectionAction(context, () async {
+      final created = await store.createCollection(name);
+      if (mounted) setState(() => collectionId = created.id);
+    });
+  }
+
+  Future<void> rename(AppStore store, SavedCollection collection) async {
+    final name = await askCollectionName(
+      context,
+      title: 'Koleksiyonu yeniden adlandır',
+      action: 'Kaydet',
+      initial: collection.name,
+    );
+    if (name == null || !mounted) return;
+    await collectionAction(context, () => store.renameCollection(collection, name));
+  }
+
+  Future<void> remove(AppStore store, SavedCollection collection) async {
+    final confirmed = await confirmAction(
+      context,
+      title: 'Koleksiyon silinsin mi?',
+      message:
+          '“${collection.name}” silinir; içindeki gönderiler Kaydedilenler’de kalır.',
+      action: 'Sil',
+    );
+    if (!confirmed || !mounted) return;
+    await socialAction(context, () async {
+      await store.deleteCollection(collection);
+      if (mounted) setState(() => collectionId = null);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final store = StoreScope.of(context);
     if (store.connected) {
+      if (loadedVersion != store.collectionsVersion && !askedOnce ||
+          loadedVersion != store.collectionsVersion) {
+        askedOnce = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && loadedVersion != store.collectionsVersion) {
+            loadCollections(store);
+          }
+        });
+      }
+      final selected = current;
       return AppPage(
         title: 'Kaydedilenler',
-        child: PagedContent<Post>(
-          key: ValueKey(store.savedVersion),
-          fetch: store.loadSaved,
-          id: (post) => post.id,
-          visible: (post) =>
-              post.saved && !store.blocked.contains(post.authorId),
-          builder: (context, saved, footer, refresh) => RefreshIndicator(
-            onRefresh: refresh,
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: Space.page,
-              children: [
-                if (saved.isEmpty && footer == null)
-                  const EmptyState(
-                    'Güzel anıları burada biriktir.',
-                    'Kaydet simgesine dokunduğun paylaşımlar burada görünecek.',
-                    icon: Icons.bookmark_border,
-                  ),
-                for (final post in saved)
-                  PostCard(post, key: ValueKey(post.id)),
-                ?footer,
-              ],
+        child: Column(
+          children: [
+            const SizedBox(height: Space.sm),
+            CollectionChips(
+              collections: collections,
+              selected: collectionId,
+              onSelect: (id) => setState(() => collectionId = id),
+              onCreate: () => create(store),
             ),
-          ),
+            if (selected != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(Space.lg, 4, Space.sm, 0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${selected.name} · ${selected.postsCount} gönderi',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.metadata,
+                      ),
+                    ),
+                    IconButton(
+                      key: const Key('rename-collection'),
+                      tooltip: 'Yeniden adlandır',
+                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(Icons.edit_outlined, size: 20),
+                      onPressed: () => rename(store, selected),
+                    ),
+                    IconButton(
+                      key: const Key('delete-collection'),
+                      tooltip: 'Koleksiyonu sil',
+                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                      onPressed: () => remove(store, selected),
+                    ),
+                  ],
+                ),
+              ),
+            Expanded(
+              child: PagedContent<Post>(
+                key: ValueKey((
+                  collectionId,
+                  store.savedVersion,
+                  store.collectionsVersion,
+                )),
+                fetch: collectionId == null
+                    ? store.loadSaved
+                    : (page) => store.loadCollectionPosts(collectionId!, page),
+                id: (post) => post.id,
+                visible: (post) =>
+                    post.saved && !store.blocked.contains(post.authorId),
+                builder: (context, saved, footer, refresh) => RefreshIndicator(
+                  onRefresh: refresh,
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: Space.page,
+                    children: [
+                      if (saved.isEmpty && footer == null)
+                        EmptyState(
+                          collectionId == null
+                              ? 'Güzel anıları burada biriktir.'
+                              : 'Bu koleksiyon henüz boş.',
+                          collectionId == null
+                              ? 'Kaydet simgesine dokunduğun paylaşımlar burada görünecek.'
+                              : 'Kaydettiğin bir paylaşımın ⋮ menüsünden “Koleksiyona Ekle” de.',
+                          icon: Icons.bookmark_border,
+                        ),
+                      for (final post in saved)
+                        PostCard(post, key: ValueKey(post.id)),
+                      ?footer,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       );
     }

@@ -202,6 +202,7 @@ class _NoticeAvatar extends StatelessWidget {
     final icon = switch (item.type) {
       'like' => Icons.favorite_border,
       'comment' || 'comment_reply' => Icons.chat_bubble_outline,
+      'comment_like' => Icons.favorite_border,
       'follow' => Icons.person_add_outlined,
       'message' || 'message_request' => Icons.mail_outline,
       'location_match' || 'nearby_activity' => Icons.location_on_outlined,

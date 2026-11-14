@@ -63,6 +63,8 @@ class Comment {
     this.parentId,
     this.replyCount = 0,
     List<Comment>? replies,
+    this.likes = 0,
+    this.liked = false,
   }) : replies = replies ?? [];
   final String? id;
   final bool mine;
@@ -74,6 +76,32 @@ class Comment {
   /// Top-level comments only: how many replies exist and the (oldest-first) ones loaded so far.
   int replyCount;
   List<Comment> replies;
+
+  /// Likes on this comment or reply (state kept on the object so every list showing it stays in step).
+  int likes;
+  bool liked;
+}
+
+/// A private saved collection ("Sonra Bak", "Alanya"…). Only its owner ever sees it.
+class SavedCollection {
+  SavedCollection({
+    required this.id,
+    required this.name,
+    this.postsCount = 0,
+    this.containsPost,
+  });
+  factory SavedCollection.fromJson(Map<String, dynamic> json) => SavedCollection(
+    id: (json['id'] as num).toInt(),
+    name: json['name'] as String,
+    postsCount: (json['posts_count'] as num?)?.toInt() ?? 0,
+    containsPost: json['contains_post'] as bool?,
+  );
+  final int id;
+  String name;
+  int postsCount;
+
+  /// Only set when the list was asked about one post.
+  bool? containsPost;
 }
 
 class Post {

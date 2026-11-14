@@ -15,6 +15,7 @@ use App\Location\LocationData;
 use App\Models\Encounter;
 use App\Models\EncounterRequest;
 use App\Models\Post;
+use App\Models\PostComment;
 use App\Models\PostMedia;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -316,6 +317,11 @@ class PostController extends Controller
             $keys = ['user_id' => $viewer->id, 'post_id' => $post];
             if ($request->isMethod('DELETE')) {
                 DB::table($table)->where($keys)->delete();
+                if ($table === 'post_saves') {
+                    // Un-saving also leaves every private collection.
+                    DB::table('saved_collection_posts')->where('post_id', $post)
+                        ->whereIn('collection_id', DB::table('saved_collections')->where('user_id', $viewer->id)->select('id'))->delete();
+                }
             } elseif (DB::table($table)->insertOrIgnore([...$keys, 'created_at' => now()]) && $table === 'post_likes') {
                 Inbox::add($entry->user_id, $viewer->id, 'like', $entry->id);
             }
@@ -353,6 +359,7 @@ class PostController extends Controller
             $comment->setAttribute('reply_total', (int) ($totals[$comment->id] ?? 0));
             $comment->setRelation('replies', ($previews[$comment->id] ?? collect())->take(self::REPLY_PREVIEW)->values());
         }
+        $this->likeStats($viewer, collect($comments->items())->merge(collect($comments->items())->flatMap(fn ($comment) => $comment->replies)));
 
         return ApiResponse::page($comments, PostCommentResource::class);
     }
@@ -369,6 +376,7 @@ class PostController extends Controller
         foreach ($replies as $reply) {
             $reply->setRelation('post', $entry);
         }
+        $this->likeStats($viewer, collect($replies->items()));
 
         return ApiResponse::page($replies, PostCommentResource::class);
     }
@@ -412,12 +420,59 @@ class PostController extends Controller
         return ApiResponse::ok(new PostCommentResource($comment), 'Yorum eklendi.', 201);
     }
 
+    /**
+     * Like / unlike a top-level comment or a reply. Idempotent both ways. Hidden, blocked, removed or orphaned comments answer 404.
+     * The author is notified once per liker and comment (like → unlike → like never repeats it); nobody notifies themselves.
+     */
+    public function likeComment(Request $request, int $post, int $comment): JsonResponse
+    {
+        $viewer = $request->user();
+        $item = DB::transaction(function () use ($request, $viewer, $post, $comment) {
+            $entry = Post::visibleTo($viewer)->lockForUpdate()->findOrFail($post);
+            abort_if($entry->encounter_id && $entry->story_status !== Post::STORY_PUBLISHED, 403);
+            $item = Blocks::exclude($entry->comments()->getQuery(), $viewer->id, 'post_comments.user_id')->with('author')->findOrFail($comment);
+            $keys = ['user_id' => $viewer->id, 'comment_id' => $item->id];
+            if ($request->isMethod('DELETE')) {
+                DB::table('comment_likes')->where($keys)->delete();
+            } elseif (DB::table('comment_likes')->insertOrIgnore([...$keys, 'created_at' => now()])
+                && $item->user_id !== $viewer->id
+                && ! DB::table('app_notifications')->where(['user_id' => $item->user_id, 'actor_id' => $viewer->id, 'type' => 'comment_like', 'entity_id' => $item->id])->exists()) {
+                Inbox::add($item->user_id, $viewer->id, 'comment_like', $item->id);
+            }
+            $item->setRelation('post', $entry);
+
+            return $item;
+        });
+        $this->likeStats($viewer, collect([$item]));
+
+        return ApiResponse::ok(new PostCommentResource($item));
+    }
+
+    /** Attaches likes_total / liked_by_me to a flat list of comments in two queries (blocked and inactive likers are not counted). */
+    private function likeStats(User $viewer, $comments): void
+    {
+        $ids = $comments->pluck('id')->unique()->values();
+        if ($ids->isEmpty()) {
+            return;
+        }
+        $likes = Blocks::exclude(DB::table('comment_likes')->join('users', 'users.id', '=', 'comment_likes.user_id')
+            ->where('users.account_status', 'active')->whereIn('comment_likes.comment_id', $ids), $viewer->id, 'comment_likes.user_id')
+            ->selectRaw('comment_likes.comment_id AS comment_id, COUNT(*) AS total')->groupBy('comment_likes.comment_id')->pluck('total', 'comment_id');
+        $mine = DB::table('comment_likes')->where('user_id', $viewer->id)->whereIn('comment_id', $ids)->pluck('comment_id')->flip();
+        foreach ($comments as $comment) {
+            $comment->setAttribute('likes_total', (int) ($likes[$comment->id] ?? 0));
+            $comment->setAttribute('liked_by_me', $mine->has($comment->id));
+        }
+    }
+
     public function deleteComment(Request $request, int $post, int $comment): JsonResponse
     {
         DB::transaction(function () use ($request, $post, $comment): void {
             $entry = Post::visibleTo($request->user())->lockForUpdate()->findOrFail($post);
             $item = $entry->comments()->findOrFail($comment);
             Gate::authorize('delete', $item);
+            // Likes of a removed comment (and of the replies that disappear with it) no longer count anywhere.
+            DB::table('comment_likes')->whereIn('comment_id', PostComment::where('id', $item->id)->orWhere('parent_id', $item->id)->select('id'))->delete();
             $item->delete();
         });
 

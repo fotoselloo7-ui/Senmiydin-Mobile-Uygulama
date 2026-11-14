@@ -41,6 +41,11 @@ final class EraseAccount
             DB::table('map_notes')->where('user_id', $id)->update(['body' => '', 'content_hash' => null, 'place_label' => null, 'deleted_at' => now(), 'updated_at' => now()]);
             DB::table('map_note_reads')->where('user_id', $id)->delete();
             DB::table('map_note_replies')->where('user_id', $id)->update(['body' => '', 'content_hash' => null, 'deleted_at' => now(), 'updated_at' => now()]);
+            // Their likes and every like on their comments, plus their private collections.
+            DB::table('comment_likes')->where('user_id', $id)->delete();
+            DB::table('comment_likes')->whereIn('comment_id', DB::table('post_comments')->where('user_id', $id)->select('id'))->delete();
+            DB::table('saved_collection_posts')->whereIn('collection_id', DB::table('saved_collections')->where('user_id', $id)->select('id'))->delete();
+            DB::table('saved_collections')->where('user_id', $id)->delete();
             DB::table('post_comments')->where('user_id', $id)->update(['body' => '', 'content_hash' => null, 'deleted_at' => now(), 'updated_at' => now()]);
             DB::table('messages')->where('sender_id', $id)->update(['body' => '', 'image_path' => null, 'deleted_at' => now(), 'updated_at' => now()]);
             DB::table('encounter_requests')->where(fn ($query) => $query->where('requester_id', $id)->orWhere('target_user_id', $id))

@@ -76,6 +76,10 @@ class ModerationController
         } elseif ($action === 'remove' && ! $record->trashed()) {
             $record->forceFill(['moderated_at' => now()])->save();
             $record->delete();
+            if ($record instanceof PostComment) {
+                // A moderated comment (and the replies that go with it) keeps no public like counters.
+                DB::table('comment_likes')->whereIn('comment_id', PostComment::withTrashed()->where('id', $record->id)->orWhere('parent_id', $record->id)->select('id'))->delete();
+            }
             if ($record instanceof Post) {
                 EncounterRequest::where('source_post_id', $record->id)->where('status', 'pending')
                     ->update(['status' => 'cancelled', 'responded_at' => now()]);

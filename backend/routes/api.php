@@ -8,6 +8,7 @@ use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\EncounterController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\MapNoteController;
+use App\Http\Controllers\SavedCollectionController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SocialUserController;
@@ -85,6 +86,14 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('feed', [PostController::class, 'feed']);
         Route::get('posts/saved', [PostController::class, 'saved']);
+        // Private saved collections (grouping of already-saved posts).
+        Route::get('saved-collections', [SavedCollectionController::class, 'index']);
+        Route::post('saved-collections', [SavedCollectionController::class, 'store'])->middleware('throttle:comment-write');
+        Route::match(['PUT', 'PATCH'], 'saved-collections/{collection}', [SavedCollectionController::class, 'update'])->whereNumber('collection')->middleware('throttle:comment-write');
+        Route::delete('saved-collections/{collection}', [SavedCollectionController::class, 'destroy'])->whereNumber('collection')->middleware('throttle:comment-write');
+        Route::get('saved-collections/{collection}/posts', [SavedCollectionController::class, 'posts'])->whereNumber('collection');
+        Route::put('saved-collections/{collection}/posts/{post}', [SavedCollectionController::class, 'add'])->whereNumber(['collection', 'post'])->middleware('throttle:reaction');
+        Route::delete('saved-collections/{collection}/posts/{post}', [SavedCollectionController::class, 'remove'])->whereNumber(['collection', 'post'])->middleware('throttle:reaction');
         Route::post('posts', [PostController::class, 'store'])->middleware('throttle:post-write');
         Route::get('posts/{post}', [PostController::class, 'show'])->whereNumber('post');
         Route::put('posts/{post}', [PostController::class, 'update'])->whereNumber('post')->middleware('throttle:post-write');
@@ -94,6 +103,7 @@ Route::prefix('v1')->group(function (): void {
         Route::match(['POST', 'DELETE'], 'posts/{post}/save', [PostController::class, 'save'])->whereNumber('post')->middleware('throttle:reaction');
         Route::get('posts/{post}/comments', [PostController::class, 'comments'])->whereNumber('post');
         Route::post('posts/{post}/comments', [PostController::class, 'comment'])->whereNumber('post')->middleware('throttle:comment-write');
+        Route::match(['POST', 'DELETE'], 'posts/{post}/comments/{comment}/like', [PostController::class, 'likeComment'])->whereNumber(['post', 'comment'])->middleware('throttle:reaction');
         Route::get('posts/{post}/comments/{comment}/replies', [PostController::class, 'replies'])->whereNumber(['post', 'comment']);
         Route::delete('posts/{post}/comments/{comment}', [PostController::class, 'deleteComment'])->whereNumber(['post', 'comment'])->middleware('throttle:comment-write');
         Route::get('users/{username}', [SocialUserController::class, 'show']);

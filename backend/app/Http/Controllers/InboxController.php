@@ -44,7 +44,7 @@ class InboxController extends Controller
         if (!$available) $announcement = null;
         return ['id' => $item->id, 'type' => $item->type, 'route' => $route,
             // comment_reply stores the reply id internally; the app always opens the post.
-            'entity_id' => $item->type === 'comment_reply' ? ($replyPosts[$item->entity_id] ?? $item->entity_id) : $item->entity_id,
+            'entity_id' => in_array($item->type, ['comment_reply', 'comment_like'], true) ? ($replyPosts[$item->entity_id] ?? $item->entity_id) : $item->entity_id,
             'available' => $available,
             // Location-derived and map-note notifications never carry another account's identity (replies may be anonymous).
             'actor' => $actor && ! in_array($item->type, ['nearby_activity', 'map_note_nearby', 'map_note_reply'], true) ? new PublicUserResource($actor) : null,

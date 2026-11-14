@@ -13,6 +13,7 @@ import '../data/app_store.dart';
 import '../data/communication_api.dart';
 import '../data/models.dart';
 import '../data/location_api.dart';
+import 'collections.dart';
 import 'common.dart';
 import 'media_viewer.dart';
 import 'social_page.dart';
@@ -319,6 +320,10 @@ class PostCard extends StatelessWidget {
                       });
                       return;
                     }
+                    if (v == 'collection') {
+                      await showAddToCollectionSheet(context, store, post);
+                      return;
+                    }
                     if (v == 'report') {
                       openPage(
                         context,
@@ -357,6 +362,11 @@ class PostCard extends StatelessWidget {
                       ),
                     if (post.remote && (post.mine || canWithdraw))
                       const PopupMenuItem(value: 'delete', child: Text('Sil')),
+                    if (post.remote && post.saved)
+                      const PopupMenuItem(
+                        value: 'collection',
+                        child: Text('Koleksiyona Ekle'),
+                      ),
                     const PopupMenuItem(
                       value: 'report',
                       child: Text('Paylaşımı şikâyet et'),

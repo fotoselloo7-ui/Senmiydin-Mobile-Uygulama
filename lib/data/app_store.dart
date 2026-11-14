@@ -18,13 +18,18 @@ import 'push_client.dart';
 import 'models.dart';
 import 'location_api.dart';
 import 'location_service.dart';
+import 'compose_draft.dart';
 import 'map_notes_api.dart';
 import 'mock_data.dart';
 import 'social_api.dart';
 
 class AppStore extends ChangeNotifier {
-  AppStore({ApiClient? api, LocationDevice? locationDevice})
-    : _api = api,
+  AppStore({
+    ApiClient? api,
+    LocationDevice? locationDevice,
+    ComposeDraftStore? drafts,
+  }) : drafts = drafts ?? ComposeDraftStore(),
+       _api = api,
       auth = api == null ? null : AuthService(api),
       _profiles = api == null ? null : ProfileService(api),
       _catalog = api == null ? null : CatalogService(api),
@@ -41,6 +46,9 @@ class AppStore extends ChangeNotifier {
       )..addListener(notifyListeners);
     }
   }
+
+  /// Local, per-account composer drafts (private app storage, never uploaded).
+  final ComposeDraftStore drafts;
 
   CommunicationApi? communication;
   MapNotesApi? mapNotes;
@@ -564,6 +572,8 @@ class AppStore extends ChangeNotifier {
       time: socialTime(json['created_at'] as String),
       mine: json['mine'] == true,
       parentId: json['parent_id']?.toString(),
+      likes: (json['likes_count'] as num?)?.toInt() ?? 0,
+      liked: json['liked_by_me'] == true,
       replyCount: (json['reply_count'] as num?)?.toInt() ?? 0,
       replies: [
         for (final reply in (json['replies'] as List?) ?? const [])
@@ -714,7 +724,9 @@ class AppStore extends ChangeNotifier {
         post.likes = result['likes_count'] as int;
       } else {
         post.saved = result['saved'] == true;
+        // Un-saving also leaves every collection (the server does the same).
         savedVersion++;
+        collectionsVersion++;
       }
       notifyListeners();
     } finally {
@@ -737,6 +749,89 @@ class AppStore extends ChangeNotifier {
     'posts/$postId/comments/$commentId/replies',
     page,
   )).map(_socialComment);
+
+  /// Like / unlike a comment or reply. The state flips at once and is restored if the server refuses.
+  Future<void> toggleCommentLike(Post post, Comment comment) async {
+    final key = 'c${comment.id}';
+    if (comment.id == null || !_socialWrites.add(key)) return;
+    final wasLiked = comment.liked;
+    final wasCount = comment.likes;
+    comment
+      ..liked = !wasLiked
+      ..likes = (wasCount + (wasLiked ? -1 : 1)).clamp(0, 1 << 30);
+    notifyListeners();
+    try {
+      final result = await _social!.object(
+        wasLiked ? 'DELETE' : 'POST',
+        'posts/${post.id}/comments/${comment.id}/like',
+      );
+      comment
+        ..liked = result['liked_by_me'] == true
+        ..likes = (result['likes_count'] as num).toInt();
+    } catch (_) {
+      comment
+        ..liked = wasLiked
+        ..likes = wasCount;
+      rethrow;
+    } finally {
+      _socialWrites.remove(key);
+      notifyListeners();
+    }
+  }
+
+  // ---- Private saved collections -------------------------------------------------------------
+
+  /// Bumped whenever a collection or its contents change so open lists reload.
+  int collectionsVersion = 0;
+
+  Future<List<SavedCollection>> loadCollections({String? postId}) async {
+    final data = await _api!.send(
+      'GET',
+      'saved-collections',
+      authenticated: true,
+      query: {'post_id': ?postId},
+    ) as Map<String, dynamic>;
+    return [
+      for (final item in (data['items'] as List).cast<Map<String, dynamic>>())
+        SavedCollection.fromJson(item),
+    ];
+  }
+
+  Future<SavedCollection> createCollection(String name) async {
+    final data = await _social!.object('POST', 'saved-collections', body: {'name': name});
+    collectionsVersion++;
+    notifyListeners();
+    return SavedCollection.fromJson(data);
+  }
+
+  Future<SavedCollection> renameCollection(SavedCollection collection, String name) async {
+    final data = await _social!.object('PUT', 'saved-collections/${collection.id}', body: {'name': name});
+    collectionsVersion++;
+    notifyListeners();
+    return SavedCollection.fromJson(data);
+  }
+
+  /// Deleting a collection never un-saves its posts.
+  Future<void> deleteCollection(SavedCollection collection) async {
+    await _social!.delete('saved-collections/${collection.id}');
+    collectionsVersion++;
+    notifyListeners();
+  }
+
+  Future<SocialPage<Post>> loadCollectionPosts(int id, int page) async =>
+      (await _social!.page('saved-collections/$id/posts', page)).map(_rememberPost);
+
+  Future<void> setCollectionMembership(SavedCollection collection, Post post, bool member) async {
+    final data = await _social!.object(
+      member ? 'PUT' : 'DELETE',
+      'saved-collections/${collection.id}/posts/${post.id}',
+    );
+    collection
+      ..containsPost = data['contains_post'] == true
+      ..postsCount = (data['posts_count'] as num?)?.toInt() ?? collection.postsCount;
+    collectionsVersion++;
+    notifyListeners();
+  }
 
   Future<void> writeComment(Post post, String text, {Comment? parent}) async {
     await _social!.object(
@@ -856,7 +951,16 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<void> eraseAccount(String password) async {
+    final id = _account?.id;
     await auth!.erase(password);
+    // Account deletion also removes whatever draft (and draft photos) that account left on this device.
+    if (id != null) {
+      try {
+        await drafts.clear('account-$id');
+      } catch (_) {
+        // Best effort: the account is gone either way.
+      }
+    }
     _clearAccount();
   }
 

@@ -18,6 +18,7 @@ final class Inbox
         'like' => ['/post', 'Paylaşımın beğenildi.'],
         'comment' => ['/comments', 'Paylaşımına yorum yapıldı.'],
         'comment_reply' => ['/comments', 'Yorumuna bir cevap geldi.'],
+        'comment_like' => ['/comments', 'Yorumunu beğendi.'],
         'follow' => ['/profile', 'Bir kullanıcı seni takip etmeye başladı.'],
         'message' => ['/conversation', 'Yeni bir mesajın var.'],
         'message_request' => ['/conversation', 'Yeni bir mesaj isteğin var.'],
@@ -63,7 +64,12 @@ final class Inbox
     public static function permitted(\App\Models\User $user, string $type): bool
     {
         // Replies share the existing "comment" preference; no extra settings row.
-        $category = str_starts_with($type, 'encounter_') ? 'encounter' : ($type === 'comment_reply' ? 'comment' : $type);
+        $category = str_starts_with($type, 'encounter_') ? 'encounter' : match ($type) {
+            'comment_reply' => 'comment',
+            // A like on a comment follows the existing "like" preference.
+            'comment_like' => 'like',
+            default => $type,
+        };
         return isset(self::DEFAULTS[$category]) &&
             (($user->push_preferences ?? []) + self::DEFAULTS)[$category] &&
             (! in_array($type, ['location_match', 'nearby_activity'], true) || $user->location_history_enabled) &&

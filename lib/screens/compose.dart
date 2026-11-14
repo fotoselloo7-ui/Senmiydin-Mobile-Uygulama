@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'dart:convert';
+
+import '../data/compose_draft.dart';
 import '../data/post_context.dart';
 import '../widgets/post_context.dart';
 
@@ -33,7 +37,7 @@ class ComposePage extends StatefulWidget {
 }
 
 class _ComposePageState extends State<ComposePage>
-    with AccountAction<ComposePage> {
+    with AccountAction<ComposePage>, WidgetsBindingObserver {
   final placeKey = GlobalKey();
   final text = TextEditingController();
   final storyTitle = TextEditingController();
@@ -42,7 +46,7 @@ class _ComposePageState extends State<ComposePage>
       ? storyTitle.text.trim().isNotEmpty && text.text.trim().isNotEmpty
       : text.text.trim().isNotEmpty || images.isNotEmpty;
   final picker = ImagePicker();
-  final requestId = const Uuid().v4();
+  String requestId = const Uuid().v4();
   bool publishing = false;
   bool attachLocation = false;
   PostPlaceSelection? place;
@@ -52,9 +56,216 @@ class _ComposePageState extends State<ComposePage>
   final List<String> images = [];
   String? taggedId, city;
   bool anonymous = false, cityWide = true, submitted = false;
+
+  // ---- Local draft ----------------------------------------------------------------------------
+  // Only a normal, connected post keeps a draft (not an encounter story, not the offline demo).
+  Timer? draftTimer;
+  String draftSignature = '';
+
+  /// True while the "Kaydedilmiş bir taslağın var" question is open: nothing may touch the stored draft until it is answered
+  /// (an untouched, empty composer must never overwrite or clear a saved draft).
+  bool draftPending = true;
+
+  /// A change is waiting for its debounced write (or the write is in flight).
+  bool draftDirty = false;
+  bool restoring = false;
+  AppStore? draftStore;
+  Object? draftAccount;
+
+  bool get keepsDraft =>
+      !composingStory && draftStore != null && draftAccount != null;
+
+  ComposeDraft snapshot() => ComposeDraft(
+    body: text.text,
+    kind: kind,
+    anonymous: anonymous,
+    cityWide: cityWide,
+    city: city,
+    attachLocation: attachLocation,
+    place: place,
+    occurredAt: occurredAt,
+    taggedId: taggedId,
+    requestId: requestId,
+    travel: travelDraft,
+    images: List.of(images),
+  );
+
+  /// Called from build: schedules one debounced write when something that matters changed (never one per keystroke).
+  void scheduleDraftSave() {
+    if (!keepsDraft || restoring || submitted || draftPending) return;
+    final signature = jsonEncode(snapshot().toJson(images));
+    if (signature == draftSignature) return;
+    draftSignature = signature;
+    draftDirty = true;
+    draftTimer?.cancel();
+    draftTimer = Timer(const Duration(milliseconds: 800), flushDraft);
+  }
+
+  /// Writes the draft now (debounce elapsed, app paused, or the composer is closing).
+  Future<void> flushDraft() async {
+    draftTimer?.cancel();
+    final store = draftStore;
+    final account = draftAccount;
+    if (store == null ||
+        account == null ||
+        restoring ||
+        submitted ||
+        draftPending) {
+      return;
+    }
+    draftDirty = false;
+    final current = snapshot();
+    try {
+      final stored = await store.drafts.save(account, current);
+      // Photos now live in private app storage: point the composer at the stable copies.
+      if (mounted &&
+          !submitted &&
+          stored.length == current.images.length &&
+          !_sameList(stored, images) &&
+          _sameList(current.images, images)) {
+        setState(() {
+          images
+            ..clear()
+            ..addAll(stored);
+        });
+        draftSignature = jsonEncode(snapshot().toJson(images));
+      }
+    } catch (_) {
+      // A failed local write must never break composing.
+    }
+  }
+
+  bool _sameList(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  void applyDraft(ComposeDraft draft) {
+    restoring = true;
+    setState(() {
+      text.text = draft.body;
+      kind = draft.kind;
+      anonymous = draft.anonymous;
+      cityWide = draft.cityWide;
+      city = draft.city;
+      attachLocation = draft.attachLocation;
+      place = draft.place;
+      occurredAt = draft.occurredAt;
+      taggedId = draft.taggedId;
+      if (draft.requestId != null) requestId = draft.requestId!;
+      travelDraft
+        ..enabled = draft.travel.enabled
+        ..isPublic = draft.travel.isPublic
+        ..transport = draft.travel.transport
+        ..operatorName = draft.travel.operatorName
+        ..serviceCode = draft.travel.serviceCode
+        ..vehicleIdentifier = draft.travel.vehicleIdentifier
+        ..origin = draft.travel.origin
+        ..destination = draft.travel.destination
+        ..departureAt = draft.travel.departureAt;
+      images
+        ..clear()
+        ..addAll(draft.images);
+    });
+    restoring = false;
+    draftSignature = jsonEncode(snapshot().toJson(images));
+  }
+
+  /// First open of the composer: offers a saved draft ("Devam Et" / "Sil"). The photo / camera quick action waits for the answer.
+  Future<void> offerDraft() async {
+    final store = draftStore!;
+    final account = draftAccount!;
+    ComposeDraft? saved;
+    try {
+      saved = await store.drafts.load(account);
+    } catch (_) {
+      saved = null;
+    }
+    if (!mounted) return;
+    if (saved == null) {
+      // Nothing stored: the empty composer is the baseline, only real edits create a draft.
+      draftPending = false;
+      draftSignature = jsonEncode(snapshot().toJson(images));
+    } else {
+      final resume = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          key: const Key('draft-dialog'),
+          title: const Text('Kaydedilmiş bir taslağın var.'),
+          content: const Text(
+            'Yarım bıraktığın paylaşıma devam edebilir ya da taslağı silebilirsin.',
+          ),
+          actions: [
+            TextButton(
+              key: const Key('draft-discard'),
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Sil'),
+            ),
+            FilledButton(
+              key: const Key('draft-resume'),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Devam Et'),
+            ),
+          ],
+        ),
+      );
+      if (!mounted) return;
+      if (resume == true) {
+        applyDraft(saved);
+      } else {
+        // "Sil": the JSON and every private photo copy are removed; the composer opens clean.
+        await store.drafts.clear(account);
+        draftSignature = jsonEncode(snapshot().toJson(images));
+      }
+      draftPending = false;
+    }
+    // Whatever the user typed while the draft lookup ran is now evaluated for saving.
+    setState(() {});
+    runQuickAction();
+  }
+
+  void runQuickAction() {
+    if (!mounted) return;
+    if (widget.media == 'photo' || widget.media == 'camera') {
+      widget.media == 'camera' ? camera() : pickPhotos();
+    } else if (widget.media == 'location') {
+      final target = placeKey.currentContext;
+      if (target != null) Scrollable.ensureVisible(target, alignment: .1);
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Going to the background may end in a process kill: write at once.
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden) {
+      if (keepsDraft && draftDirty && !restoring && !submitted) {
+        flushDraft();
+      }
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (draftStore == null) {
+      final store = StoreScope.of(context);
+      if (!composingStory && store.connected && store.account != null) {
+        draftStore = store;
+        draftAccount = 'account-${store.account!.id}';
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     if (composingStory) {
       kind = PostKind.encounter;
       if (widget.reviseStory) {
@@ -62,22 +273,30 @@ class _ComposePageState extends State<ComposePage>
         text.text = widget.storyFor?.story?.text ?? '';
       }
     }
-    if (widget.media == 'photo' || widget.media == 'camera') {
-      WidgetsBinding.instance.addPostFrameCallback(
-        (_) => widget.media == 'camera' ? camera() : pickPhotos(),
-      );
-    } else if (widget.media == 'location') {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final target = placeKey.currentContext;
-        if (mounted && target != null) {
-          Scrollable.ensureVisible(target, alignment: .1);
-        }
-      });
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (keepsDraft) {
+        offerDraft();
+      } else {
+        runQuickAction();
+      }
+    });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    // Leaving without publishing keeps the draft: write whatever is pending right now.
+    if (keepsDraft && draftDirty && !submitted && !restoring && !draftPending) {
+      draftTimer?.cancel();
+      final store = draftStore!;
+      final account = draftAccount!;
+      final current = snapshot();
+      unawaited(
+        store.drafts.save(account, current).catchError((_) => <String>[]),
+      );
+    }
+    draftTimer?.cancel();
     text.dispose();
     storyTitle.dispose();
     super.dispose();
@@ -228,6 +447,16 @@ class _ComposePageState extends State<ComposePage>
           }
           if (!mounted) return;
           submitted = true;
+          draftTimer?.cancel();
+          if (keepsDraft) {
+            // A published post leaves no draft (JSON and photo copies) behind.
+            try {
+              await draftStore!.drafts.clear(draftAccount!);
+            } catch (_) {
+              // The post is already published; a draft that cannot be cleared is retried when the composer opens again.
+            }
+          }
+          if (!mounted) return;
           if (post?.encounterRequestId case final id?) {
             Navigator.pushReplacementNamed(
               context,
@@ -273,8 +502,9 @@ class _ComposePageState extends State<ComposePage>
   @override
   Widget build(BuildContext context) {
     final store = StoreScope.of(context);
+    scheduleDraftSave();
     return PopScope(
-      canPop: (!busy && !dirty) || submitted,
+      canPop: (!busy && (!dirty || keepsDraft)) || submitted,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop || busy) {
           return;

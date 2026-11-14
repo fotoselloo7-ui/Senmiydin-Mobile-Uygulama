@@ -120,3 +120,13 @@ Gerçek backend → API → Flutter → kullanıcı akışı olarak incelendi; y
 | 16+ readiness / mağaza beyanları | Yoktu | **DOCUMENTED** (uygulama planı; kod 16'ya hazır, güvenli teen modeli değil) | `docs/AGE_AND_STORE_READINESS.md` |
 | Destek e-postası / mağaza URL'leri / operatör bilgisi | — | **EXTERNAL** (sahte değer üretilmedi) | — |
 | Block / report / moderasyon / drawer / Home modülleri / interests | Çalışıyor | Korundu; yanıtlar, arşiv ve takip akışı bu katmanları aşamaz | mevcut + yeni testler |
+
+## Yorum beğenileri, koleksiyonlar ve dayanıklı taslak — 14 Kasım 2026
+
+| Alan | İlk durum | Son durum | Kanıt |
+|---|---|---|---|
+| Yorum / yanıt beğenisi | Yalnız gönderi beğenisi vardı | **COMPLETE** — `comment_likes`, `likes_count` / `liked_by_me`, idempotent, `comment_like` bildirimi (self / engel / tekrar yok), moderasyon ve hesap silme temizliği | `CommentLikesAndCollectionsTest` (4), `test/comment_likes_collections_drafts_test.dart`, Pixel `comment-likes.png` |
+| Kaydedilen koleksiyonları | Tek düz Kaydedilenler listesi | **COMPLETE** — özel koleksiyonlar, ad / limit / tekrar kuralları, çoklu üyelik, koleksiyon silmek kaydı silmez, kayıt kaldırmak koleksiyonlardan çıkarır, sayfalama, gizlilik | `CommentLikesAndCollectionsTest` (4), Flutter chip / sheet testleri (320 / 390 / 430, 1,5×), Pixel `saved-collection.png`, `collection-add-sheet.png` |
+| Paylaşım taslağı | Compose'dan çıkınca "taslağın silinecek" — içerik kaybolurdu | **COMPLETE** — özel depolamada, debounce, fotoğraf kopyası, Yolculuk dahil tüm alanlar, hesap ayrımı, bozuk dosya toleransı, yayın / silme / hesap silme temizliği, **süreç öldürme sonrası geri yükleme** | 8 depolama + 6 composer testi, Pixel `draft-restore-prompt.png`, `draft-restored.png` |
+| Taslakta bulunan hata (düzeltildi) | — | İlk uygulamada boş Compose, "taslağın var" sorusu cevaplanmadan saklı taslağı ezebiliyordu; gerçek cihazda yakalandı, soru açıkken kayıt kilitlendi | regresyon testi |
+| Dış bağımlılıklar | — | Değişmedi: destek e-postası, mağaza URL'leri, operatör bilgisi (EXTERNAL) | — |
