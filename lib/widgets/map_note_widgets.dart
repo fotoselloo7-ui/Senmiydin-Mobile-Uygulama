@@ -5,9 +5,11 @@ import 'translated_text.dart';
 import '../core/app_locale.dart';
 import '../core/navigation.dart';
 import '../core/theme.dart';
+import '../data/app_store.dart';
 import '../data/map_notes_api.dart';
 import '../data/models.dart';
 import 'common.dart';
+import 'media_viewer.dart';
 
 /// Warm white letter surface: a brand moment inside the final design system (navy text, lilac details).
 const mapNotePaper = Color(0xFFFFFCF8);
@@ -29,7 +31,9 @@ class MapNotePin extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
     button: true,
     excludeSemantics: true,
-    label: count == 1 ? tr('Haritadaki not') : trf('Haritadaki {0} not', [count]),
+    label: count == 1
+        ? tr('Haritadaki not')
+        : trf('Haritadaki {0} not', [count]),
     child: Tooltip(
       excludeFromSemantics: true,
       message: count == 1 ? tr('Haritadaki not') : trf('{0} not', [count]),
@@ -298,6 +302,10 @@ class MapNoteLetter extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(note.body, style: AppTypography.body.copyWith(height: 1.55)),
+              if (note.hasImage) ...[
+                const SizedBox(height: 10),
+                LetterPhoto(note),
+              ],
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -470,6 +478,11 @@ class MyLetterCard extends StatelessWidget {
                         style: AppTypography.body.copyWith(height: 1.45),
                       ),
                     ),
+                    if (note.hasImage)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: LetterPhoto(note, thumbnail: true),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -534,6 +547,48 @@ class MyLetterCard extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The optional photo of a letter: a modern rounded image under the text (the letter stays the main thing). The photo is
+/// private media, loaded with the account's credentials; tapping it opens the full viewer.
+class LetterPhoto extends StatelessWidget {
+  const LetterPhoto(this.note, {super.key, this.thumbnail = false});
+  final MapNoteItem note;
+  final bool thumbnail;
+
+  @override
+  Widget build(BuildContext context) {
+    final headers = StoreScope.of(context).mediaHeaders(note.image);
+    final image = Image.network(
+      note.image,
+      headers: headers,
+      fit: BoxFit.cover,
+      width: thumbnail ? 46 : double.infinity,
+      height: thumbnail ? 46 : 190,
+      errorBuilder: (_, _, _) => Container(
+        width: thumbnail ? 46 : double.infinity,
+        height: thumbnail ? 46 : 80,
+        color: AppColors.surfaceLilac,
+        alignment: Alignment.center,
+        child: const Icon(
+          Icons.image_not_supported_outlined,
+          color: AppColors.brandLilac,
+        ),
+      ),
+    );
+    return Semantics(
+      image: true,
+      label: tr('Mektup fotoğrafı'),
+      child: GestureDetector(
+        key: Key('letter-photo-${note.id}'),
+        onTap: thumbnail ? null : () => showMediaViewer(context, [note.image]),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(thumbnail ? 10 : 16),
+          child: image,
         ),
       ),
     );

@@ -1,3 +1,6 @@
+// ignore_for_file: prefer_initializing_formals
+import '../core/app_locale.dart';
+import '../core/relative_time.dart';
 import 'post_context.dart';
 
 enum PostKind {
@@ -57,7 +60,8 @@ class Comment {
   Comment(
     this.authorId,
     this.text, {
-    this.time = 'Az önce',
+    String time = 'Az önce',
+    this.createdAt,
     this.id,
     this.mine = false,
     this.parentId,
@@ -65,10 +69,16 @@ class Comment {
     List<Comment>? replies,
     this.likes = 0,
     this.liked = false,
-  }) : replies = replies ?? [];
+  }) : _time = time,
+       replies = replies ?? [];
   final String? id;
   final bool mine;
-  final String authorId, text, time;
+  final String authorId, text;
+  final String _time;
+
+  /// The raw timestamp is the source of truth: the label is formatted when shown, so it follows the language.
+  final DateTime? createdAt;
+  String get time => createdAt != null ? relativeTime(createdAt!) : tr(_time);
 
   /// Set only on replies: the top-level comment they answer (replies never answer replies).
   final String? parentId;
@@ -118,7 +128,8 @@ class Post {
     this.likes = 0,
     this.liked = false,
     this.saved = false,
-    this.time = '28 dk önce',
+    String time = '28 dk önce',
+    this.createdAt,
     this.taggedId,
     List<Comment>? comments,
     this.cityWide = true,
@@ -138,7 +149,8 @@ class Post {
     this.occurredAt,
     this.matchHint,
     this.travel,
-  }) : comments = comments ?? [];
+  }) : _time = time,
+       comments = comments ?? [];
   DateTime? occurredAt;
   String? matchHint;
   TravelDetails? travel;
@@ -159,7 +171,12 @@ class Post {
   bool get interactionsEnabled => !jointStory || storyStatus == 'published';
   int get displayedCommentCount => remote ? commentCount : comments.length;
   final String city;
-  String time;
+  String _time;
+
+  /// Raw timestamp (source of truth for the relative label, which re-formats with the language).
+  DateTime? createdAt;
+  String get time => createdAt != null ? relativeTime(createdAt!) : tr(_time);
+  set time(String value) => _time = value;
   final double distance;
   final String? taggedId;
   int likes;

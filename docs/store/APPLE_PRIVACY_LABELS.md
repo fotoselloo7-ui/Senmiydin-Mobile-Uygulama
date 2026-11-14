@@ -26,7 +26,8 @@ Amaçlar: AF=App Functionality (hesap, güvenlik, destek ve mesajlaşma dahil); 
 | Other Data Types | IP bazlı güvenlik rate-limit cache; web session/admin audit | Evet güvenlik cache’i; web/admin ayrı kapsam; production access log ayrıntısı [GERÇEK BİLGİ GEREKLİ] | Login kimlik hash’i/IP bağı ilişkilendirilebilir | Hayır | AF/güvenlik; saklama/log politikası tamamlanmalı |
 | Search History | API’ye q arama sorgusu | Uygulama DB’sinde saklanmıyor; yalnız anlık işleme Apple “collected” olmayabilir. Access log tam query tutuyorsa Evet | Tutuluyorsa IP/kimlik ilişkisi incelenir | Hayır | AF; production log politikası **MISSING**, “kesin hayır” beyanı henüz verilemez |
 | Sensitive Info | Irk/din/siyasi görüş/sağlık/cinsel yönelim/biyometri için özel alan | Özel yapılandırılmış toplama yok | UGC’nin kendisi linked olabilir | Hayır | UGC içeriğini mutlak hassas veri yok iddiasıyla sunma |
-| Financial/Purchases/Audio/Fitness/Calendar/Browsing History | İlgili özellikler | Kodda ayrı toplama yok | — | Hayır | Ödeme, ses/video, HealthKit, rehber tarama veya uygulama içi serbest web tarayıcı SDK’sı yok |
+| Audio Data (sesli mesaj) | Sesli mesaj | Kullanıcı kaydeder ve gönderirse sunucuya yüklenir; özel depolama | Kullanıcıya bağlı | Hayır | App Functionality. Reklam/analytics yok; `PrivacyInfo.xcprivacy` içinde `AudioData` bildirilmiştir |
+| Financial/Purchases/Fitness/Calendar/Browsing History | İlgili özellikler | Kodda ayrı toplama yok | — | Hayır | Ödeme, video, HealthKit, rehber tarama veya uygulama içi serbest web tarayıcı SDK’sı yok |
 
 ## Apple beyanı için koşullar
 

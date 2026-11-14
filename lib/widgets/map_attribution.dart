@@ -1,4 +1,5 @@
 import '../core/app_locale.dart';
+
 import 'package:flutter/material.dart' hide Text;
 
 import 'translated_text.dart';

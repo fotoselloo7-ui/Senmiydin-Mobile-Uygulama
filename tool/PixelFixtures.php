@@ -167,6 +167,13 @@ final class PixelFixtures
             foreach (DB::table('messages')->whereIn('conversation_id', $conversationIds)->whereNotNull('image_path')->get() as $message) {
                 $this->queueFile(config('mobile.post_media_disk'), $message->image_path);
             }
+            // Voice recordings and letter photos live on the same private disk as message photos.
+            foreach (DB::table('messages')->whereIn('conversation_id', $conversationIds)->whereNotNull('audio_path')->get() as $message) {
+                $this->queueFile(config('mobile.post_media_disk'), $message->audio_path);
+            }
+            foreach (DB::table('map_notes')->whereIn('user_id', $ids)->whereNotNull('image_path')->get() as $note) {
+                $this->queueFile(config('mobile.post_media_disk'), $note->image_path);
+            }
             foreach (User::whereKey($ids)->get() as $user) {
                 if ($user->avatar) {
                     $this->queueFile(config('mobile.avatar_disk'), $user->avatar);

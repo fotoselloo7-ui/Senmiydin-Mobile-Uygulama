@@ -1,8 +1,33 @@
 # Doğrulama
 
-> **Güncel kaynak bu dosyanın ilk bölümüdür (15 Kasım 2026, küresel sosyal sürüm).** Altındaki bölümler önceki turların tarihsel kayıtlarıdır; oradaki sayılar güncel durum değildir.
+> **Güncel kaynak bu dosyanın ilk bölümüdür (15 Kasım 2026, son mesajlaşma/medya ve release freeze).** Altındaki bölümler önceki turların tarihsel kayıtlarıdır; oradaki sayılar güncel durum değildir.
 
-## Final Release Candidate doğrulaması — 15 Kasım 2026 (en güncel)
+## Son mesajlaşma/medya ve release freeze doğrulaması — 15 Kasım 2026 (en güncel)
+
+Başlangıç `1519d36` (RC). Bu turda: gelişmiş emoji paneli, sesli mesaj, ücretsiz hediyeler, fotoğraflı Harita Notu, ham zaman damgasından canlı dil değişen göreli zaman, birleşik Android release manifest kontrolü, iOS statik kontrol, release freeze.
+
+| Kontrol | Sonuç |
+|---|---|
+| Laravel `php artisan test` | **265 test / 5335 assertion geçti** (+18: `VoiceAndGiftMessageTest` 10, `MapNoteImageTest` 8) |
+| `flutter analyze` | **No issues found** |
+| Flutter `flutter test` | **342 test geçti** (+65: emoji/sesli mesaj 27, hediye/mesaj türü/göreli zaman 18, Harita Notu fotoğrafı 18, release kontrol 2). Mevcut testler silinmedi/gevşetilmedi; yalnız eski emoji sayfası ve "boş girdide mikrofon" UX'ine uyarlandı |
+| `tool/l10n_audit.py --all` | **0 eksik** (catalog 793) |
+| `tool/platform_manifest_check.py android --build` | Gradle `processReleaseMainManifest` → **birleşik release manifest**: paket, cleartext kapalı, yedek kapalı, debuggable değil, izinler (mikrofon dahil), FCM, AdMob bileşenleri, konum foreground servisi, provider'lar dışa kapalı, yalnız beklenen exported bileşenler, yalnız `signinwithapple` şeması, yerel/debug uç yok → **FAIL yok**; AdMob uygulama kimliği Google örneği olduğu için `MISSING` (harici kimlik bilgisi). 13 birim testi sentetik manifestlerle yanlış durumda FAIL verdiğini doğrular |
+| `tool/platform_manifest_check.py ios` | Info.plist / gizlilik manifesti / yerelleştirilmiş izin metinleri / ATS / arka plan modları: **FAIL yok**; AdMob iOS kimliği `MISSING`. **Xcode derlemesi, imzalama, archive yapılmadı** (`docs/IOS_MAC_HANDOFF.md`) |
+| `tool/release_check.ps1` | Flutter env/pub/analyze/test, Composer test, migration, paket kimlikleri, demo seeder, hassas dosya, **Android birleşik manifest**, **iOS statik**: OK; yalnız production config, AdMob kimlikleri ve Android imzası `MISSING` (exit 2) |
+| `tool/store_readiness_check.ps1 -SkipRuntime` | `READY 34 / WAITING 6 / MISSING 6`, **FAIL yok** (`RECORD_AUDIO` ve AdMob `AD_ID` artık yasaklı değil, gerekli/beklenen) |
+| Pixel 6a regresyon | **9/9**, `clean=true` |
+| Pixel 6a location-time | **3/3**, `clean=true` |
+
+**Gerçek Pixel 6a senaryoları (Demo ↔ Elif):** emoji paneli (imlece ekleme, boş alan / Android geri / klavye ile kapanma, 1.5× yazı), mikrofon reddi (tek açıklama + tek sistem izni, tekrar sormaz), 2 dk otomatik durma (02:00), önizleme dinleme, gönderim (UUID adlı özel dosya, kimliksiz istek 401, Elif'te 200 `audio/mp4`), okundu bilgisi, benim için sil, Elif'ten gelen sesli mesajı oynatma/duraklatma, hediye gönder/al + şikâyet (`reports` kaydı), fotoğraflı Harita Notu (galeri → önizleme → yayın → marker → aç → Mektuplarım Aktif → haritadan kaldır → Arşiv'de fotoğraf duruyor, başka hesap 404 → yeniden paylaş: yeni 7 gün, `occurred_at` korundu, görsel kopyalandı).
+
+**Cihazda bulunan ve düzeltilen gerçek hatalar:** (1) Harita Notu fotoğrafı ve gelen sesli mesaj, `mediaHeaders` yalnız `post-media`/`message-images` için token gönderdiği için yüklenmiyordu → izin listesi `message-audio` ve `map-notes/{id}/image` ile genişletildi (+regresyon testi). (2) Durdur düğmesi 1 sn'den kısa kaydı bildirimsiz siliyordu → ekran üzerinden `stopVoice` ile uyarı gösteriyor. (3) Hediye adları hesap diline göre sunucudan geliyordu, İngilizce arayüzde Türkçe görünüyordu → istemci tarafında yerelleştirildi. (4) İngilizce arayüzde `Durdur`/`Dinle`/`Duraklat`/`Hediye`/`Hobi ara` Türkçe kalıyordu (tek sözcükler denetimden kaçıyordu) → katalog tamamlandı. Test altyapısı: platform eklentileri testlerde yüklenmez (`test/flutter_test_config.dart`, sahte mikrofon/oynatıcı).
+
+**Temizlik:** test sohbeti, sesli mesaj dosyaları, hediye mesajları, Harita Notu fotoğrafları, bildirimler ve şikâyet kaydı silindi (`voice_files=0`, `note_images=0`); cihaz geçici kayıt klasörü boşaltıldı; fixture temizliği ses/not görsellerini de kuyruğa alır.
+
+---
+
+## Final Release Candidate doğrulaması — 15 Kasım 2026 (önceki tur)
 
 Başlangıç `2e8690f` (gerçekten ölçüldü, hiçbir şey değiştirilmeden): Laravel **215 test / 3846 assertion geçti**, `flutter analyze` temiz, Flutter **257 geçti / 2 düştü** (yorum başlığı 320 dp / 1.5× taşması; yalnız saate bağlı olduğu için önceki turda "şimdi" etiketiyle gizlenmişti — gerçek UI hatası, düzeltildi), `release_check` yalnız dış bağımlılık `MISSING`, `store_readiness_check` `READY 53 / WAITING 8 / MISSING 29`. Pixel baseline koşusu, ben çalışırken eklediğim yerel migration henüz uygulanmadığı için 3 testte düştü (yerel API 500); migration uygulanınca geçti — bu yüzden "gerçek baseline" Pixel sayısı olarak son tam koşu esas alınmıştır.
 

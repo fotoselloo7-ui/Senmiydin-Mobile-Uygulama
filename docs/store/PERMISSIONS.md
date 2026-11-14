@@ -15,7 +15,8 @@ Denetim: 9 Kasım 2026. Kanıt yalnız source manifest değildir: Gradle :app:pr
 | POST_NOTIFICATIONS | Var, Android 13+ runtime | Gerçek yapılandırılmış FCM bildirimleri; FGS görünürlüğü OS kurallarına tabidir | İsteğe bağlı; onboarding Bildirim veya Bildirim Ayarları, PushClient::setEnabled | Push kapalı; in-app bildirim merkezi çalışır. FGS konum izniyle aynı değildir |
 | CAMERA | **Yok** | image_picker dış kamera uygulaması/intent | Kamera eylemi isteğe bağlı | Kamera app yoksa/iptalde hata veya seçili mevcut metin; yeni kamera izni eklenmez |
 | READ_MEDIA_IMAGES / READ_MEDIA_VIDEO / READ_EXTERNAL_STORAGE / WRITE_EXTERNAL_STORAGE | **Yok** | Sistem photo picker, kullanıcı seçimi ve URI erişimi | Fotoğraf ekle, profil/mesaj seçimi isteğe bağlı | İptal/ret durumunda metinle devam; geniş galeri taraması yok |
-| RECORD_AUDIO / READ_CONTACTS / ACTIVITY_RECOGNITION | **Yok** | Ses, rehber tarama veya aktivite SDK özelliği yok | Talep edilmez | — |
+| RECORD_AUDIO | **Var, dangerous (runtime)** | Özel mesajda **sesli mesaj** (en fazla 2 dk) | Yalnız mikrofon düğmesine basılınca: önce uygulama içi açıklama, sonra tek sistem izni; ret oturum boyunca hatırlanır, döngü yok | Reddedilirse metin/fotoğraf/konum/hediye mesajı çalışır; kayıt yalnız kullanıcı "gönder"e basarsa karşı tarafa gider, silinmeyen taslak yoktur |
+| READ_CONTACTS / ACTIVITY_RECOGNITION | **Yok** | Rehber tarama veya aktivite SDK özelliği yok | Talep edilmez | — |
 | com.google.android.gms.permission.AD_ID / AD_SERVICES_* | **Var (google_mobile_ads ile birleşir)** | AdMob reklam kimliği | Play “Advertising ID” beyanı **Evet, reklam amaçlı** | Konum bu izinle ilişkilendirilmez |
 | BILLING | **Yok** | IAP yok | Talep edilmez | — |
 | USE_BIOMETRIC / USE_FINGERPRINT | **Yok**, source merger remove | Güvenli depolamanın kullanılmayan biyometri izni çıkarılmış | Talep edilmez | Parola/secure-storage akışı |
@@ -38,7 +39,9 @@ GeolocatorLocationService location tipindedir. Foreground service yalnız uygula
 | Notifications / UNUserNotificationCenter | Gerçek push kurulumu varsa runtime | Onboarding veya Bildirim Ayarları | İsteğe bağlı | In-app inbox devam eder |
 | aps-environment | $(PUSH_APS_ENVIRONMENT) | APNs capability; gerçek provisioning gerekli | Canlı push için gerekli dış kurulum | Gerçek teslimat WAITING |
 | UIBackgroundModes=remote-notification | Var | APNs/push bildirimi | Konum yetkisi değildir | Background location diye beyan edilmez |
-| NSMicrophoneUsageDescription / NSContactsUsageDescription / NSUserTrackingUsageDescription | Yok | Ses/rehber/ATT tracking özelliği yok | Talep edilmez | — |
+| NSMicrophoneUsageDescription | Var (tr + en) | Özel mesajda sesli mesaj kaydı | Mikrofon düğmesine basınca; önce uygulama içi açıklama | Ret → diğer mesaj türleri çalışır; Mac'te gerçek cihaz testi bekleniyor |
+| NSContactsUsageDescription | Yok | Rehber tarama yok | Talep edilmez | — |
+| NSUserTrackingUsageDescription | Var | AdMob reklam kimliği (ATT) | Reklam onayı akışında | Ret → izlemesiz reklam |
 | com.apple.developer.applesignin | Var | Gerçek Apple Sign In etkinleştirilirse | Alternatif giriş; parola girişi mevcut | Gerçek Team/key/capability yokken başarı iddiası yok |
 
 Windows denetimi source plist/entitlement ve plugin kaynaklarıyla sınırlıdır. Mac’te archive, birleşik privacy report ve gerçek iOS cihaz izin/ret/limited-photo testleri beklenir.

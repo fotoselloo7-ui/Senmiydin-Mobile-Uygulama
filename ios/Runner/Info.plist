@@ -20,6 +20,8 @@
 	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Şehir keşfi, yakındaki kişiler ve paylaşımlar için yaklaşık cihaz konumunu kullanır.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Sesli mesaj kaydetmek için mikrofon kullanılır. Kayıt yalnız sen gönderirsen karşı tarafa iletilir.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Paylaşımına fotoğraf çekip eklemek için kamera kullanılır.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

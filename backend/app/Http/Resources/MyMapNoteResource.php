@@ -25,6 +25,8 @@ class MyMapNoteResource extends JsonResource
             'author' => $this->is_anonymous ? null : new PublicUserResource($this->author),
             'city' => $this->city->only('id', 'name', 'slug'),
             'place_label' => $this->place_label,
+            // The letter's optional photo is served by id through its own visibility-checked route; no file name leaves the server.
+            'image' => $this->imageUrl(),
             'group' => $this->group(),
             'latitude' => $this->approx_latitude,
             'longitude' => $this->approx_longitude,

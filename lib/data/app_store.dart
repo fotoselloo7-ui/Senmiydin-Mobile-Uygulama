@@ -452,7 +452,8 @@ class AppStore extends ChangeNotifier {
         : _rememberPost(json['story'] as Map<String, dynamic>),
     encounterId: json['encounter_id'] as int?,
     storyRevision: (json['story'] as Map?)?['story_revision'] as int?,
-    time: socialTime(json['created_at'] as String),
+    time: '',
+    createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
   );
 
   Future<EncounterEntry> loadEncounter(String id) async =>
@@ -605,6 +606,7 @@ class AppStore extends ChangeNotifier {
       ..storyRevision = incoming.storyRevision
       ..storyParticipants = incoming.storyParticipants
       ..cityWide = incoming.cityWide
+      ..createdAt = incoming.createdAt
       ..time = incoming.time;
     return existing;
   }
@@ -615,7 +617,7 @@ class AppStore extends ChangeNotifier {
       author == null ? '' : _rememberPerson(author).id,
       json['body'] as String,
       id: json['id'].toString(),
-      time: socialTime(json['created_at'] as String),
+      createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
       mine: json['mine'] == true,
       parentId: json['parent_id']?.toString(),
       likes: (json['likes_count'] as num?)?.toInt() ?? 0,
@@ -1496,7 +1498,9 @@ class AppStore extends ChangeNotifier {
         AppNotice(
           'local-n${notices.length}',
           NoticeKind.approved,
-          trf('{0} karşılaşmanı onayladı. Birbirinizi buldunuz!', [person(e.toId).name]),
+          trf('{0} karşılaşmanı onayladı. Birbirinizi buldunuz!', [
+            person(e.toId).name,
+          ]),
           personId: e.toId,
           encounterId: e.id,
           postId: e.postId,

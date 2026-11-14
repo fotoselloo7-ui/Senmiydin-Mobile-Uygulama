@@ -14,7 +14,22 @@ class MapNote extends Model
     use SoftDeletes;
 
     protected $fillable = ['user_id', 'city_id', 'body', 'is_anonymous', 'approx_latitude', 'approx_longitude',
-        'place_label', 'content_hash', 'request_id', 'expires_at', 'occurred_at', 'reposted_from_id'];
+        'place_label', 'content_hash', 'request_id', 'expires_at', 'occurred_at', 'reposted_from_id', 'image_path'];
+
+    protected static function booted(): void
+    {
+        // Permanent deletion (owner "Kalıcı Sil", the retention purge) takes the private photo with it.
+        static::forceDeleted(function (self $note): void {
+            if ($note->image_path) {
+                \Illuminate\Support\Facades\Storage::disk(config('mobile.post_media_disk'))->delete($note->image_path);
+            }
+        });
+    }
+
+    public function imageUrl(): ?string
+    {
+        return $this->image_path ? route('map-notes.image', ['note' => $this->id], false) : null;
+    }
 
     protected function casts(): array
     {

@@ -52,6 +52,25 @@ try {
         if($debug.manifest.application.usesCleartextTraffic -ne 'true'){ throw 'Debug local HTTP override is missing.' }
         if($gradle -match 'signingConfig\s*=\s*signingConfigs.getByName\("debug"\)'){ throw 'Release debug-key fallback found.' }
     }
+    # The REAL merged release manifest (app + every plugin/SDK manifest), not the source file. FAIL when it ships something
+    # wrong; MISSING (exit 2 of the checker) only for an external credential such as the real AdMob application id.
+    try {
+        Invoke-ReleaseNative $python @('tool/platform_manifest_check.py','android','--build','--json', (Join-Path $logDirectory 'android-manifest.json')) *> (Join-Path $logDirectory 'android-manifest.log')
+        $results.Add([pscustomobject]@{Check='Android merged release manifest';Status='OK'})
+    } catch {
+        $manifestStatus=(Get-Content -LiteralPath (Join-Path $logDirectory 'android-manifest.json') -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json -ErrorAction SilentlyContinue).status
+        if($manifestStatus -eq 'MISSING'){ $results.Add([pscustomobject]@{Check='Android merged release manifest';Status='MISSING'}); Write-Output 'MISSING: real AdMob Android application id (see android-manifest.log).' }
+        else { $results.Add([pscustomobject]@{Check='Android merged release manifest';Status='FAIL'}); Write-Output 'FAIL: Android merged release manifest (see .local/release-check/android-manifest.log).' }
+    }
+    # Static files only: no Xcode build, signing or archive is claimed (docs/IOS_MAC_HANDOFF.md lists the Mac work).
+    try {
+        Invoke-ReleaseNative $python @('tool/platform_manifest_check.py','ios','--json', (Join-Path $logDirectory 'ios-static.json')) *> (Join-Path $logDirectory 'ios-static.log')
+        $results.Add([pscustomobject]@{Check='iOS static sanity (no Xcode build)';Status='OK'})
+    } catch {
+        $iosStatus=(Get-Content -LiteralPath (Join-Path $logDirectory 'ios-static.json') -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json -ErrorAction SilentlyContinue).status
+        if($iosStatus -eq 'MISSING'){ $results.Add([pscustomobject]@{Check='iOS static sanity (no Xcode build)';Status='MISSING'}); Write-Output 'MISSING: real AdMob iOS application id (see ios-static.log).' }
+        else { $results.Add([pscustomobject]@{Check='iOS static sanity (no Xcode build)';Status='FAIL'}); Write-Output 'FAIL: iOS static sanity (see .local/release-check/ios-static.log).' }
+    }
     Check-ReleaseStep 'Demo seeder protection' {
         foreach($file in @('backend/database/seeders/DemoDataSeeder.php','backend/database/seeders/DevelopmentAdminSeeder.php')){
             if((Get-Content -LiteralPath $file -Raw) -notmatch "environment\('local',\s*'development'\)"){ throw 'Development seeder guard missing.' }

@@ -1,3 +1,5 @@
+import 'package:image_picker/image_picker.dart';
+
 import '../core/app_locale.dart';
 import 'account_api.dart';
 import 'models.dart';
@@ -48,6 +50,7 @@ class MapNoteItem {
           ? null
           : person(json['author'] as Map<String, dynamic>),
       placeLabel = json['place_label'] as String? ?? '',
+      image = ApiClient.mediaUrl(json['image'] as String?),
       group = json['group'] as String,
       latitude = (json['latitude'] as num).toDouble(),
       longitude = (json['longitude'] as num).toDouble(),
@@ -73,6 +76,7 @@ class MapNoteItem {
       mine = other.mine,
       author = other.author,
       placeLabel = other.placeLabel,
+      image = other.image,
       group = other.group,
       latitude = other.latitude,
       longitude = other.longitude,
@@ -90,6 +94,10 @@ class MapNoteItem {
 
   final int id, replyCount;
   final String body, placeLabel, group;
+
+  /// The letter's optional photo (private URL, empty when there is none).
+  final String image;
+  bool get hasImage => image.isNotEmpty;
   final bool anonymous, mine, canReply;
   final Person? author;
   final double latitude, longitude;
@@ -265,14 +273,17 @@ class MapNotesApi {
     required double latitude,
     required double longitude,
     required String requestId,
+    XFile? image,
   }) async => MapNoteItem.fromJson(
     await client.send(
       'POST',
       'map-notes',
       authenticated: true,
+      files: {'image': ?image},
       body: {
         'body': body,
-        'is_anonymous': anonymous,
+        // Multipart forms carry 1 / 0 (the server validates a real boolean).
+        'is_anonymous': image == null ? anonymous : (anonymous ? 1 : 0),
         'city_id': cityId,
         'latitude': latitude,
         'longitude': longitude,

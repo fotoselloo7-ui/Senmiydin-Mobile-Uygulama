@@ -31,10 +31,12 @@ FORBIDDEN_PERMISSIONS = {
     "android.permission.ACCESS_BACKGROUND_LOCATION", "android.permission.CAMERA",
     "android.permission.READ_MEDIA_IMAGES", "android.permission.READ_MEDIA_VIDEO",
     "android.permission.READ_EXTERNAL_STORAGE", "android.permission.WRITE_EXTERNAL_STORAGE",
-    "android.permission.RECORD_AUDIO", "android.permission.READ_CONTACTS",
+    "android.permission.READ_CONTACTS",
     "android.permission.USE_BIOMETRIC", "android.permission.USE_FINGERPRINT",
-    "com.google.android.gms.permission.AD_ID", "com.android.vending.BILLING",
+    "com.android.vending.BILLING",
 }
+# RECORD_AUDIO (voice messages) and com.google.android.gms.permission.AD_ID (AdMob, declared in Play "Advertising ID")
+# are intentional now; they are checked as REQUIRED below, not forbidden.
 SUFFIX = re.compile(r"millisecondsSinceEpoch|\b\d{13}\b")
 BAD_SDK = re.compile(r"com\.google\.android\.gms:play-services-ads(?:[-:]|\b)|com\.google\.firebase:firebase-analytics(?:[-:]|\b)|com\.android\.billingclient:|appsflyer|com\.adjust:", re.I)
 
@@ -146,9 +148,9 @@ def audit(skip_runtime: bool = False) -> dict:
         forbidden = sorted(p for p in permissions if p in FORBIDDEN_PERMISSIONS or ".AD_SERVICES_" in p)
         application = tree.find("application")
         evidence["android_permissions"] = permissions
-        add("Merged release permissions", "FAIL" if forbidden else "READY", ", ".join(forbidden) if forbidden else "Location FGS present; no ads/background/camera/wide-media permissions.")
-        required = {"android.permission.ACCESS_COARSE_LOCATION", "android.permission.ACCESS_FINE_LOCATION", "android.permission.FOREGROUND_SERVICE_LOCATION", "android.permission.POST_NOTIFICATIONS"}
-        add("Required Android configuration", "READY" if required.issubset(permissions) and application is not None and application.get(ANDROID_NS + "usesCleartextTraffic") == "false" else "FAIL", "Expected location/notification permissions; release cleartext disabled.")
+        add("Merged release permissions", "FAIL" if forbidden else "READY", ", ".join(forbidden) if forbidden else "Location FGS, microphone (voice messages) and AdMob AD_ID present; no background/camera/wide-media permissions.")
+        required = {"android.permission.ACCESS_COARSE_LOCATION", "android.permission.ACCESS_FINE_LOCATION", "android.permission.FOREGROUND_SERVICE_LOCATION", "android.permission.POST_NOTIFICATIONS", "android.permission.RECORD_AUDIO"}
+        add("Required Android configuration", "READY" if required.issubset(permissions) and application is not None and application.get(ANDROID_NS + "usesCleartextTraffic") == "false" else "FAIL", "Expected location/notification/microphone permissions; release cleartext disabled.")
     else:
         add("Merged release permissions", "WAITING", "Run -RefreshAndroidAudit; source-only inspection is insufficient.")
     deps = ROOT / ".local/store-android-dependencies.log"

@@ -88,4 +88,8 @@ return [
     'Yanıtın kaldırıldı.' => 'Your reply was removed.',
     'Yeni kayıtlar şu anda kapalı.' => 'New sign-ups are currently closed.',
     'Yeni mesaj göndermek için isteğin kabul edilmesi gerekir.' => 'Your request must be accepted before you can send another message.',
+    'Ses kaydı çok büyük.' => 'The voice recording is too large.',
+    'Ses kaydı okunamadı.' => 'The voice recording couldn’t be read.',
+    'Ses kaydı çok kısa.' => 'The voice recording is too short.',
+    'Ses kaydı çok uzun.' => 'The voice recording is too long.',
 ];

@@ -1,4 +1,4 @@
-import '../core/app_locale.dart';
+import '../core/relative_time.dart';
 import 'post_context.dart';
 
 import 'package:image_picker/image_picker.dart';
@@ -54,16 +54,7 @@ class SocialService {
   }
 }
 
-String socialTime(String value) {
-  final time = DateTime.parse(value).toLocal();
-  final elapsed = DateTime.now().difference(time);
-  final text = currentL10n;
-  if (elapsed.inMinutes < 1) return text.timeJustNow;
-  if (elapsed.inHours < 1) return text.timeMinutesAgo(elapsed.inMinutes);
-  if (elapsed.inDays < 1) return text.timeHoursAgo(elapsed.inHours);
-  if (elapsed.inDays < 7) return text.timeDaysAgo(elapsed.inDays);
-  return '${time.day}.${time.month}.${time.year}';
-}
+String socialTime(String value) => relativeTime(DateTime.parse(value).toLocal());
 
 Person socialPerson(Map<String, dynamic> json) => Person(
   id: 'account-${json['id']}',
@@ -104,7 +95,7 @@ Post socialPost(Map<String, dynamic> json, String authorId) => Post(
       .map((image) => ApiClient.mediaUrl(image['url'] as String))
       .toList(),
   city: json['city']['name'] as String,
-  time: socialTime(json['created_at'] as String),
+  createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
   anonymous: json['is_anonymous'] == true,
   cityWide: json['visibility'] == 'city',
   likes: json['likes_count'] as int,

@@ -59,6 +59,7 @@ Route::prefix('v1')->group(function (): void {
         Route::get('map/notes/unread', [MapNoteController::class, 'unread'])->middleware('throttle:location-read');
         Route::get('map/notes/{group}', [MapNoteController::class, 'group'])->where('group', '-?[0-9]{1,3}\.[0-9]{5}_-?[0-9]{1,3}\.[0-9]{5}')->middleware('throttle:location-read');
         Route::post('map-notes', [MapNoteController::class, 'store'])->middleware('throttle:map-note-create');
+        Route::get('map-notes/{note}/image', [MapNoteController::class, 'image'])->whereNumber('note')->name('map-notes.image')->middleware('throttle:communication-read');
         Route::get('map-notes/{note}', [MapNoteController::class, 'show'])->whereNumber('note')->middleware('throttle:communication-read');
         Route::delete('map-notes/{note}', [MapNoteController::class, 'destroy'])->whereNumber('note')->middleware('throttle:comment-write');
         Route::post('map-notes/{note}/read', [MapNoteController::class, 'read'])->whereNumber('note')->middleware('throttle:communication-read');
@@ -131,6 +132,8 @@ Route::prefix('v1')->group(function (): void {
         Route::delete('conversations/{conversation}/messages/{message}', [ConversationController::class, 'deleteMessage'])
             ->whereNumber(['conversation', 'message'])->middleware('throttle:message-write');
         Route::get('message-images/{message}', [ConversationController::class, 'image'])->whereNumber('message')->name('messages.image');
+        Route::get('message-audio/{message}', [ConversationController::class, 'audio'])->whereNumber('message')->name('messages.audio');
+        Route::get('gifts', [ConversationController::class, 'gifts']);
         Route::put('notifications/read', [InboxController::class, 'read'])->middleware('throttle:communication-read');
         Route::put('notifications/{notification}/read', [InboxController::class, 'read'])->whereNumber('notification')->middleware('throttle:communication-read');
         Route::put('push-device', [InboxController::class, 'device'])->middleware('throttle:12,1');

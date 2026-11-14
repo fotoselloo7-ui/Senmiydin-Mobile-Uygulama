@@ -10,6 +10,7 @@ use App\Location\CityResolver;
 use App\Location\Geo;
 use App\Location\LocationData;
 use App\MapNotes\NearbyNotifier;
+use App\Media\PrivateImage;
 use App\Models\MapNote;
 use App\Models\MapNoteReply;
 use App\Models\User;
@@ -18,6 +19,8 @@ use App\Safety\ContentGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -128,6 +131,8 @@ class MapNoteController extends Controller
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
             'request_id' => ['sometimes', 'uuid'],
+            // One optional photo; the same server-side checks and re-encoding as every public photo.
+            'image' => array_merge(['sometimes', PrivateImage::safeName()], explode('|', PrivateImage::RULES)),
         ], ['body.required' => 'Notunu yaz.', 'body.max' => "Notun en fazla $max karakter olabilir."]);
         $body = trim($data['body']);
         if ($body === '') {
@@ -139,7 +144,9 @@ class MapNoteController extends Controller
         }
 
         $viewer = $request->user();
-        [$note, $created] = DB::transaction(function () use ($viewer, $data, $body) {
+        $imagePath = null;
+        try {
+        [$note, $created] = DB::transaction(function () use ($viewer, $data, $body, &$imagePath) {
             User::whereKey($viewer->id)->lockForUpdate()->firstOrFail();
             if (isset($data['request_id'])) {
                 $existing = MapNote::withTrashed()->where('user_id', $viewer->id)->where('request_id', $data['request_id'])->first();
@@ -148,6 +155,12 @@ class MapNoteController extends Controller
                 }
             }
             app(ContentGuard::class)->check($viewer->id, $body, 'map_notes');
+            if (isset($data['image'])) {
+                // Re-encoded JPEG without any metadata, random name on the private disk.
+                [$bytes] = PrivateImage::jpeg($data['image'], 'image');
+                $imagePath = 'map-notes/'.Str::uuid().'.jpg';
+                abort_unless($bytes && Storage::disk(config('mobile.post_media_disk'))->put($imagePath, $bytes, 'private'), 503);
+            }
             $grid = (float) config('map_notes.location_grid');
             $city = DB::table('cities')->where('id', $data['city_id'])->value('name');
             $note = MapNote::create([
@@ -157,7 +170,7 @@ class MapNoteController extends Controller
                 'approx_latitude' => Geo::grid((float) $data['latitude'], $grid),
                 'approx_longitude' => Geo::grid((float) $data['longitude'], $grid),
                 'place_label' => $city.' · Yaklaşık bölge', 'content_hash' => ContentGuard::fingerprint($body),
-                'request_id' => $data['request_id'] ?? null,
+                'request_id' => $data['request_id'] ?? null, 'image_path' => $imagePath,
                 'occurred_at' => now(),
                 'expires_at' => now()->addDays((int) config('map_notes.ttl_days')),
             ]);
@@ -166,6 +179,12 @@ class MapNoteController extends Controller
 
             return [$note, true];
         });
+        } catch (\Throwable $error) {
+            if ($imagePath && ! MapNote::withTrashed()->where('image_path', $imagePath)->exists()) {
+                Storage::disk(config('mobile.post_media_disk'))->delete($imagePath);
+            }
+            throw $error;
+        }
         $note->load(['author', 'city'])->loadCount(['replies' => fn ($replies) => $replies->visibleTo($viewer)]);
 
         return ApiResponse::ok(new MapNoteResource($note), 'Notun haritaya bırakıldı.', $created ? 201 : 200);
@@ -236,6 +255,7 @@ class MapNoteController extends Controller
                 'request_id' => $data['request_id'] ?? null,
                 'occurred_at' => $original->occurred_at ?? $original->created_at,
                 'reposted_from_id' => $original->id,
+                'image_path' => $this->copyImage($original->image_path),
                 'expires_at' => now()->addDays((int) config('map_notes.ttl_days')),
             ]);
 
@@ -244,6 +264,36 @@ class MapNoteController extends Controller
         $fresh->load(['author', 'city'])->loadCount(['replies' => fn ($replies) => $replies->visibleTo($viewer)]);
 
         return ApiResponse::ok(new MapNoteResource($fresh), 'Mektubun yeniden haritada.', $created ? 201 : 200);
+    }
+
+    /** A re-publication owns its own copy of the photo, so deleting either letter never breaks the other. */
+    private function copyImage(?string $path): ?string
+    {
+        $disk = Storage::disk(config('mobile.post_media_disk'));
+        if (! $path || ! $disk->exists($path)) {
+            return null;
+        }
+        $copy = 'map-notes/'.Str::uuid().'.jpg';
+
+        return $disk->copy($path, $copy) ? $copy : null;
+    }
+
+    /**
+     * The letter's photo. Everyone else sees it only while the letter is publicly visible (7 days, not archived, not
+     * removed); the owner keeps seeing it in their private archive.
+     */
+    public function image(Request $request, int $note): \Symfony\Component\HttpFoundation\Response
+    {
+        $viewer = $request->user();
+        $entry = MapNote::where('user_id', $viewer->id)->whereNull('moderated_at')->find($note)
+            ?? MapNote::visibleTo($viewer)->findOrFail($note);
+        abort_unless($entry->image_path, 404);
+        $disk = Storage::disk(config('mobile.post_media_disk'));
+        abort_unless($disk->exists($entry->image_path), 404);
+
+        return $disk->response($entry->image_path, 'mektup.jpg', [
+            'Content-Type' => 'image/jpeg', 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     /** Mektuplarım list: active = still public (7 days), archive = expired or taken off the map. Private to the owner. */

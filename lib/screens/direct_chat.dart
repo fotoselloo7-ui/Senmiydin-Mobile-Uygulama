@@ -3,6 +3,7 @@ import '../core/polling.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart' hide Text;
+import 'package:flutter/services.dart' show SystemChannels;
 
 import '../widgets/translated_text.dart';
 
@@ -18,14 +19,19 @@ import '../core/theme.dart';
 import '../data/account_api.dart';
 import '../data/app_store.dart';
 import '../data/communication_api.dart';
+import '../data/gifts.dart';
+import '../data/voice_service.dart';
 import '../data/social_api.dart';
 import '../data/location_service.dart';
 import '../data/models.dart';
 import '../widgets/account_action.dart';
 import '../widgets/chat_composer.dart';
 import '../widgets/common.dart';
+import '../widgets/emoji_panel.dart';
+import '../widgets/gift_ui.dart';
 import '../widgets/media_viewer.dart';
 import '../widgets/social_page.dart';
+import '../widgets/voice_ui.dart';
 
 class DirectConversationList extends StatelessWidget {
   const DirectConversationList(this.requests, this.query, {super.key});
@@ -105,6 +111,8 @@ class ConversationTile extends StatelessWidget {
     final glyph = switch (last?.type) {
       'image' => Icons.image_outlined,
       'location' => Icons.location_on_outlined,
+      'voice' => Icons.mic_none_rounded,
+      'gift' => Icons.card_giftcard_rounded,
       _ => null,
     };
     return Material(
@@ -234,6 +242,12 @@ class _DirectChatPageState extends State<DirectChatPage>
   final scroll = ScrollController();
   final messages = <int, DirectMessage>{};
   final picker = ImagePicker();
+  final inputFocus = FocusNode();
+  late final recorder = VoiceRecordingController();
+  late final playback = VoicePlayback();
+  bool emojiOpen = false;
+  String? voiceKey;
+  List<GiftItem>? giftCache;
   DirectConversation? chat;
   XFile? image;
   RoutePolling? timer;
@@ -254,6 +268,15 @@ class _DirectChatPageState extends State<DirectChatPage>
     store = StoreScope.of(context);
 
     scroll.addListener(loadAtTop);
+    // Opening the keyboard (focusing the input) closes the emoji panel so the two never share the screen.
+    inputFocus.addListener(() {
+      if (inputFocus.hasFocus && emojiOpen && mounted) {
+        setState(() => emojiOpen = false);
+      }
+    });
+    recorder.addListener(() {
+      if (mounted) setState(() {});
+    });
     timer = RoutePolling(interval: const Duration(seconds: 4), fetch: sync);
     timer!.attach(context);
   }
@@ -263,6 +286,10 @@ class _DirectChatPageState extends State<DirectChatPage>
     timer?.dispose();
     scroll.dispose();
     text.dispose();
+    inputFocus.dispose();
+    // Leaving the conversation stops any playback, deletes the downloaded voice files and drops an unsent recording.
+    playback.dispose();
+    recorder.dispose();
     super.dispose();
   }
 
@@ -390,6 +417,7 @@ class _DirectChatPageState extends State<DirectChatPage>
   }
 
   Future<void> attach() async {
+    closeEmoji();
     final choice = await showChatAttachmentSheet(context);
     if (!mounted || choice == null) return;
     switch (choice) {
@@ -399,13 +427,182 @@ class _DirectChatPageState extends State<DirectChatPage>
         await chooseImage(ImageSource.camera);
       case ChatAttachment.location:
         await chooseLocation();
+      case ChatAttachment.gift:
+        await chooseGift();
     }
   }
 
-  Future<void> insertEmoji() async {
-    final emoji = await showChatEmojiSheet(context);
-    if (!mounted || emoji == null) return;
+  // ------------------------------------------------------------------------------------------------ gifts
+
+  Future<void> chooseGift() async {
+    final current = chat;
+    if (current == null || !current.canSend || busy) return;
+    final gift = await showGiftSheet(
+      context,
+      () async => giftCache ??= await api.gifts(),
+    );
+    if (!mounted || gift == null) return;
+    sendGift(gift);
+  }
+
+  void sendGift(GiftItem gift) {
+    final current = chat;
+    if (current == null || !current.canSend || busy) return;
+    final key = const Uuid().v4();
+    runAccountAction(() async {
+      try {
+        final (next, message) = await api.send(
+          current.peer,
+          '',
+          key,
+          null,
+          gift: gift.slug,
+        );
+        if (!mounted) return;
+        setState(() {
+          chat = next;
+          messages[message.id] = message;
+          sendError = null;
+        });
+        store!.communicationChanged();
+        if (scroll.hasClients) scroll.jumpTo(0);
+      } on ApiFailure catch (failure) {
+        if (mounted) setState(() => sendError = failure.detail);
+      }
+    });
+  }
+
+  // ------------------------------------------------------------------------------------------------ voice
+
+  Future<void> startVoice() async {
+    final current = chat;
+    if (current == null ||
+        !current.canSend ||
+        busy ||
+        recorder.phase != VoiceRecordingPhase.idle) {
+      return;
+    }
+    closeEmoji();
+    if (VoiceServices.denied) {
+      toast(
+        context,
+        tr(
+          'Mikrofon izni kapalı. Sesli mesaj için Ayarlar\'dan mikrofona izin verebilirsin.',
+        ),
+      );
+      return;
+    }
+    if (!VoiceServices.explained) {
+      final agreed = await showMicrophoneExplanation(context);
+      if (!mounted || !agreed) return;
+      VoiceServices.explained = true;
+    }
+    final granted = await recorder.requestPermission();
+    if (!mounted) return;
+    if (!granted) {
+      // One explanation, one system prompt: a refusal is remembered for this session, never asked in a loop.
+      VoiceServices.denied = true;
+      toast(
+        context,
+        tr(
+          'Mikrofon izni verilmedi. Sesli mesaj için Ayarlar\'dan izin verebilirsin.',
+        ),
+      );
+      return;
+    }
+    if (!await recorder.start() && mounted) {
+      toast(context, tr('Kayıt başlatılamadı. Tekrar dene.'));
+    }
+  }
+
+  Future<void> stopVoice() async {
+    final kept = await recorder.stop();
+    if (!kept && mounted) {
+      toast(context, tr('Kayıt çok kısaydı, gönderilmedi.'));
+    }
+  }
+
+  void sendVoice() {
+    final current = chat;
+    final path = recorder.path;
+    if (current == null ||
+        !current.canSend ||
+        busy ||
+        path == null ||
+        !recorder.hasPreview) {
+      return;
+    }
+    final key = voiceKey ??= const Uuid().v4();
+    runAccountAction(() async {
+      try {
+        await playback.stopAll();
+        final (next, message) = await api.send(
+          current.peer,
+          '',
+          key,
+          null,
+          voice: XFile(path),
+        );
+        if (!mounted) return;
+        await recorder.finish();
+        setState(() {
+          chat = next;
+          messages[message.id] = message;
+          voiceKey = null;
+          sendError = null;
+        });
+        store!.communicationChanged();
+        if (scroll.hasClients) scroll.jumpTo(0);
+      } on ApiFailure catch (failure) {
+        // The recording stays in the preview so the same request can be retried.
+        if (mounted) setState(() => sendError = failure.detail);
+      }
+    });
+  }
+
+  Future<void> toggleVoice(DirectMessage message) => playback.toggle(
+    message.id,
+    () => VoiceServices.download(
+      message.audio,
+      StoreScope.of(context).mediaHeaders(message.audio),
+    ),
+  );
+
+  // ------------------------------------------------------------------------------------------------ emoji panel
+
+  void closeEmoji() {
+    if (emojiOpen) setState(() => emojiOpen = false);
+  }
+
+  /// A tap on the conversation (or the empty area): closes the panel and the keyboard.
+  void dismissPanels() {
+    closeEmoji();
+    FocusManager.instance.primaryFocus?.unfocus();
+  }
+
+  void toggleEmoji() {
+    if (emojiOpen) {
+      // Back to the system keyboard (its own emoji keyboard stays available there).
+      setState(() => emojiOpen = false);
+      inputFocus.requestFocus();
+      return;
+    }
+    // Hide the keyboard first so the panel and the keyboard never take space together.
+    FocusManager.instance.primaryFocus?.unfocus();
+    SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
+    setState(() => emojiOpen = true);
+  }
+
+  void onEmoji(String emoji) {
     insertAtCursor(text, emoji);
+    setState(() {
+      attempt = null;
+      sendError = null;
+    });
+  }
+
+  void onEmojiBackspace() {
+    deleteBeforeCursor(text);
     setState(() {
       attempt = null;
       sendError = null;
@@ -563,224 +760,279 @@ class _DirectChatPageState extends State<DirectChatPage>
     final current = chat;
     final sorted = messages.values.toList()
       ..sort((a, b) => b.id.compareTo(a.id));
-    return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 0,
-        title: current == null
-            ? const Text('Sohbet')
-            : InkWell(
-                onTap: () => openPage(context, '/profile', current.peer.id),
-                child: Row(
-                  children: [
-                    Avatar(current.peer, size: 36),
-                    const SizedBox(width: 9),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            current.peer.name,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16,
+    return PopScope(
+      // Android back first closes the emoji panel / drops a recording; only then does it leave the conversation.
+      canPop: !emojiOpen && recorder.phase == VoiceRecordingPhase.idle,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (emojiOpen) {
+          closeEmoji();
+        } else if (recorder.phase != VoiceRecordingPhase.idle) {
+          unawaited(recorder.discard());
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          titleSpacing: 0,
+          title: current == null
+              ? const Text('Sohbet')
+              : InkWell(
+                  onTap: () => openPage(context, '/profile', current.peer.id),
+                  child: Row(
+                    children: [
+                      Avatar(current.peer, size: 36),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              current.peer.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16,
+                              ),
                             ),
-                          ),
-                          Text(
-                            current.recentlyActive
-                                ? 'Yakın zamanda aktif'
-                                : '@${current.peer.handle}',
-                            style: const TextStyle(
-                              color: AppColors.muted,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-        actions: [
-          if (current != null && error == null)
-            PopupMenuButton<String>(
-              tooltip: tr('Sohbet seçenekleri'),
-              onSelected: (value) => option(value, current),
-              itemBuilder: (_) => [
-                const PopupMenuItem(value: 'report', child: Text('Şikâyet Et')),
-                const PopupMenuItem(value: 'block', child: Text('Engelle')),
-                if (current.id != null)
-                  const PopupMenuItem(
-                    value: 'hide',
-                    child: Text('Sohbeti Gizle'),
-                  ),
-              ],
-            ),
-        ],
-      ),
-      body: SafeArea(
-        child: error != null
-            ? SingleChildScrollView(
-                child: EmptyState(
-                  error!,
-                  '',
-                  action: SecondaryButton('Tekrar Dene', onPressed: sync),
-                ),
-              )
-            : current == null
-            ? const Center(child: CircularProgressIndicator())
-            : Column(
-                children: [
-                  if (current.status == 'pending')
-                    Container(
-                      color: AppColors.pale,
-                      padding: Space.page,
-                      child: Column(
-                        children: [
-                          Text(
-                            current.outgoing
-                                ? 'Mesaj isteğin onay bekliyor.'
-                                : 'Bu kişi seninle sohbet etmek istiyor.',
-                            style: const TextStyle(fontWeight: FontWeight.w800),
-                          ),
-                          if (!current.outgoing) ...[
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: SecondaryButton(
-                                    'Reddet',
-                                    onPressed: busy
-                                        ? null
-                                        : () => respond(false),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: PrimaryButton(
-                                    'Kabul Et',
-                                    icon: Icons.check,
-                                    onPressed: busy
-                                        ? null
-                                        : () => respond(true),
-                                  ),
-                                ),
-                              ],
+                            Text(
+                              current.recentlyActive
+                                  ? 'Yakın zamanda aktif'
+                                  : '@${current.peer.handle}',
+                              style: const TextStyle(
+                                color: AppColors.muted,
+                                fontSize: 12,
+                              ),
                             ),
                           ],
-                        ],
+                        ),
                       ),
-                    ),
-                  Expanded(
-                    child: sorted.isEmpty
-                        ? const SingleChildScrollView(
-                            child: EmptyState(
-                              'İlk merhabayı sen söyle.',
-                              'Güzel bir sohbet burada başlayabilir.',
-                              icon: Icons.waving_hand_outlined,
-                            ),
-                          )
-                        : ListView.builder(
-                            reverse: true,
-                            controller: scroll,
-                            padding: Space.page,
-                            itemCount: sorted.length + (hasOlder ? 1 : 0),
-                            itemBuilder: (context, index) {
-                              if (index == sorted.length) {
-                                return Center(
-                                  child: TextButton(
-                                    onPressed: loadingOlder
-                                        ? null
-                                        : () => sync(older: true),
-                                    child: Text(
-                                      loadingOlder
-                                          ? 'Yükleniyor…'
-                                          : 'Önceki mesajları yükle',
-                                    ),
-                                  ),
-                                );
-                              }
-                              final message = sorted[index];
-                              final day = DateUtils.dateOnly(message.date);
-                              final dayStart =
-                                  index + 1 == sorted.length ||
-                                  !DateUtils.isSameDay(
-                                    day,
-                                    sorted[index + 1].date,
-                                  );
-                              return Column(
-                                children: [
-                                  if (dayStart)
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                        bottom: Space.md,
-                                      ),
-                                      child: Text(
-                                        DateUtils.isSameDay(day, DateTime.now())
-                                            ? 'BUGÜN'
-                                            : MaterialLocalizations.of(context)
-                                                  .formatMediumDate(day),
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: AppColors.muted,
-                                          letterSpacing: 1.5,
-                                        ),
-                                      ),
-                                    ),
-                                  _DirectBubble(
-                                    message,
-                                    onAction: () =>
-                                        messageAction(current, message),
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
+                    ],
                   ),
-                  if (sendError != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: InfoNote(sendError!),
-                    ),
-                  if (current.canSend)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                      child: Column(
-                        children: [
-                          if (image != null)
-                            PendingPhoto(
-                              file: image!,
-                              label: tr('Fotoğraf eklendi'),
-                              removeTooltip: tr('Fotoğrafı kaldır'),
-                              onRemove: busy
-                                  ? null
-                                  : () => setState(() {
-                                      image = null;
-                                      attempt = null;
-                                    }),
-                            ),
-                          ChatComposerBar(
-                            controller: text,
-                            busy: busy,
-                            canSend:
-                                text.text.trim().isNotEmpty || image != null,
-                            onAttach: attach,
-                            onEmoji: insertEmoji,
-                            onSend: send,
-                            onChanged: () => setState(() {
-                              attempt = null;
-                              sendError = null;
-                            }),
-                          ),
-                        ],
-                      ),
-                    )
-                  else if (current.status != 'pending')
-                    const Padding(
-                      padding: Space.page,
-                      child: InfoNote('Bu kişiye şu anda mesaj gönderemezsin.'),
+                ),
+          actions: [
+            if (current != null && error == null)
+              PopupMenuButton<String>(
+                tooltip: tr('Sohbet seçenekleri'),
+                onSelected: (value) => option(value, current),
+                itemBuilder: (_) => [
+                  const PopupMenuItem(
+                    value: 'report',
+                    child: Text('Şikâyet Et'),
+                  ),
+                  const PopupMenuItem(value: 'block', child: Text('Engelle')),
+                  if (current.id != null)
+                    const PopupMenuItem(
+                      value: 'hide',
+                      child: Text('Sohbeti Gizle'),
                     ),
                 ],
               ),
+          ],
+        ),
+        body: SafeArea(
+          child: error != null
+              ? SingleChildScrollView(
+                  child: EmptyState(
+                    error!,
+                    '',
+                    action: SecondaryButton('Tekrar Dene', onPressed: sync),
+                  ),
+                )
+              : current == null
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
+                  children: [
+                    if (current.status == 'pending')
+                      Container(
+                        color: AppColors.pale,
+                        padding: Space.page,
+                        child: Column(
+                          children: [
+                            Text(
+                              current.outgoing
+                                  ? 'Mesaj isteğin onay bekliyor.'
+                                  : 'Bu kişi seninle sohbet etmek istiyor.',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            if (!current.outgoing) ...[
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: SecondaryButton(
+                                      'Reddet',
+                                      onPressed: busy
+                                          ? null
+                                          : () => respond(false),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: PrimaryButton(
+                                      'Kabul Et',
+                                      icon: Icons.check,
+                                      onPressed: busy
+                                          ? null
+                                          : () => respond(true),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    Expanded(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: dismissPanels,
+                        child: sorted.isEmpty
+                            ? const SingleChildScrollView(
+                                child: EmptyState(
+                                  'İlk merhabayı sen söyle.',
+                                  'Güzel bir sohbet burada başlayabilir.',
+                                  icon: Icons.waving_hand_outlined,
+                                ),
+                              )
+                            : ListView.builder(
+                                reverse: true,
+                                controller: scroll,
+                                padding: Space.page,
+                                itemCount: sorted.length + (hasOlder ? 1 : 0),
+                                itemBuilder: (context, index) {
+                                  if (index == sorted.length) {
+                                    return Center(
+                                      child: TextButton(
+                                        onPressed: loadingOlder
+                                            ? null
+                                            : () => sync(older: true),
+                                        child: Text(
+                                          loadingOlder
+                                              ? 'Yükleniyor…'
+                                              : 'Önceki mesajları yükle',
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  final message = sorted[index];
+                                  final day = DateUtils.dateOnly(message.date);
+                                  final dayStart =
+                                      index + 1 == sorted.length ||
+                                      !DateUtils.isSameDay(
+                                        day,
+                                        sorted[index + 1].date,
+                                      );
+                                  return Column(
+                                    children: [
+                                      if (dayStart)
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            bottom: Space.md,
+                                          ),
+                                          child: Text(
+                                            DateUtils.isSameDay(
+                                                  day,
+                                                  DateTime.now(),
+                                                )
+                                                ? 'BUGÜN'
+                                                : MaterialLocalizations.of(
+                                                    context,
+                                                  ).formatMediumDate(day),
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              color: AppColors.muted,
+                                              letterSpacing: 1.5,
+                                            ),
+                                          ),
+                                        ),
+                                      _DirectBubble(
+                                        message,
+                                        onAction: () =>
+                                            messageAction(current, message),
+                                        playback: playback,
+                                        onPlay: () => toggleVoice(message),
+                                        peerName: current.peer.name,
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                      ),
+                    ),
+                    if (sendError != null)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: InfoNote(sendError!),
+                      ),
+                    if (current.canSend) ...[
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          12,
+                          8,
+                          12,
+                          emojiOpen ? 6 : 12,
+                        ),
+                        child: Column(
+                          children: [
+                            if (image != null &&
+                                recorder.phase == VoiceRecordingPhase.idle)
+                              PendingPhoto(
+                                file: image!,
+                                label: tr('Fotoğraf eklendi'),
+                                removeTooltip: tr('Fotoğrafı kaldır'),
+                                onRemove: busy
+                                    ? null
+                                    : () => setState(() {
+                                        image = null;
+                                        attempt = null;
+                                      }),
+                              ),
+                            if (recorder.phase != VoiceRecordingPhase.idle)
+                              VoiceDraftBar(
+                                recorder: recorder,
+                                playback: playback,
+                                onSend: sendVoice,
+                                onStop: stopVoice,
+                                busy: busy,
+                              )
+                            else
+                              ChatComposerBar(
+                                controller: text,
+                                focusNode: inputFocus,
+                                emojiOpen: emojiOpen,
+                                busy: busy,
+                                canSend:
+                                    text.text.trim().isNotEmpty ||
+                                    image != null,
+                                onAttach: attach,
+                                onEmoji: toggleEmoji,
+                                onSend: send,
+                                onMic: startVoice,
+                                onChanged: () => setState(() {
+                                  attempt = null;
+                                  sendError = null;
+                                }),
+                              ),
+                          ],
+                        ),
+                      ),
+                      if (emojiOpen &&
+                          recorder.phase == VoiceRecordingPhase.idle)
+                        EmojiPanel(
+                          onEmoji: onEmoji,
+                          onBackspace: onEmojiBackspace,
+                        ),
+                    ] else if (current.status != 'pending')
+                      const Padding(
+                        padding: Space.page,
+                        child: InfoNote(
+                          'Bu kişiye şu anda mesaj gönderemezsin.',
+                        ),
+                      ),
+                  ],
+                ),
+        ),
       ),
     );
   }
@@ -820,9 +1072,17 @@ class _DirectChatPageState extends State<DirectChatPage>
 }
 
 class _DirectBubble extends StatelessWidget {
-  const _DirectBubble(this.message, {required this.onAction});
+  const _DirectBubble(
+    this.message, {
+    required this.onAction,
+    required this.playback,
+    required this.onPlay,
+    required this.peerName,
+  });
   final DirectMessage message;
-  final VoidCallback onAction;
+  final VoidCallback onAction, onPlay;
+  final VoicePlayback playback;
+  final String peerName;
 
   @override
   Widget build(BuildContext context) {
@@ -880,6 +1140,31 @@ class _DirectBubble extends StatelessWidget {
                   ),
                 ),
               if (m.isLocation) _LocationCard(m, color: color),
+              if (m.isVoice)
+                VoiceBubbleBody(
+                  messageId: m.id,
+                  duration: Duration(milliseconds: m.durationMs),
+                  color: color,
+                  playback: playback,
+                  onToggle: onPlay,
+                ),
+              if (m.isGift)
+                GiftBubbleBody(
+                  gift: m.gift!,
+                  mine: m.mine,
+                  senderName: peerName,
+                  color: color,
+                ),
+              // A message type this version does not know shows a neutral line instead of an empty bubble.
+              if (!m.isVoice &&
+                  !m.isGift &&
+                  !m.isLocation &&
+                  m.image.isEmpty &&
+                  m.body.isEmpty)
+                Text(
+                  tr('Bu mesaj türü bu sürümde gösterilemiyor.'),
+                  style: TextStyle(color: color, fontSize: 14),
+                ),
               if (m.body.isNotEmpty)
                 Text(
                   m.body,

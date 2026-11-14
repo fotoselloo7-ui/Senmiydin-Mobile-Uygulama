@@ -3,3 +3,4 @@
 "NSCameraUsageDescription" = "Paylaşımına fotoğraf çekip eklemek için kamera kullanılır.";
 "NSPhotoLibraryUsageDescription" = "Profiline, paylaşımlarına veya özel mesajlarına seçtiğin fotoğrafları eklemek için fotoğraf arşivi kullanılır.";
 "NSUserTrackingUsageDescription" = "Reklamların sana daha uygun gösterilmesi için kullanılır. Konumun reklam amacıyla kullanılmaz.";
+"NSMicrophoneUsageDescription" = "Sesli mesaj kaydetmek için mikrofon kullanılır. Kayıt yalnız sen gönderirsen karşı tarafa iletilir.";

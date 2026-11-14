@@ -1,8 +1,10 @@
 import 'package:image_picker/image_picker.dart';
 
 import '../core/app_locale.dart';
+import '../core/relative_time.dart';
 
 import 'account_api.dart';
+import 'gifts.dart';
 import 'models.dart';
 import 'social_api.dart';
 
@@ -24,10 +26,22 @@ class DirectMessage {
       latitude = ((json['location'] as Map?)?['latitude'] as num?)?.toDouble(),
       longitude = ((json['location'] as Map?)?['longitude'] as num?)
           ?.toDouble(),
-      placeLabel = (json['location'] as Map?)?['place_label'] as String?;
+      placeLabel = (json['location'] as Map?)?['place_label'] as String?,
+      audio = ApiClient.mediaUrl(json['audio'] as String?),
+      durationMs = (json['duration_ms'] as num?)?.toInt() ?? 0,
+      gift = json['gift'] is Map<String, dynamic>
+          ? GiftItem.fromJson(json['gift'] as Map<String, dynamic>)
+          : null;
   final int id;
   final String body, image, type;
   final String? placeLabel;
+
+  /// Voice message: the (private) audio URL and its length as the server read it from the file.
+  final String audio;
+  final int durationMs;
+  final GiftItem? gift;
+  bool get isVoice => type == 'voice' && audio.isNotEmpty;
+  bool get isGift => type == 'gift' && gift != null;
   final bool mine, read;
   final DateTime date;
 
@@ -39,6 +53,8 @@ class DirectMessage {
   String get preview => switch (type) {
     'image' => currentL10n.messagesPreviewPhoto,
     'location' => currentL10n.messagesPreviewLocation,
+    'voice' => tr('Sesli mesaj'),
+    'gift' => tr('Hediye gönderdi'),
     _ => body,
   };
 }
@@ -85,11 +101,11 @@ class InboxNotification {
       mapLatitude = ((json['map_target'] as Map?)?['latitude'] as num?)
           ?.toDouble(),
       mapLongitude = ((json['map_target'] as Map?)?['longitude'] as num?)
-          ?.toDouble(),
-      time = socialTime(json['created_at'] as String);
+          ?.toDouble();
   final int id;
   final int? entity;
-  final String type, route, text, time;
+  final String type, route, text;
+  String get time => relativeTime(createdAt);
   final String? announcementBody, subtitle;
   final Person? actor;
   final bool read;
@@ -159,6 +175,8 @@ class CommunicationApi {
     String requestId,
     XFile? image, {
     ({double latitude, double longitude, String? label})? location,
+    XFile? voice,
+    String? gift,
   }) async {
     final data = await client.send(
       'POST',
@@ -167,6 +185,7 @@ class CommunicationApi {
       body: {
         'body': body,
         'request_id': requestId,
+        'gift': ?gift,
         if (location != null) ...{
           'latitude': location.latitude,
           'longitude': location.longitude,
@@ -175,11 +194,25 @@ class CommunicationApi {
         },
       },
       messageImage: image,
+      files: {'audio': ?voice},
     ) as Map<String, dynamic>;
     return (
       DirectConversation(data['conversation'] as Map<String, dynamic>, person),
       DirectMessage(data['message'] as Map<String, dynamic>),
     );
+  }
+
+  /// The active gift catalog in the account language.
+  Future<List<GiftItem>> gifts() async {
+    final data = await client.send(
+      'GET',
+      'gifts',
+      authenticated: true,
+    ) as Map<String, dynamic>;
+    return (data['items'] as List)
+        .cast<Map<String, dynamic>>()
+        .map(GiftItem.fromJson)
+        .toList();
   }
 
   Future<DirectConversation> respond(int id, bool accept) async =>

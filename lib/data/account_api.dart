@@ -73,6 +73,8 @@ class ApiClient {
     XFile? cover,
     XFile? messageImage,
     List<XFile> media = const [],
+    // Extra named files ("audio" for voice messages, "image" for a map note photo).
+    Map<String, XFile> files = const {},
     Map<String, dynamic>? query,
   }) {
     if (_disposed) return Future.error(const ApiFailure('Bağlantı kapatıldı.'));
@@ -86,6 +88,7 @@ class ApiClient {
       cover: cover,
       messageImage: messageImage,
       media: media,
+      files: files,
       query: query,
     ).whenComplete(() {
       _pending--;
@@ -102,6 +105,7 @@ class ApiClient {
     XFile? cover,
     XFile? messageImage,
     List<XFile> media = const [],
+    Map<String, XFile> files = const {},
     Map<String, dynamic>? query,
   }) async {
     final token = authenticated ? _token : null;
@@ -127,6 +131,7 @@ class ApiClient {
     if (avatar == null &&
         cover == null &&
         messageImage == null &&
+        files.isEmpty &&
         media.isEmpty) {
       final jsonRequest = http.Request(method, uri);
       if (body != null) {
@@ -141,21 +146,32 @@ class ApiClient {
           upload.fields.addAll(multipartFields(body));
         }
         final single = avatar ?? cover ?? messageImage;
-        final files = single == null ? media : [single];
-        for (final (index, file) in files.indexed) {
+        final uploads = <String, XFile>{
+          ...files,
+          '': ?single,
+          if (single == null)
+            for (final (index, file) in media.indexed) 'media[$index]': file,
+        };
+        for (final entry in uploads.entries) {
+          final file = entry.value;
           final length = await file.length();
-          if (length > 5 * 1024 * 1024) {
-            throw const ApiFailure('Her fotoğraf en fazla 5 MB olabilir.');
+          final isAudio = entry.key == 'audio';
+          if (length > (isAudio ? 3 : 5) * 1024 * 1024) {
+            throw ApiFailure(
+              isAudio
+                  ? 'Ses kaydı en fazla 3 MB olabilir.'
+                  : 'Her fotoğraf en fazla 5 MB olabilir.',
+            );
           }
           upload.files.add(
             http.MultipartFile(
-              avatar != null
+              entry.key.isNotEmpty
+                  ? entry.key
+                  : avatar != null
                   ? 'avatar'
                   : cover != null
                   ? 'cover'
-                  : messageImage != null
-                  ? 'image'
-                  : 'media[$index]',
+                  : 'image',
               file.openRead(),
               length,
               filename: file.name,
@@ -179,7 +195,7 @@ class ApiClient {
           .send(request)
           .then(http.Response.fromStream)
           .timeout(
-            media.isEmpty && messageImage == null
+            media.isEmpty && messageImage == null && files.isEmpty
                 ? _timeout
                 : const Duration(seconds: 90),
           );
@@ -258,18 +274,23 @@ class ApiClient {
     return json['data'];
   }
 
+  /// Private media (post photos, message photos, voice messages, letter photos) is only served with the account's
+  /// token, and the token is only ever sent to the API's own origin for exactly those paths.
+  static final _privateMedia = RegExp(
+    r'^(post-media|message-images|message-audio)/|^map-notes/\d+/image$',
+  );
+
   Map<String, String> mediaHeaders(String url) {
     final uri = Uri.tryParse(url);
     final token = _token;
     if (token != null &&
         uri?.hasAuthority == true &&
-        uri!.origin == ApiConfig.base.origin &&
-        ['post-media', 'message-images'].any(
-          (path) => uri.path.startsWith(
-            '${ApiConfig.base.path.replaceFirst(RegExp(r'/$'), '')}/$path/',
-          ),
-        )) {
-      return {'Authorization': 'Bearer $token'};
+        uri!.origin == ApiConfig.base.origin) {
+      final prefix = ApiConfig.base.path.replaceFirst(RegExp(r'/$'), '');
+      if (uri.path.startsWith('$prefix/') &&
+          _privateMedia.hasMatch(uri.path.substring(prefix.length + 1))) {
+        return {'Authorization': 'Bearer $token'};
+      }
     }
     return const {};
   }

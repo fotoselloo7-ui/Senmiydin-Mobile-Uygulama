@@ -203,6 +203,30 @@ void main() {
     });
   });
 
+  group('platform manifest checks', () {
+    Future<ProcessResult?> run(List<String> args) async {
+      final result = await Process.run('python', ['-I', ...args], runInShell: true);
+      if (result.exitCode == 9009 || '${result.stderr}'.contains('not recognized')) {
+        markTestSkipped('python is not available');
+        return null;
+      }
+      return result;
+    }
+
+    test('the checker unit tests (synthetic manifests: cleartext, permissions, exports, links, missing microphone) pass', () async {
+      final result = await run(['-m', 'unittest', 'discover', '-s', 'tool', '-p', 'test_platform_manifest_check.py']);
+      if (result == null) return;
+      expect(result.exitCode, 0, reason: '${result.stdout} ${result.stderr}');
+    });
+
+    test('iOS static sanity: nothing is wrong in the repository (only an external AdMob id may still be missing)', () async {
+      final result = await run(['tool/platform_manifest_check.py', 'ios']);
+      if (result == null) return;
+      expect(result.exitCode, anyOf(0, 2), reason: '${result.stdout}');
+      expect('${result.stdout}', contains('no Xcode build'));
+    });
+  });
+
   group('l10n audit', () {
     test('the repository audit script reports no uncovered Turkish UI literal', () async {
       final result = await Process.run('python', ['-I', 'tool/l10n_audit.py', '--all'], runInShell: true);

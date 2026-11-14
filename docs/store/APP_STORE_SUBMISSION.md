@@ -75,7 +75,7 @@ Users can report profiles, posts, comments, shared encounter stories or messages
 
 Account deletion is inside Profile > Settings > "Hesabımı Sil". The user enters the current account password and types SİL. Tokens are revoked, profile/content are erased or anonymized, and media cleanup is queued. Anonymous relationship identifiers and limited moderation records can remain; the production privacy policy must describe actual retention. A public deletion-request page is also available: [GERÇEK BİLGİ GEREKLİ]. It creates a support request; support must verify ownership before any external deletion is carried out.
 
-Support contact and published safety standards: [GERÇEK BİLGİ GEREKLİ]. This version shows Google AdMob native ads labelled “Ad” in the feed (UMP consent flow, age-restricted treatment for ages 16–17, location never sent to ads); there are no in-app purchases, random anonymous chat, voice calls or video calls.
+Support contact and published safety standards: [GERÇEK BİLGİ GEREKLİ]. This version shows Google AdMob native ads labelled “Ad” in the feed (UMP consent flow, age-restricted treatment for ages 16–17, location never sent to ads); there are no in-app purchases, random anonymous chat, voice calls or video calls. Private chat also supports short voice messages (recorded only after the user taps the microphone and agrees to the in-app explanation, up to 2 minutes, uploaded only when the user taps send), free gifts chosen from a small server-controlled catalog (no payments), emoji, photos and approximate location messages; the same block / report / delete controls apply to every message type.
 ```
 
 ## Sign-in / privacy / submission notları

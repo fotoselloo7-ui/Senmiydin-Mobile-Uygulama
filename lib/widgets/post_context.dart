@@ -136,8 +136,9 @@ class PostPlaceField extends StatelessWidget {
                       PostPlaceSelection(
                         'current',
                         city: store.activeCity!.name,
-                        label:
-                            trf('{0} · Şu anki yaklaşık bölge', [store.activeCity!.name]),
+                        label: trf('{0} · Şu anki yaklaşık bölge', [
+                          store.activeCity!.name,
+                        ]),
                       ),
                     );
                   } else if (context.mounted) {
@@ -337,7 +338,9 @@ class _ApproximatePlacePageState extends State<ApproximatePlacePage> {
                         latitude: chosen!.latitude,
                         longitude: chosen!.longitude,
                         city: widget.city,
-                        label: trf('{0} · Haritadan yaklaşık bölge', [widget.city]),
+                        label: trf('{0} · Haritadan yaklaşık bölge', [
+                          widget.city,
+                        ]),
                       ),
                     ),
             ),

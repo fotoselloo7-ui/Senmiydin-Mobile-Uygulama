@@ -14,54 +14,10 @@ import 'common.dart';
 import 'map_attribution.dart';
 
 /// What the "+" button offers in a chat.
-enum ChatAttachment { photo, camera, location }
+enum ChatAttachment { photo, camera, location, gift }
 
 /// How a location is chosen for a location message.
 enum ChatLocationSource { current, map }
-
-/// Frequently used emoji; no emoji package, the system keyboard stays available for everything else.
-const chatEmoji = [
-  '😀',
-  '😂',
-  '😊',
-  '😍',
-  '🥰',
-  '😘',
-  '😉',
-  '😎',
-  '🤗',
-  '🤔',
-  '😅',
-  '😢',
-  '😭',
-  '😮',
-  '😴',
-  '🙄',
-  '👍',
-  '👏',
-  '🙌',
-  '🙏',
-  '💪',
-  '👋',
-  '🤝',
-  '✌️',
-  '❤️',
-  '💙',
-  '💜',
-  '🔥',
-  '✨',
-  '🎉',
-  '🌊',
-  '☀️',
-  '🌙',
-  '⭐',
-  '☕',
-  '🍀',
-  '🌸',
-  '🎶',
-  '📍',
-  '👀',
-];
 
 /// Inserts [emoji] at the current cursor (or replaces the selection) of [controller].
 void insertAtCursor(TextEditingController controller, String emoji) {
@@ -102,6 +58,7 @@ Future<ChatAttachment?> showChatAttachmentSheet(BuildContext context) {
                 Icons.location_on_outlined,
                 text.chatAttachLocation,
               ),
+              (ChatAttachment.gift, Icons.card_giftcard_rounded, tr('Hediye')),
             ])
               Expanded(
                 child: InkWell(
@@ -134,36 +91,6 @@ Future<ChatAttachment?> showChatAttachmentSheet(BuildContext context) {
     ),
   );
 }
-
-Future<String?> showChatEmojiSheet(BuildContext context) =>
-    showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheet) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(Space.md, 0, Space.md, Space.md),
-          child: Semantics(
-            label: context.l10n.chatEmoji,
-            child: GridView.count(
-              key: const Key('emoji-grid'),
-              shrinkWrap: true,
-              crossAxisCount: 8,
-              mainAxisSpacing: 2,
-              crossAxisSpacing: 2,
-              children: [
-                for (final emoji in chatEmoji)
-                  InkResponse(
-                    onTap: () => Navigator.pop(sheet, emoji),
-                    child: Center(
-                      child: Text(emoji, style: const TextStyle(fontSize: 26)),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
 
 Future<ChatLocationSource?> showChatLocationSourceSheet(BuildContext context) {
   final text = context.l10n;
@@ -334,11 +261,19 @@ class ChatComposerBar extends StatelessWidget {
     required this.onEmoji,
     required this.onSend,
     required this.onChanged,
+    this.onMic,
+    this.focusNode,
+    this.emojiOpen = false,
   });
   final TextEditingController controller;
   final bool busy, canSend;
   final VoidCallback onAttach, onEmoji, onSend;
   final VoidCallback onChanged;
+
+  /// Starts a voice message; shown in place of "send" while there is nothing to send.
+  final VoidCallback? onMic;
+  final FocusNode? focusNode;
+  final bool emojiOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -356,7 +291,9 @@ class ChatComposerBar extends StatelessWidget {
         IconButton(
           key: const Key('chat-emoji'),
           tooltip: text.chatEmoji,
-          icon: const Icon(Icons.emoji_emotions_outlined),
+          icon: Icon(
+            emojiOpen ? Icons.keyboard_rounded : Icons.emoji_emotions_outlined,
+          ),
           color: AppColors.blue,
           onPressed: busy ? null : onEmoji,
         ),
@@ -364,6 +301,7 @@ class ChatComposerBar extends StatelessWidget {
           child: TextField(
             key: const Key('chat-input'),
             controller: controller,
+            focusNode: focusNode,
             enabled: !busy,
             minLines: 1,
             maxLines: 5,
@@ -377,16 +315,25 @@ class ChatComposerBar extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        IconButton.filled(
-          tooltip: text.chatSendTooltip,
-          onPressed: busy || !canSend ? null : onSend,
-          icon: busy
-              ? const SizedBox.square(
-                  dimension: 17,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.send_rounded),
-        ),
+        if (!canSend && !busy && onMic != null)
+          IconButton.filled(
+            key: const Key('chat-mic'),
+            tooltip: tr('Sesli mesaj kaydet'),
+            onPressed: onMic,
+            icon: const Icon(Icons.mic_rounded),
+          )
+        else
+          IconButton.filled(
+            key: const Key('chat-send'),
+            tooltip: text.chatSendTooltip,
+            onPressed: busy || !canSend ? null : onSend,
+            icon: busy
+                ? const SizedBox.square(
+                    dimension: 17,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.send_rounded),
+          ),
       ],
     );
   }

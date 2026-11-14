@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\ApiResponse;
 use App\Http\Resources\PublicUserResource;
 use App\Media\PrivateImage;
+use App\Media\VoiceMessage;
 use App\Models\Conversation;
 use App\Models\EncounterRequest;
+use App\Models\Gift;
 use App\Models\Message;
 use App\Models\User;
 use App\Notifications\Inbox;
@@ -18,6 +20,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\Response;
 
 class ConversationController extends Controller
@@ -46,7 +49,7 @@ class ConversationController extends Controller
                 ->where('sender_id', '<>', $id)->whereNull('moderated_at')->whereNull('read_at')->whereColumn('id', '>', 'member.hidden_through'),
         ])->orderByDesc('last_message_id')->orderByDesc('conversations.id')->simplePaginate(20);
         $peers = User::with('city')->whereKey(collect($page->items())->map(fn ($chat) => $chat->otherId($id))->all())->get()->keyBy('id');
-        $messages = Message::whereKey(collect($page->items())->pluck('last_message_id')->filter()->all())->get()->keyBy('id');
+        $messages = Message::with('gift')->whereKey(collect($page->items())->pluck('last_message_id')->filter()->all())->get()->keyBy('id');
         return ApiResponse::ok(['items' => collect($page->items())->map(fn ($chat) =>
             $this->summary($chat, $peers[$chat->otherId($id)], $id, $messages->get($chat->last_message_id), (int) $chat->unread_total)),
             'next_page' => $page->hasMorePages() ? $page->currentPage() + 1 : null]);
@@ -73,7 +76,7 @@ class ConversationController extends Controller
         $id = $request->user()->id;
         Conversation::available($id)->findOrFail($conversation);
         $data = $request->validate(['before' => 'sometimes|integer|min:1', 'after' => 'sometimes|integer|min:0|prohibits:before']);
-        $query = $this->visibleMessages($id)->where('conversation_id', $conversation);
+        $query = $this->visibleMessages($id)->with('gift')->where('conversation_id', $conversation);
         if (isset($data['before'])) {
             $query->where('id', '<', $data['before']);
         }
@@ -92,9 +95,13 @@ class ConversationController extends Controller
         $viewer = $request->user();
         $peer = $this->getPeer($viewer->id, $user);
         $data = $request->validate([
-            'body' => 'required_without_all:image,latitude|nullable|string|max:2000',
+            'body' => 'required_without_all:image,latitude,audio,gift|nullable|string|max:2000',
             'request_id' => 'required|uuid',
-            'image' => 'sometimes|prohibits:latitude|'.PrivateImage::RULES,
+            'image' => 'sometimes|prohibits:latitude,audio,gift|'.PrivateImage::RULES,
+            // A voice message: one AAC/M4A file. The server reads the duration from the file itself.
+            'audio' => 'sometimes|prohibits:image,latitude,gift|'.VoiceMessage::rules(),
+            // A gift: only the slug of an active catalog entry (the catalog lives on the server).
+            'gift' => ['sometimes', 'prohibits:image,latitude,audio', 'string', Rule::exists('gifts', 'slug')->where('is_active', true)],
             // A private location message: one approximate point, never live tracking.
             'latitude' => 'nullable|required_with:longitude|numeric|between:-90,90',
             'longitude' => 'nullable|required_with:latitude|numeric|between:-180,180',
@@ -106,8 +113,11 @@ class ConversationController extends Controller
         ] : null;
         $disk = Storage::disk(config('mobile.post_media_disk'));
         $path = null;
+        $audioPath = null;
+        $voice = isset($data['audio']) ? VoiceMessage::inspect($data['audio']) : null;
+        $gift = isset($data['gift']) ? Gift::active()->where('slug', $data['gift'])->firstOrFail() : null;
         try {
-            [$chat, $message, $created] = DB::transaction(function () use ($viewer, $peer, $data, $disk, $point, &$path) {
+            [$chat, $message, $created] = DB::transaction(function () use ($viewer, $peer, $data, $disk, $point, $voice, $gift, &$path, &$audioPath) {
                 Blocks::lockPair($viewer->id, $peer->id);
                 $peer->refresh();
                 abort_unless($peer->account_status === 'active' && ! Blocks::between($viewer->id, $peer->id), 403);
@@ -143,9 +153,15 @@ class ConversationController extends Controller
                     $path = 'messages/'.Str::uuid().'.jpg';
                     abort_unless($bytes && $disk->put($path, $bytes, 'private'), 503);
                 }
+                if ($voice) {
+                    // A random name on the private disk: nothing of the uploaded file name is ever used.
+                    $audioPath = 'voice/'.Str::uuid().'.m4a';
+                    abort_unless($disk->put($audioPath, $voice[0], 'private'), 503);
+                }
                 $message = Message::create([
                     'conversation_id' => $chat->id, 'sender_id' => $viewer->id, 'request_id' => $data['request_id'],
-                    'body' => $data['body'] ?? '', 'type' => $path ? 'image' : ($point ? 'location' : 'text'), 'image_path' => $path,
+                    'body' => $data['body'] ?? '', 'type' => $voice ? 'voice' : ($gift ? 'gift' : ($path ? 'image' : ($point ? 'location' : 'text'))),
+                    'image_path' => $path, 'audio_path' => $audioPath, 'audio_duration_ms' => $voice[1] ?? null, 'gift_id' => $gift?->id,
                     ...($point ? ['approx_latitude' => $point[0], 'approx_longitude' => $point[1], 'place_label' => $data['place_label'] ?? null] : []),
                 ]);
                 $chat->touch();
@@ -155,6 +171,9 @@ class ConversationController extends Controller
         } catch (\Throwable $error) {
             if ($path && ! Message::where('image_path', $path)->exists()) {
                 $disk->delete($path);
+            }
+            if ($audioPath && ! Message::where('audio_path', $audioPath)->exists()) {
+                $disk->delete($audioPath);
             }
             throw $error;
         }
@@ -231,6 +250,26 @@ class ConversationController extends Controller
         ]);
     }
 
+    /** The voice file of a message the viewer may see; same visibility rules as message photos. */
+    public function audio(Request $request, int $message): Response
+    {
+        $id = $request->user()->id;
+        $item = $this->visibleMessages($id)->whereNotNull('audio_path')->findOrFail($message);
+        Conversation::available($id)->findOrFail($item->conversation_id);
+        $disk = Storage::disk(config('mobile.post_media_disk'));
+        abort_unless($disk->exists($item->audio_path), 404);
+
+        return $disk->response($item->audio_path, 'ses.m4a', [
+            'Content-Type' => 'audio/mp4', 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    /** The active gift catalog, in the request language. */
+    public function gifts(): JsonResponse
+    {
+        return ApiResponse::ok(['items' => Gift::active()->get()->map->toApi()->values()]);
+    }
+
     public function unread(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -285,6 +324,9 @@ class ConversationController extends Controller
             'mine' => $message->sender_id === $viewer, 'request_id' => $message->sender_id === $viewer ? $message->request_id : null,
             'image' => $message->image_path ? route('messages.image', ['message' => $message->id], false) : null,
             // Location messages expose only the snapped approximate point (never the point the sender's device reported).
+            ...($message->type === 'voice' ? ['audio' => route('messages.audio', ['message' => $message->id], false),
+                'duration_ms' => (int) $message->audio_duration_ms] : []),
+            ...($message->type === 'gift' && $message->gift ? ['gift' => $message->gift->toApi()] : []),
             ...($message->type === 'location' ? ['location' => [
                 'latitude' => (float) $message->approx_latitude, 'longitude' => (float) $message->approx_longitude,
                 'place_label' => $message->place_label,

@@ -753,6 +753,11 @@ void main() {
       expect(find.byKey(const Key('chat-attach')), findsOneWidget);
       expect(find.byKey(const Key('chat-emoji')), findsOneWidget);
       expect(find.byKey(const Key('chat-input')), findsOneWidget);
+      expect(find.byKey(const Key('chat-mic')), findsOneWidget, reason: 'An empty composer offers the microphone.');
+      expect(find.byTooltip('Mesajı gönder'), findsNothing);
+      await tester.enterText(find.byKey(const Key('chat-input')), 'Selam');
+      await tester.pump();
+      expect(find.byKey(const Key('chat-mic')), findsNothing, reason: 'Typing swaps the microphone for the send button.');
       expect(find.byTooltip('Mesajı gönder'), findsOneWidget);
       final attach = tester.getCenter(find.byKey(const Key('chat-attach'))).dx;
       final emoji = tester.getCenter(find.byKey(const Key('chat-emoji'))).dx;
@@ -783,7 +788,7 @@ void main() {
       field.controller!.selection = const TextSelection.collapsed(offset: 1);
       await tester.tap(find.byKey(const Key('chat-emoji')));
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('emoji-grid')), findsOneWidget);
+      expect(find.byKey(const Key('emoji-panel')), findsOneWidget);
       await tester.tap(find.text('😀'));
       await tester.pumpAndSettle();
       expect(field.controller!.text, 'a😀b');

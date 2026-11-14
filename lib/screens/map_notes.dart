@@ -1,6 +1,9 @@
 import 'dart:async';
 
+import 'dart:io';
+
 import 'package:flutter/material.dart' hide Text;
+import 'package:image_picker/image_picker.dart';
 
 import '../widgets/translated_text.dart';
 
@@ -573,6 +576,8 @@ class _MapNoteComposePageState extends State<MapNoteComposePage>
   final text = TextEditingController();
   final controller = MapController();
   bool anonymous = false, sending = false;
+  XFile? photo;
+  final picker = ImagePicker();
   late LatLng picked = widget.center ?? const LatLng(39, 35);
   String? error;
   final requestId = const Uuid().v4();
@@ -582,6 +587,50 @@ class _MapNoteComposePageState extends State<MapNoteComposePage>
     text.dispose();
     controller.dispose();
     super.dispose();
+  }
+
+  /// One optional photo for the letter: gallery or camera, previewed under the text and removable.
+  Future<void> pickPhoto() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              key: const Key('map-note-photo-gallery'),
+              leading: const Icon(Icons.image_outlined),
+              title: Text(tr('Galeriden Seç')),
+              onTap: () => Navigator.pop(sheet, ImageSource.gallery),
+            ),
+            ListTile(
+              key: const Key('map-note-photo-camera'),
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: Text(tr('Fotoğraf Çek')),
+              onTap: () => Navigator.pop(sheet, ImageSource.camera),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+    try {
+      final chosen = await picker.pickImage(
+        source: source,
+        maxWidth: 2048,
+        maxHeight: 2048,
+        imageQuality: 88,
+      );
+      if (chosen != null && mounted) {
+        setState(() {
+          photo = chosen;
+          error = null;
+        });
+      }
+    } catch (_) {
+      if (mounted) toast(context, tr('Fotoğraf seçilemedi. Tekrar dene.'));
+    }
   }
 
   Future<void> submit(AppStore store) async {
@@ -604,6 +653,7 @@ class _MapNoteComposePageState extends State<MapNoteComposePage>
         latitude: picked.latitude,
         longitude: picked.longitude,
         requestId: requestId,
+        image: photo,
       );
       if (mounted) {
         Navigator.pop(context, created);
@@ -668,6 +718,54 @@ class _MapNoteComposePageState extends State<MapNoteComposePage>
                 onChanged: (_) => setState(() => error = null),
               ),
             ),
+            const SizedBox(height: Space.sm),
+            if (photo == null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  key: const Key('map-note-photo-add'),
+                  onPressed: sending ? null : pickPhoto,
+                  icon: const Icon(Icons.add_photo_alternate_outlined),
+                  label: Text(tr('Fotoğraf Ekle')),
+                ),
+              )
+            else
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.file(
+                      File(photo!.path),
+                      key: const Key('map-note-photo-preview'),
+                      width: double.infinity,
+                      height: 170,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Container(
+                        height: 170,
+                        color: AppColors.surfaceLilac,
+                        alignment: Alignment.center,
+                        child: const Icon(Icons.image_outlined),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: IconButton.filled(
+                      key: const Key('map-note-photo-remove'),
+                      tooltip: tr('Fotoğrafı kaldır'),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.white.withValues(alpha: .92),
+                        foregroundColor: AppColors.navy,
+                      ),
+                      onPressed: sending
+                          ? null
+                          : () => setState(() => photo = null),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ),
+                ],
+              ),
             const SizedBox(height: Space.md),
             ChoicePills(
               options: const ['Açık not', 'Anonim not'],

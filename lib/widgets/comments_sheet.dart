@@ -351,7 +351,9 @@ class _CommentsPanelState extends State<CommentsPanel>
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          trf('Yanıtlanıyor: {0}', [replyTargetName(store, replyingTo!)]),
+                          trf('Yanıtlanıyor: {0}', [
+                            replyTargetName(store, replyingTo!),
+                          ]),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppTypography.metadata.copyWith(

@@ -29,6 +29,16 @@ final class EraseAccount
                     $this->media(config('mobile.post_media_disk'), $item->image_path);
                 }
             });
+            DB::table('messages')->where('sender_id', $id)->whereNotNull('audio_path')->orderBy('id')->chunkById(100, function ($items): void {
+                foreach ($items as $item) {
+                    $this->media(config('mobile.post_media_disk'), $item->audio_path);
+                }
+            });
+            DB::table('map_notes')->where('user_id', $id)->whereNotNull('image_path')->orderBy('id')->chunkById(100, function ($items): void {
+                foreach ($items as $item) {
+                    $this->media(config('mobile.post_media_disk'), $item->image_path);
+                }
+            });
             DB::table('location_matches')->whereIn('post_id', $posts)->delete();
             DB::table('post_media')->whereIn('post_id', $posts)->delete();
             DB::table('post_travel_details')->whereIn('post_id', $posts)->delete();
@@ -38,7 +48,7 @@ final class EraseAccount
                 'featured_rank' => null, 'deleted_at' => now(), 'updated_at' => now(),
             ]);
             // Map notes and replies leave public view immediately; the rows are purged by the retention lifecycle.
-            DB::table('map_notes')->where('user_id', $id)->update(['body' => '', 'content_hash' => null, 'place_label' => null, 'deleted_at' => now(), 'updated_at' => now()]);
+            DB::table('map_notes')->where('user_id', $id)->update(['body' => '', 'content_hash' => null, 'place_label' => null, 'image_path' => null, 'deleted_at' => now(), 'updated_at' => now()]);
             DB::table('map_note_reads')->where('user_id', $id)->delete();
             DB::table('map_note_replies')->where('user_id', $id)->update(['body' => '', 'content_hash' => null, 'deleted_at' => now(), 'updated_at' => now()]);
             // Their likes and every like on their comments, plus their private collections.
@@ -47,7 +57,7 @@ final class EraseAccount
             DB::table('saved_collection_posts')->whereIn('collection_id', DB::table('saved_collections')->where('user_id', $id)->select('id'))->delete();
             DB::table('saved_collections')->where('user_id', $id)->delete();
             DB::table('post_comments')->where('user_id', $id)->update(['body' => '', 'content_hash' => null, 'deleted_at' => now(), 'updated_at' => now()]);
-            DB::table('messages')->where('sender_id', $id)->update(['body' => '', 'image_path' => null, 'deleted_at' => now(), 'updated_at' => now()]);
+            DB::table('messages')->where('sender_id', $id)->update(['body' => '', 'image_path' => null, 'audio_path' => null, 'audio_duration_ms' => null, 'gift_id' => null, 'deleted_at' => now(), 'updated_at' => now()]);
             DB::table('encounter_requests')->where(fn ($query) => $query->where('requester_id', $id)->orWhere('target_user_id', $id))
                 ->update(['deleted_at' => now()]);
             DB::table('conversations')->where(fn ($query) => $query->where('first_user_id', $id)->orWhere('second_user_id', $id))
