@@ -393,7 +393,11 @@ class MapNoteController extends Controller
     public function destroyReply(Request $request, int $reply): JsonResponse
     {
         $entry = MapNoteReply::findOrFail($reply);
-        abort_unless($entry->user_id === $request->user()->id, 403);
+        if ($entry->user_id !== $request->user()->id) {
+            // Replies the viewer may not see (other age band, blocked) look exactly like missing ones.
+            abort_unless(MapNoteReply::visibleTo($request->user())->whereKey($reply)->exists(), 404);
+            abort(403);
+        }
         $entry->delete();
 
         return ApiResponse::ok(message: 'Yanıtın kaldırıldı.');

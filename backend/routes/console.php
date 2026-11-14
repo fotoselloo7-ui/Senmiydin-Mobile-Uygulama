@@ -90,7 +90,7 @@ Artisan::command('oauth:revoke-deleted', function (): int {
 Schedule::command('oauth:revoke-deleted')->everyTenMinutes()->withoutOverlapping();
 
 Artisan::command('devices:prune', function (): void {
-    DB::table('user_devices')->where('updated_at', '<', now()->subDays(30))
+    DB::table('user_devices')->where('last_seen_at', '<', now()->subDays(30))
         ->where(fn ($q) => $q->where('is_active', false)->orWhereNotExists(fn ($tokens) => $tokens
             ->selectRaw('1')->from('personal_access_tokens')->whereColumn('personal_access_tokens.id', 'user_devices.personal_access_token_id')))
         ->delete();

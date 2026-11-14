@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart' hide Text;
+
 import '../widgets/translated_text.dart';
 
 import '../core/theme.dart';
@@ -260,8 +261,8 @@ class _SearchPageState extends State<SearchPage> {
                     onChanged: (_) => searchChanged(store.connected),
                     decoration: InputDecoration(
                       hintText: widget.tag
-                          ? '@kullanıcıadı ara…'
-                          : 'İnsan, @kullanıcıadı veya paylaşım ara…',
+                          ? tr('@kullanıcıadı ara…')
+                          : tr('İnsan, @kullanıcıadı veya paylaşım ara…'),
                       prefixIcon: const Icon(Icons.search),
                       counterText: '',
                       suffixIcon: controller.text.isEmpty
@@ -436,7 +437,7 @@ class _SearchPageState extends State<SearchPage> {
                           ? person.id
                           : (
                               person.id,
-                              'Bu paylaşımı seninle paylaşmak istedim:\n\n${store.post(shared).text}',
+                              trf('Bu paylaşımı seninle paylaşmak istedim:\n\n{0}', [store.post(shared).text]),
                             ),
                     );
                   } else {
@@ -586,14 +587,14 @@ class _MapContentState extends State<MapContent> {
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     Text(
-                      '${store.city} · ${store.connected ? 'Örnek konumlar' : 'Yaklaşık konumlar'}',
+                      '${store.city} · ${tr(store.connected ? 'Örnek konumlar' : 'Yaklaşık konumlar')}',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
                 ),
               ),
               IconButton(
-                tooltip: 'Harita filtreleri',
+                tooltip: tr('Harita filtreleri'),
                 onPressed: () => openPage(context, '/filters'),
                 icon: const Icon(Icons.tune, color: AppColors.blue),
               ),
@@ -746,7 +747,7 @@ class _MapContentState extends State<MapContent> {
                         children: [
                           FloatingActionButton.small(
                             heroTag: 'zoom-in',
-                            tooltip: 'Yakınlaştır',
+                            tooltip: tr('Yakınlaştır'),
                             backgroundColor: Colors.white,
                             foregroundColor: AppColors.blue,
                             onPressed: () =>

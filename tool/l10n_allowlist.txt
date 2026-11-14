@@ -1,0 +1,26 @@
+# Turkish literals that must stay Turkish: sample/demo data and catalog names (cities, hobbies, jobs come from the server
+# catalog and are intentionally not machine-translated), plus the offline demo profile text.
+İzmir
+Birbirimizi bulduk. Kahveler içildi, sohbet yarım kalmadı. ☕✨
+Ne güzel bir tesadüf! ✨
+Köpekler
+Girişimcilik
+Birbirimizi bulduk, sahilde kahveler içildi. ☕✨
+Bir merhaba ile başladı. 🌊
+Doğa
+Gece yürüyüşü
+İrem G.
+Müzik
+Sahil yürüyüşü
+Kahve, müzik ve güzel karşılaşmalar… ✨
+Tasarımcı
+SenMiydin?
+Türkçe
+Aynı şehrin iki hikâyesi
+İstanbul
+28 dk önce
+Yarım kalan bir merhaba, güzel bir hikâyeye dönüştü. ☕
+SenMiydin? · Geçtiğim Yerler
+SenMiydin? · Places I Passed
+Sohbet @${p.handle}
+SenMiydin? · ${post.city} · ${post.kind.label}

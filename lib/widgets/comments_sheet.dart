@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart' hide Text;
+
 import 'translated_text.dart';
 
 import '../core/navigation.dart';
@@ -106,7 +107,7 @@ class _PanelHeader extends SliverPersistentHeaderDelegate {
               children: [
                 Expanded(
                   child: Text(
-                    'Yorumlar (${post.displayedCommentCount})',
+                    trf('Yorumlar ({0})', [post.displayedCommentCount]),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTypography.section,
@@ -350,7 +351,7 @@ class _CommentsPanelState extends State<CommentsPanel>
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          'Yanıtlanıyor: ${replyTargetName(store, replyingTo!)}',
+                          trf('Yanıtlanıyor: {0}', [replyTargetName(store, replyingTo!)]),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppTypography.metadata.copyWith(
@@ -386,8 +387,8 @@ class _CommentsPanelState extends State<CommentsPanel>
                       onChanged: (_) => setState(() {}),
                       decoration: InputDecoration(
                         hintText: replyingTo == null
-                            ? 'Bir yorum yaz…'
-                            : 'Yanıtını yaz…',
+                            ? tr('Bir yorum yaz…')
+                            : tr('Yanıtını yaz…'),
                         counterText: '',
                       ),
                       onSubmitted: (_) => send(post),
@@ -396,8 +397,8 @@ class _CommentsPanelState extends State<CommentsPanel>
                   IconButton(
                     key: const Key('send-comment'),
                     tooltip: replyingTo == null
-                        ? 'Yorumu gönder'
-                        : 'Yanıtı gönder',
+                        ? tr('Yorumu gönder')
+                        : tr('Yanıtı gönder'),
                     onPressed: busy || text.text.trim().isEmpty
                         ? null
                         : () => send(post),
@@ -495,7 +496,7 @@ class _CommentsPanelState extends State<CommentsPanel>
                         : () => runAccountAction(
                             () => loadAllReplies(post, comment.id!),
                           ),
-                    child: Text('$hidden yanıt daha'),
+                    child: Text(trf('{0} yanıt daha', [hidden])),
                   ),
               ],
             ),
@@ -542,48 +543,60 @@ class _CommentsPanelState extends State<CommentsPanel>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        person?.name ?? 'Anonim',
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                    Text(
-                      comment.time,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    if (comment.mine)
-                      IconButton(
-                        tooltip: reply ? 'Yanıtı sil' : 'Yorumu sil',
-                        icon: const Icon(Icons.delete_outline, size: 18),
-                        onPressed: busy
-                            ? null
-                            : () => runAccountAction(() async {
-                                await store.removeComment(post, comment);
-                                if (comment.parentId != null) {
-                                  expanded.remove(comment.parentId);
-                                }
-                              }),
-                      )
-                    else if (comment.id != null && post.remote)
-                      IconButton(
-                        tooltip: reply
-                            ? 'Yanıtı şikâyet et'
-                            : 'Yorumu şikâyet et',
-                        icon: const Icon(Icons.flag_outlined, size: 18),
-                        onPressed: () => openPage(
-                          context,
-                          '/report',
-                          ReportTarget(
-                            'comment',
-                            int.parse(comment.id!),
-                            reply ? 'Yanıt' : 'Yorum',
-                          ),
+                // The time label may never push the actions out of a narrow reply column (320 dp, 1.5x text).
+                LayoutBuilder(
+                  builder: (context, box) => Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          person?.name ?? 'Anonim',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w800),
                         ),
                       ),
-                  ],
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: box.maxWidth * 0.45,
+                        ),
+                        child: Text(
+                          comment.time,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                      if (comment.mine)
+                        IconButton(
+                          tooltip: reply ? tr('Yanıtı sil') : tr('Yorumu sil'),
+                          icon: const Icon(Icons.delete_outline, size: 18),
+                          onPressed: busy
+                              ? null
+                              : () => runAccountAction(() async {
+                                  await store.removeComment(post, comment);
+                                  if (comment.parentId != null) {
+                                    expanded.remove(comment.parentId);
+                                  }
+                                }),
+                        )
+                      else if (comment.id != null && post.remote)
+                        IconButton(
+                          tooltip: reply
+                              ? tr('Yanıtı şikâyet et')
+                              : tr('Yorumu şikâyet et'),
+                          icon: const Icon(Icons.flag_outlined, size: 18),
+                          onPressed: () => openPage(
+                            context,
+                            '/report',
+                            ReportTarget(
+                              'comment',
+                              int.parse(comment.id!),
+                              reply ? 'Yanıt' : 'Yorum',
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(comment.text),
@@ -617,8 +630,8 @@ class _CommentsPanelState extends State<CommentsPanel>
                                 : Icons.favorite_border_rounded,
                             size: 17,
                             semanticLabel: comment.liked
-                                ? 'Beğeniyi geri al'
-                                : 'Beğen',
+                                ? tr('Beğeniyi geri al')
+                                : tr('Beğen'),
                           ),
                           label: Text('${comment.likes}'),
                         ),

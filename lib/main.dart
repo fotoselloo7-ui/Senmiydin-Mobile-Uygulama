@@ -4,7 +4,9 @@ import 'core/polling.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart' hide Text;
+
 import 'widgets/translated_text.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:latlong2/latlong.dart';
@@ -144,32 +146,32 @@ class _SenMiydinAppState extends State<SenMiydinApp> {
     child: ValueListenableBuilder<Locale>(
       valueListenable: AppLocale.notifier,
       builder: (context, locale, _) => MaterialApp(
-      key: ValueKey(_sessionVersion),
-      navigatorKey: _navigator,
-      navigatorObservers: [pollingRoutes],
-      scaffoldMessengerKey: _messenger,
-      builder: (context, child) => AppAvailability(
-        store: store,
-        child: child ?? const SizedBox.shrink(),
-      ),
-      title: 'SenMiydin?',
-      debugShowCheckedModeBanner: false,
-      theme: buildTheme(),
-      locale: locale,
-      supportedLocales: AppLocale.supported,
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        ...GlobalMaterialLocalizations.delegates,
-      ],
-      initialRoute: _sessionVersion > 0
-          ? '/login'
-          : store.connected
-          ? '/'
-          : widget.initialRoute,
-      onGenerateInitialRoutes: (route) => [
-        buildRoute(RouteSettings(name: route)),
-      ],
-      onGenerateRoute: buildRoute,
+        key: ValueKey(_sessionVersion),
+        navigatorKey: _navigator,
+        navigatorObservers: [pollingRoutes],
+        scaffoldMessengerKey: _messenger,
+        builder: (context, child) => AppAvailability(
+          store: store,
+          child: child ?? const SizedBox.shrink(),
+        ),
+        title: 'SenMiydin?',
+        debugShowCheckedModeBanner: false,
+        theme: buildTheme(),
+        locale: locale,
+        supportedLocales: AppLocale.supported,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          ...GlobalMaterialLocalizations.delegates,
+        ],
+        initialRoute: _sessionVersion > 0
+            ? '/login'
+            : store.connected
+            ? '/'
+            : widget.initialRoute,
+        onGenerateInitialRoutes: (route) => [
+          buildRoute(RouteSettings(name: route)),
+        ],
+        onGenerateRoute: buildRoute,
       ),
     ),
   );

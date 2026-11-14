@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart' hide Text;
+
 import '../widgets/translated_text.dart';
+
 import 'package:latlong2/latlong.dart';
 
 import '../core/app_locale.dart';
@@ -21,7 +23,9 @@ Future<void> routeInboxNotification(
     ScaffoldMessenger.of(navigator.context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        SnackBar(content: Text(navigator.context.l10n.notificationsUnavailable)),
+        SnackBar(
+          content: Text(navigator.context.l10n.notificationsUnavailable),
+        ),
       );
     return;
   }
@@ -142,8 +146,9 @@ class _LiveNotificationsPageState extends State<LiveNotificationsPage>
                               ? () {}
                               : () => runAccountAction(() async {
                                   if (!item.read) {
-                                    await store.communication!
-                                        .readNotification(item.id);
+                                    await store.communication!.readNotification(
+                                      item.id,
+                                    );
                                     store.communicationChanged();
                                   }
                                   if (context.mounted &&

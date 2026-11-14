@@ -1,7 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart' hide Text;
+
 import 'translated_text.dart';
+
 import 'package:flutter_map/flutter_map.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
@@ -19,11 +21,46 @@ enum ChatLocationSource { current, map }
 
 /// Frequently used emoji; no emoji package, the system keyboard stays available for everything else.
 const chatEmoji = [
-  '😀', '😂', '😊', '😍', '🥰', '😘', '😉', '😎',
-  '🤗', '🤔', '😅', '😢', '😭', '😮', '😴', '🙄',
-  '👍', '👏', '🙌', '🙏', '💪', '👋', '🤝', '✌️',
-  '❤️', '💙', '💜', '🔥', '✨', '🎉', '🌊', '☀️',
-  '🌙', '⭐', '☕', '🍀', '🌸', '🎶', '📍', '👀',
+  '😀',
+  '😂',
+  '😊',
+  '😍',
+  '🥰',
+  '😘',
+  '😉',
+  '😎',
+  '🤗',
+  '🤔',
+  '😅',
+  '😢',
+  '😭',
+  '😮',
+  '😴',
+  '🙄',
+  '👍',
+  '👏',
+  '🙌',
+  '🙏',
+  '💪',
+  '👋',
+  '🤝',
+  '✌️',
+  '❤️',
+  '💙',
+  '💜',
+  '🔥',
+  '✨',
+  '🎉',
+  '🌊',
+  '☀️',
+  '🌙',
+  '⭐',
+  '☕',
+  '🍀',
+  '🌸',
+  '🎶',
+  '📍',
+  '👀',
 ];
 
 /// Inserts [emoji] at the current cursor (or replaces the selection) of [controller].
@@ -50,7 +87,11 @@ Future<ChatAttachment?> showChatAttachmentSheet(BuildContext context) {
         child: Row(
           children: [
             for (final (kind, icon, label) in [
-              (ChatAttachment.photo, Icons.image_outlined, text.chatAttachPhoto),
+              (
+                ChatAttachment.photo,
+                Icons.image_outlined,
+                text.chatAttachPhoto,
+              ),
               (
                 ChatAttachment.camera,
                 Icons.camera_alt_outlined,

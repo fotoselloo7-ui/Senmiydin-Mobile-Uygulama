@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart' hide Text;
+
 import '../widgets/translated_text.dart';
 
 import '../core/theme.dart';

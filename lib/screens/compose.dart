@@ -6,7 +6,9 @@ import '../data/post_context.dart';
 import '../widgets/post_context.dart';
 
 import 'package:flutter/material.dart' hide Text;
+
 import '../widgets/translated_text.dart';
+
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
@@ -563,8 +565,8 @@ class _ComposePageState extends State<ComposePage>
                 onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
                   hintText: composingStory
-                      ? 'Açıklama'
-                      : 'Bugün kiminle karşılaştın?',
+                      ? tr('Açıklama')
+                      : tr('Bugün kiminle karşılaştın?'),
                   alignLabelWithHint: true,
                 ),
               ),
@@ -807,7 +809,9 @@ class _ComposePageState extends State<ComposePage>
                               });
                             }
                           },
-                    subtitle: tr('Cihaz konumundan yaklaşık bir bölge eklenir.'),
+                    subtitle: tr(
+                      'Cihaz konumundan yaklaşık bir bölge eklenir.',
+                    ),
                   ),
                 PreferenceRow(
                   'Anonim paylaş',
@@ -962,7 +966,7 @@ class _DemoPhotoPickerState extends State<DemoPhotoPicker> {
           ),
           const SizedBox(height: Space.lg),
           PrimaryButton(
-            '${selected.length} Fotoğrafı Kullan',
+            trf('{0} Fotoğrafı Kullan', [selected.length]),
             icon: Icons.check,
             onPressed: () => Navigator.pop(context, selected),
           ),
@@ -1024,7 +1028,7 @@ class EncounterPage extends StatelessWidget {
         children: [
           if (pending) ...[
             InfoNote(
-              'Örnek karşılaşma · ${to.name} olarak gelen karşılaşma isteğini görüyorsun. Onay verdikten sonra kendi hesabına dönersin.',
+              trf('Örnek karşılaşma · {0} olarak gelen karşılaşma isteğini görüyorsun. Onay verdikten sonra kendi hesabına dönersin.', [to.name]),
             ),
             const SizedBox(height: Space.xl),
           ],
@@ -1056,7 +1060,7 @@ class EncounterPage extends StatelessWidget {
           const SizedBox(height: Space.xl),
           Text(
             pending
-                ? '${from.name} seni bir\nkarşılaşmada etiketledi!'
+                ? trf('{0} seni bir\nkarşılaşmada etiketledi!', [from.name])
                 : e.status == EncounterStatus.approved
                 ? 'Birbirinizi buldunuz! 💙'
                 : 'Bu karşılaşma reddedildi.',
@@ -1085,7 +1089,7 @@ class EncounterPage extends StatelessWidget {
               Text(
                 store.connected
                     ? post.city
-                    : '${post.city} · Yaklaşık ${post.distance.toStringAsFixed(1).replaceAll('.', ',')} km',
+                    : trf('{0} · Yaklaşık {1} km', [post.city, post.distance.toStringAsFixed(1).replaceAll('.', ',')]),
               ),
             ],
           ),

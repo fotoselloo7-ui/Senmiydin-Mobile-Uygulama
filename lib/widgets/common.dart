@@ -1,6 +1,7 @@
 import '../core/brand_assets.dart';
 
 import 'package:flutter/material.dart' hide Text;
+
 import 'translated_text.dart';
 
 import '../core/theme.dart';
@@ -904,7 +905,7 @@ class BalancedChoiceGrid extends StatelessWidget {
     return Semantics(
       button: true,
       selected: on,
-      label: option,
+      label: tr(option),
       excludeSemantics: true,
       child: Material(
         color: on ? AppColors.action : AppColors.surface,
@@ -926,7 +927,11 @@ class BalancedChoiceGrid extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (on) ...[
-                    const Icon(Icons.check_rounded, size: 16, color: Colors.white),
+                    const Icon(
+                      Icons.check_rounded,
+                      size: 16,
+                      color: Colors.white,
+                    ),
                     const SizedBox(width: 4),
                   ],
                   Flexible(
@@ -1246,7 +1251,7 @@ class _FieldState extends State<Field> {
         suffixIcon: !widget.obscure
             ? null
             : IconButton(
-                tooltip: visible ? 'Şifreyi gizle' : 'Şifreyi göster',
+                tooltip: visible ? tr('Şifreyi gizle') : tr('Şifreyi göster'),
                 onPressed: () => setState(() => visible = !visible),
                 icon: Icon(
                   visible

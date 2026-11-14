@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart' hide Text;
+
 import '../widgets/translated_text.dart';
 
 import '../core/app_locale.dart';
@@ -42,6 +43,17 @@ Future<void> _chooseLanguage(BuildContext context, AppStore store) async {
   if (chosen != null && chosen != AppLocale.code) {
     await store.setLanguage(chosen);
   }
+}
+
+/// The word that confirms account deletion: SİL on a Turkish UI, DELETE on an English one. Either is accepted in
+/// either language (and any letter case), the API always receives the same Turkish word.
+bool isDeleteConfirmation(String input) {
+  const accepted = {'SİL', 'SIL'};
+  final word = input.trim();
+  return accepted.contains(word.toUpperCase()) ||
+      word == 'sil' ||
+      word == 'Sil' ||
+      word.toLowerCase() == 'delete';
 }
 
 class SettingsPage extends StatefulWidget {
@@ -295,7 +307,9 @@ class _PreferencesPageState extends State<PreferencesPage>
                         store.refresh();
                       }
                     }),
-              subtitle: tr('Kapattığında yakın profiller arasında görünmezsin.'),
+              subtitle: tr(
+                'Kapattığında yakın profiller arasında görünmezsin.',
+              ),
             ),
             if (store.connected)
               PreferenceRow(
@@ -682,13 +696,13 @@ class _DeleteAccountPageState extends State<DeleteAccountPage>
           controller: text,
           enabled: !busy,
           onChanged: (_) => setState(() {}),
-          decoration: const InputDecoration(hintText: 'SİL'),
+          decoration: InputDecoration(hintText: tr('SİL')),
         ),
         const SizedBox(height: Space.lg),
         FilledButton.icon(
           key: const Key('delete-account'),
           style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-          onPressed: busy || text.text.trim() != 'SİL'
+          onPressed: busy || !isDeleteConfirmation(text.text)
               ? null
               : () => runAccountAction(() async {
                   final store = StoreScope.of(context);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart' hide Text;
+
 import '../widgets/translated_text.dart';
 
 import '../core/app_locale.dart';
@@ -467,7 +468,7 @@ class SharePage extends StatelessWidget {
                   onTap: () {
                     store.send(
                       p.id,
-                      'Bu paylaşımı seninle paylaşmak istedim:\n\n${store.post(postId).text}',
+                      trf('Bu paylaşımı seninle paylaşmak istedim:\n\n{0}', [store.post(postId).text]),
                     );
                     Navigator.pushReplacementNamed(
                       context,
@@ -517,7 +518,9 @@ class _MessageTabs extends StatelessWidget {
                   alignment: Alignment.center,
                   padding: const EdgeInsets.symmetric(vertical: 9),
                   decoration: BoxDecoration(
-                    color: i == selected ? AppColors.action : Colors.transparent,
+                    color: i == selected
+                        ? AppColors.action
+                        : Colors.transparent,
                     borderRadius: BorderRadius.circular(11),
                   ),
                   child: Text(

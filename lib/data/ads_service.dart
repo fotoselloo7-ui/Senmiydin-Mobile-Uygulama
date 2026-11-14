@@ -37,6 +37,8 @@ abstract class AdsPlatform {
 }
 
 class GoogleAdsPlatform implements AdsPlatform {
+  static const _consentTimeout = Duration(seconds: 20);
+
   @override
   Future<AdsStartResult> start({required bool teen}) async {
     final consent = ConsentInformation.instance;
@@ -48,10 +50,11 @@ class GoogleAdsPlatform implements AdsPlatform {
       () => updated.complete(),
       (error) => updated.complete(),
     );
-    await updated.future;
+    // A consent callback that never fires must not freeze the ads service: after the timeout it simply means no ads.
+    await updated.future.timeout(_consentTimeout, onTimeout: () {});
     final shown = Completer<void>();
     await ConsentForm.loadAndShowConsentFormIfRequired((_) => shown.complete());
-    await shown.future;
+    await shown.future.timeout(_consentTimeout, onTimeout: () {});
     final can = await consent.canRequestAds();
     final options =
         await consent.getPrivacyOptionsRequirementStatus() ==
@@ -155,10 +158,10 @@ class AdsService extends ChangeNotifier {
   }
 
   Future<void> showPrivacyOptions() async {
-    await platform?.showPrivacyOptions();
     final target = platform;
     if (target != null) {
       try {
+        await target.showPrivacyOptions();
         final result = await target.start(teen: teen);
         canRequestAds = result.canRequestAds;
         privacyOptionsRequired = result.privacyOptionsRequired;

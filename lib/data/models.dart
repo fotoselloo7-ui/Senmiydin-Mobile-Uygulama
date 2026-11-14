@@ -90,12 +90,13 @@ class SavedCollection {
     this.postsCount = 0,
     this.containsPost,
   });
-  factory SavedCollection.fromJson(Map<String, dynamic> json) => SavedCollection(
-    id: (json['id'] as num).toInt(),
-    name: json['name'] as String,
-    postsCount: (json['posts_count'] as num?)?.toInt() ?? 0,
-    containsPost: json['contains_post'] as bool?,
-  );
+  factory SavedCollection.fromJson(Map<String, dynamic> json) =>
+      SavedCollection(
+        id: (json['id'] as num).toInt(),
+        name: json['name'] as String,
+        postsCount: (json['posts_count'] as num?)?.toInt() ?? 0,
+        containsPost: json['contains_post'] as bool?,
+      );
   final int id;
   String name;
   int postsCount;

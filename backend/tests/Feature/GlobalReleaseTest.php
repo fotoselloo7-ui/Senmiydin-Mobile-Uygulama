@@ -296,6 +296,44 @@ class GlobalReleaseTest extends TestCase
         $this->assertDatabaseMissing('app_notifications', ['type' => 'nearby_post', 'entity_id' => $teenPost->id]);
     }
 
+    public function test_nearby_post_is_limited_to_the_same_city_the_radius_fresh_samples_and_public_city_posts(): void
+    {
+        $prefs = ['push_preferences' => ['nearby_activity' => true]];
+        $inside = $this->user('inside', $prefs);
+        $edge = $this->user('edge', $prefs);
+        $outside = $this->user('outside', $prefs);
+        $otherCity = $this->user('othercity', $prefs);
+        $author = $this->demo;
+        $author->forceFill($prefs)->save();
+        $this->locate($inside, 36.5452, 32.0021);           // ~70 m
+        $this->locate($edge, 36.5446 + 0.0085, 32.0021);    // ~945 m: inside the 1000 m radius
+        $this->locate($outside, 36.5446 + 0.0100, 32.0021); // ~1.11 km: outside
+        $this->locate($otherCity, 36.5450, 32.0021);
+        DB::table('user_locations')->where('user_id', $otherCity->id)->update(['city_id' => City::where('slug', '!=', 'alanya')->value('id')]);
+        $this->locate($author, 36.5447, 32.0021);           // the author is never notified about their own post
+
+        $post = $this->makePost($author, ['approx_latitude' => 36.5446, 'approx_longitude' => 32.0021]);
+        \App\Jobs\MatchLocationPost::dispatchSync($post->id);
+        $got = DB::table('app_notifications')->where('type', 'nearby_post')->pluck('user_id')->sort()->values()->all();
+        $this->assertSame([$inside->id, $edge->id], $got, 'Inside the radius and in the same city only; never the author.');
+
+        // Posts that are not public city posts at the place never notify.
+        foreach ([['visibility' => 'followers']] as $extra) {
+            $other = $this->makePost($author, ['approx_latitude' => 36.5446, 'approx_longitude' => 32.0021, ...$extra]);
+            \App\Jobs\MatchLocationPost::dispatchSync($other->id);
+            $this->assertDatabaseMissing('app_notifications', ['type' => 'nearby_post', 'entity_id' => $other->id]);
+        }
+        // No approximate place: nothing to match.
+        $blank = $this->makePost($author);
+        \App\Jobs\MatchLocationPost::dispatchSync($blank->id);
+        $this->assertDatabaseMissing('app_notifications', ['type' => 'nearby_post', 'entity_id' => $blank->id]);
+        // Deleted author's post does not notify either.
+        $gone = $this->makePost($author, ['approx_latitude' => 36.5446, 'approx_longitude' => 32.0021]);
+        DB::table('users')->where('id', $author->id)->update(['account_status' => 'deleted']);
+        \App\Jobs\MatchLocationPost::dispatchSync($gone->id);
+        $this->assertDatabaseMissing('app_notifications', ['type' => 'nearby_post', 'entity_id' => $gone->id]);
+    }
+
     public function test_the_history_matcher_keeps_its_own_notification_types_and_is_not_replaced(): void
     {
         $this->assertSame('Geçtiğin bölgede bir paylaşım var.', Inbox::message('nearby_activity', 'tr'));

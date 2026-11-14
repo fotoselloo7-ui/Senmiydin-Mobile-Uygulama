@@ -15,7 +15,7 @@ class PushDelivery
     public function send(int $id): void
     {
         $row = DB::table('app_notifications')->find($id);
-        if (! $row || !isset(Inbox::TYPES[$row->type]) || $row->read_at || ($row->actor_id && Blocks::between($row->user_id, $row->actor_id))) {
+        if (! $row || $row->pushed_at || !isset(Inbox::TYPES[$row->type]) || $row->read_at || ($row->actor_id && Blocks::between($row->user_id, $row->actor_id))) {
             return;
         }
         $user = User::where('account_status', 'active')->find($row->user_id);
@@ -26,7 +26,7 @@ class PushDelivery
         }
         [$route] = Inbox::TYPES[$row->type];
         // The push body follows the recipient's language (announcements carry their own TR/EN text).
-        $locale = $user->preferred_locale === 'en' ? 'en' : 'tr';
+        $locale = \App\Http\Middleware\SetLocale::forUser($user);
         $message = Inbox::message($row->type, $locale);
         if ($row->announcement_id && ($announcement = DB::table('announcements')->find($row->announcement_id))) {
             $message = $locale === 'en' && filled($announcement->title_en) ? $announcement->title_en : $announcement->title;
@@ -52,6 +52,10 @@ class PushDelivery
             } elseif (config('push.driver') === 'fcm') {
                 $this->deliver($device, $message, $payload);
             }
+        }
+        if (config('push.driver') === 'fcm' && $devices->isNotEmpty()) {
+            // A retried or duplicated job never pushes the same notification twice (the log driver is a dev sink).
+            DB::table('app_notifications')->where('id', $id)->update(['pushed_at' => now()]);
         }
     }
 

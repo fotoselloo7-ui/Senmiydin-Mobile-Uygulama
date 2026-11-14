@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart' hide Text;
+
 import 'translated_text.dart';
 
 import '../core/theme.dart';
@@ -37,7 +38,7 @@ Future<int?> showMediaViewer(
   await showGeneralDialog<void>(
     context: context,
     barrierDismissible: true,
-    barrierLabel: 'Kapat',
+    barrierLabel: tr('Kapat'),
     barrierColor: Colors.black.withValues(alpha: .76),
     transitionDuration: const Duration(milliseconds: 180),
     pageBuilder: (_, _, _) => MediaViewer(
@@ -161,7 +162,7 @@ class _MediaViewerState extends State<MediaViewer> {
     return Semantics(
       scopesRoute: true,
       explicitChildNodes: true,
-      label: 'Fotoğraf görüntüleyici',
+      label: tr('Fotoğraf görüntüleyici'),
       child: Material(
         type: MaterialType.transparency,
         child: SafeArea(
@@ -181,10 +182,12 @@ class _MediaViewerState extends State<MediaViewer> {
                       (multi ? thumbsBlock : 0) -
                       bottomPadding;
                   final aspect = aspects[index] ?? 4 / 3;
-                  final photoHeight = (photoWidth / aspect).clamp(
-                    _minPhotoHeight,
-                    math.max(_minPhotoHeight, maxPhoto),
-                  ).toDouble();
+                  final photoHeight = (photoWidth / aspect)
+                      .clamp(
+                        _minPhotoHeight,
+                        math.max(_minPhotoHeight, maxPhoto),
+                      )
+                      .toDouble();
                   return Container(
                     clipBehavior: Clip.antiAlias,
                     decoration: BoxDecoration(
@@ -272,8 +275,8 @@ class _MediaViewerState extends State<MediaViewer> {
                   multi: count > 1,
                   pointers: pointers,
                   semanticLabel: count > 1
-                      ? 'Fotoğraf ${i + 1} / $count'
-                      : 'Fotoğraf',
+                      ? trf('Fotoğraf {0} / {1}', [i + 1, count])
+                      : tr('Fotoğraf'),
                   onAspect: (a) {
                     if (mounted && aspects[i] != a) {
                       setState(() => aspects[i] = a);
@@ -356,7 +359,7 @@ class _MediaViewerState extends State<MediaViewer> {
                   store: widget.store,
                   path: widget.images[i],
                   active: i == index,
-                  label: '${i + 1}. görsel',
+                  label: trf('{0}. görsel', [i + 1]),
                   width: _thumbWidth,
                   height: _thumbHeight,
                   onTap: () => _goTo(i),
@@ -671,4 +674,3 @@ class _ViewerPageState extends State<_ViewerPage>
     ),
   );
 }
-

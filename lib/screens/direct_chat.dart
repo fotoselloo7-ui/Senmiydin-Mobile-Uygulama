@@ -3,10 +3,11 @@ import '../core/polling.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart' hide Text;
+
 import '../widgets/translated_text.dart';
+
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
-
 
 import 'package:geolocator/geolocator.dart' show LocationPermission;
 import 'package:latlong2/latlong.dart';
@@ -443,6 +444,8 @@ class _DirectChatPageState extends State<DirectChatPage>
         if (mounted) toast(context, DeviceLocationState.denied.message);
         return null;
       }
+      // The first GPS fix can take several seconds: say so instead of staying silent.
+      if (mounted) toast(context, tr('Konum alınıyor…'));
       final position = await device.current();
       return LatLng(position.latitude, position.longitude);
     } catch (_) {
@@ -747,7 +750,7 @@ class _DirectChatPageState extends State<DirectChatPage>
                             PendingPhoto(
                               file: image!,
                               label: tr('Fotoğraf eklendi'),
-                              removeTooltip: 'Fotoğrafı kaldır',
+                              removeTooltip: tr('Fotoğrafı kaldır'),
                               onRemove: busy
                                   ? null
                                   : () => setState(() {
@@ -758,7 +761,8 @@ class _DirectChatPageState extends State<DirectChatPage>
                           ChatComposerBar(
                             controller: text,
                             busy: busy,
-                            canSend: text.text.trim().isNotEmpty || image != null,
+                            canSend:
+                                text.text.trim().isNotEmpty || image != null,
                             onAttach: attach,
                             onEmoji: insertEmoji,
                             onSend: send,
@@ -951,7 +955,10 @@ class _LocationCard extends StatelessWidget {
               label.isEmpty
                   ? text.chatLocationApprox
                   : '${text.chatLocationApprox} · $label',
-              style: TextStyle(color: color.withValues(alpha: .85), fontSize: 12.5),
+              style: TextStyle(
+                color: color.withValues(alpha: .85),
+                fontSize: 12.5,
+              ),
             ),
           ),
           const SizedBox(height: 6),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart' hide Text;
+
 import 'translated_text.dart';
 
 import '../core/navigation.dart';
@@ -43,7 +44,7 @@ Future<String?> askCollectionName(
         autofocus: true,
         maxLength: 40,
         textCapitalization: TextCapitalization.sentences,
-        decoration: const InputDecoration(hintText: 'Örn. Alanya'),
+        decoration: InputDecoration(hintText: tr('Örn. Alanya')),
         onSubmitted: (value) => Navigator.pop(ctx, value.trim()),
       ),
       actions: [
@@ -247,7 +248,7 @@ class CollectionChips extends StatelessWidget {
       side: BorderSide(color: on ? AppColors.action : AppColors.line),
       selected: on,
       showCheckmark: false,
-      tooltip: icon == null ? null : 'Yeni koleksiyon',
+      tooltip: icon == null ? null : tr('Yeni koleksiyon'),
       labelStyle: TextStyle(
         fontFamily: 'NunitoSans',
         fontSize: 12.5,

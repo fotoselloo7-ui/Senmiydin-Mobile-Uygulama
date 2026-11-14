@@ -89,3 +89,11 @@ Bu liste bir **uygulama planıdır**; bu görevde gizlice teen mimarisi kurulmam
 - Üretim minimum yaşı: **18** (değişmedi).
 - Kod: tek ayarla 16'ya geçebilir (doğrulama, panel sınırı, `/app-config`, Flutter metinleri); 13–15 desteklenmez.
 - **Dış bağımlılık (EXTERNAL):** genel erişilebilir destek / iletişim e-postası (Apple UGC şartı), App Store / Play Store gerçek URL'leri, operatör / yasal bilgiler. Sahte e-posta üretilmemiştir.
+
+## 6. Final doğrulama turu eki — 15 Kasım 2026 (RC)
+
+Teen / adult ayrımı **endpoint bypass** düzeyinde yeniden denetlendi (`backend/tests/Feature/AgeBandTransitionTest.php`): iki 17 yaşındaki hesap takip, gönderi, yorum + yanıt, beğeni, kaydetme, koleksiyon, fotoğraflı sohbet, harita notu + yanıt, kabul edilmiş buluşma ve bildirim geçmişi oluşturur; biri 18 olduğunda **her** okuma/yazma uç noktası iki yönde de yabancı gibi davranır (feed 4 sıralama, gönderi/yorum/yanıt, kaydedilenler ve koleksiyon, arama, profil/takipçi/takip edilen, yakındakiler, harita gönderileri/notları/grup/okunmamış, sohbet listesi/ayrıntı/mesajlar/fotoğraf/okundu/istek, buluşma istekleri/ayrıntı/öne çıkanlar, bildirim listesi/ayrıntı/sayaç, engel listesi). Bu denetim şu **gerçek sızıntıları** buldu ve kapattı: 18. doğum günü sınır gününde PHP/SQL yaş bandı tutarsızlığı; yorum silme ve harita-notu yanıt silmede varlık sızıntısı (403); engel listesinde karşı banttaki hesabın görünmesi.
+
+Sınır `Europe/Istanbul` takvim gününe göredir: 17 yıl 364 gün = TEEN, 18. doğum günü 00:00 = ADULT (Eloquent `date` cast'i, `bandOf` ve SQL `DATE()` yolları aynı sonucu verir). Uygulamada "paylaşımı kullanıcıya gönder" özelliği yoktur; paylaşım yalnız mevcut mesaj gövdesi olarak gider ve mesaj uç noktaları band kontrolünden geçer.
+
+Reklam: teen hesaplarda `tagForUnderAgeOfConsent`, `AgeRestrictedTreatment.teen`, `MaxAdContentRating.T`, kişiselleştirilmemiş istek; reklam isteğine konum eklenmez; UMP callback'i zaman aşımına uğrarsa reklam gösterilmez, uygulama etkilenmez.

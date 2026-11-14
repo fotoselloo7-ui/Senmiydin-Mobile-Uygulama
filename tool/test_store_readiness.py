@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import unittest
 
-from store_readiness import BAD_SDK, aggregate, metadata_errors
+from store_readiness import BAD_SDK, admob_status, aggregate, metadata_errors
 
 
 class StoreReadinessTests(unittest.TestCase):
@@ -33,6 +33,16 @@ class StoreReadinessTests(unittest.TestCase):
         self.assertIsNone(BAD_SDK.search("com.google.firebase:firebase-measurement-connector:19.0.0"))
         self.assertIsNotNone(BAD_SDK.search("com.google.firebase:firebase-analytics:23.0.0"))
         self.assertIsNotNone(BAD_SDK.search("com.google.android.gms:play-services-ads:24.0.0"))
+
+    def test_admob_ids_are_missing_until_real_and_never_google_samples(self):
+        self.assertEqual("MISSING",admob_status({})[0])
+        self.assertEqual("MISSING",admob_status(None)[0])
+        real={"ADMOB_APP_ID_ANDROID":"ca-app-pub-1111111111111111~2222222222","ADMOB_APP_ID_IOS":"ca-app-pub-1111111111111111~3333333333",
+              "ADMOB_NATIVE_AD_UNIT_ANDROID":"ca-app-pub-1111111111111111/4444444444","ADMOB_NATIVE_AD_UNIT_IOS":"ca-app-pub-1111111111111111/5555555555"}
+        self.assertEqual("WAITING",admob_status(real)[0])
+        self.assertEqual("MISSING",admob_status({**real,"ADMOB_NATIVE_AD_UNIT_IOS":""})[0])
+        self.assertEqual("FAIL",admob_status({**real,"ADMOB_APP_ID_ANDROID":"ca-app-pub-3940256099942544~3347511713"})[0])
+        self.assertEqual("FAIL",admob_status({**real,"ADMOB_NATIVE_AD_UNIT_ANDROID":"not-an-id"})[0])
 
 
 if __name__=="__main__":

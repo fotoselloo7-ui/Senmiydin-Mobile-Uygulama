@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart' hide Text;
+
 import 'translated_text.dart';
 
 import '../core/app_locale.dart';
@@ -140,17 +141,17 @@ class _NotificationsPanelState extends State<NotificationsPanel> {
     final store = StoreScope.of(context);
     final text = context.l10n;
     final connected = store.connected;
-    final unread = connected
-        ? store.unreadNotifications
-        : store.unreadNotices;
+    final unread = connected ? store.unreadNotifications : store.unreadNotices;
     final rows = <Widget>[];
     if (connected) {
       final list = items;
       if (list == null && !failed) {
-        rows.add(const Padding(
-          padding: EdgeInsets.all(Space.xl),
-          child: Center(child: CircularProgressIndicator()),
-        ));
+        rows.add(
+          const Padding(
+            padding: EdgeInsets.all(Space.xl),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+        );
       } else if (failed && (list == null || list.isEmpty)) {
         rows.add(
           InlineState(
@@ -160,11 +161,13 @@ class _NotificationsPanelState extends State<NotificationsPanel> {
           ),
         );
       } else if (list!.isEmpty) {
-        rows.add(EmptyState(
-          text.notificationsEmptyTitle,
-          text.notificationsEmptyBody,
-          icon: Icons.notifications_none,
-        ));
+        rows.add(
+          EmptyState(
+            text.notificationsEmptyTitle,
+            text.notificationsEmptyBody,
+            icon: Icons.notifications_none,
+          ),
+        );
       } else {
         for (final group in groupNotifications(list)) {
           rows.add(NotificationGroupHeader(group.label(text)));
@@ -182,11 +185,13 @@ class _NotificationsPanelState extends State<NotificationsPanel> {
     } else {
       final notices = store.notices.take(notificationPreviewCount).toList();
       if (notices.isEmpty) {
-        rows.add(EmptyState(
-          text.notificationsEmptyTitle,
-          text.notificationsEmptyBody,
-          icon: Icons.notifications_none,
-        ));
+        rows.add(
+          EmptyState(
+            text.notificationsEmptyTitle,
+            text.notificationsEmptyBody,
+            icon: Icons.notifications_none,
+          ),
+        );
       }
       for (final notice in notices) {
         rows.add(_OfflineNoticeTile(notice));

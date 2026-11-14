@@ -61,6 +61,25 @@ def metadata_errors(data: dict) -> list[str]:
     return errors
 
 
+ADMOB_KEYS = ("ADMOB_APP_ID_ANDROID", "ADMOB_APP_ID_IOS", "ADMOB_NATIVE_AD_UNIT_ANDROID", "ADMOB_NATIVE_AD_UNIT_IOS")
+ADMOB_SAMPLE_PUBLISHER = "3940256099942544"
+
+
+def admob_status(defines: dict | None) -> tuple[str, str]:
+    """Release AdMob identifiers must be the real production ids: absent -> MISSING, Google's sample ids -> FAIL."""
+    defines = defines or {}
+    values = {key: str(defines.get(key, "") or "") for key in ADMOB_KEYS}
+    if any(ADMOB_SAMPLE_PUBLISHER in value for value in values.values()):
+        return "FAIL", "A Google sample AdMob id is configured for release; supply the real production ids."
+    malformed = [key for key, value in values.items() if value and not re.fullmatch(r"ca-app-pub-\d{16}[~/]\d{10}", value)]
+    if malformed:
+        return "FAIL", "Malformed AdMob id: " + ", ".join(malformed)
+    missing = [key for key, value in values.items() if not value]
+    if missing:
+        return "MISSING", "Real AdMob ids absent (" + ", ".join(missing) + "). Release builds then render no ads; sample ids are debug-only."
+    return "WAITING", "All four production AdMob ids are configured; live serving, UMP consent message and app-ads.txt need console verification."
+
+
 def aggregate(rows: list[dict]) -> str:
     statuses = {row["status"] for row in rows}
     return next((value for value in ["FAIL", "MISSING", "WAITING"] if value in statuses), "READY")
@@ -172,6 +191,12 @@ def audit(skip_runtime: bool = False) -> dict:
     signing = ROOT / "android/key.properties"
     add("Android release signing", "WAITING" if signing.is_file() else "MISSING", "Configuration file present; signature not validated." if signing.is_file() else "Real signing configuration absent. No key generated.")
     local_defines = ROOT / "config/production.local.json"
+    try:
+        admob_defines = json.loads(local_defines.read_text(encoding="utf-8")) if local_defines.is_file() else {}
+    except ValueError:
+        admob_defines = {}
+    admob_state, admob_detail = admob_status(admob_defines)
+    add("AdMob production identifiers", admob_state, admob_detail)
     add("Mobile provider configuration", "WAITING" if local_defines.is_file() else "MISSING", "Ignored configuration present; live delivery/OAuth requires verification." if local_defines.is_file() else "Real Firebase/OAuth public identifiers absent.")
 
     if skip_runtime:

@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart' hide Text;
+
 import '../widgets/translated_text.dart';
+
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -315,7 +317,7 @@ class _LiveMapContentState extends State<LiveMapContent> {
                               borderRadius: BorderRadius.circular(99),
                             ),
                             child: Text(
-                              '${store.nearbyUnread.count} yeni',
+                              trf('{0} yeni', [store.nearbyUnread.count]),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 10.5,
@@ -517,7 +519,7 @@ class _LiveMapContentState extends State<LiveMapContent> {
                       height: AppDimensions.touch,
                       child: IconButton(
                         key: ValueKey('map-post-${group.value.first.id}'),
-                        tooltip: 'Haritadaki paylaşım',
+                        tooltip: tr('Haritadaki paylaşım'),
                         style: IconButton.styleFrom(
                           backgroundColor: Colors.white,
                           foregroundColor: AppColors.blue,
@@ -605,8 +607,8 @@ class _LiveMapContentState extends State<LiveMapContent> {
             elevation: 2,
             child: IconButton(
               tooltip: own == null
-                  ? 'Cihaz konumunu kontrol et'
-                  : 'Bulunduğum bölgeye dön',
+                  ? tr('Cihaz konumunu kontrol et')
+                  : tr('Bulunduğum bölgeye dön'),
               color: AppColors.action,
               icon: const Icon(Icons.my_location_outlined),
               onPressed: own == null
@@ -746,7 +748,7 @@ class _LiveMapContentState extends State<LiveMapContent> {
             for (final (index, point) in points.indexed)
               ListTile(
                 leading: const Icon(Icons.location_on_outlined),
-                title: Text('Paylaşım ${index + 1}'),
+                title: Text(trf('Paylaşım {0}', [index + 1])),
                 subtitle: point.meters == null
                     ? null
                     : Text(locationDistance(point.meters!)),

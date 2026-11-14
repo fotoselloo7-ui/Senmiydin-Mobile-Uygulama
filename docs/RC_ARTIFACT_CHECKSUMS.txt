@@ -1,0 +1,6 @@
+# SenMiydin? release candidate artifacts (credential-free). Generated 2026-11-14 22:26 from commit Finalize SenMiydin release candidate.
+# sha256  size  file
+11eff81e849b8c69dc4ca859105afbf959ae9074573da02dfd003e992ead57c8  14919090  senmiydin-backend-release.zip
+f9063af4d6a7aa6d7e3ff81fb9bb06cb2b1b85986402b980416633b7395edb4c  22723369  senmiydin-backend-release-vendor.zip
+b591a56168b0c4bdb30e181f1ea7e24e0d0862148c5d36d8d0b7263d57179034  212971910  senmiydin-debug.apk
+# APK secret scan hits: none

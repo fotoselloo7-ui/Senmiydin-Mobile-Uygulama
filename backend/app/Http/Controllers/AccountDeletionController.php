@@ -12,7 +12,7 @@ class AccountDeletionController
 {
     public function __invoke(Request $request, EraseAccount $erasure)
     {
-        $data = $request->validate(['password' => AuthController::currentPasswordRules(), 'confirmation' => 'required|in:SİL']);
+        $data = $request->validate(['password' => AuthController::currentPasswordRules(), 'confirmation' => 'required|in:SİL,DELETE']);
         if (! Hash::check($data['password'], $request->user()->password)) {
             throw ValidationException::withMessages(['password' => 'Şifren hatalı.']);
         }

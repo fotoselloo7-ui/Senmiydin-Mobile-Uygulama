@@ -469,7 +469,8 @@ class PostController extends Controller
     {
         DB::transaction(function () use ($request, $post, $comment): void {
             $entry = Post::visibleTo($request->user())->lockForUpdate()->findOrFail($post);
-            $item = $entry->comments()->findOrFail($comment);
+            // Comments the viewer may not see (other age band, blocked) cannot be probed or moderated either.
+            $item = Blocks::exclude($entry->comments()->getQuery(), $request->user()->id, 'post_comments.user_id')->findOrFail($comment);
             Gate::authorize('delete', $item);
             // Likes of a removed comment (and of the replies that disappear with it) no longer count anywhere.
             DB::table('comment_likes')->whereIn('comment_id', PostComment::where('id', $item->id)->orWhere('parent_id', $item->id)->select('id'))->delete();

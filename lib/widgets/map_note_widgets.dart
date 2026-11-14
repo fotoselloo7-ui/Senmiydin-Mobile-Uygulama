@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart' hide Text;
+
 import 'translated_text.dart';
 
+import '../core/app_locale.dart';
 import '../core/navigation.dart';
 import '../core/theme.dart';
 import '../data/map_notes_api.dart';
@@ -27,10 +29,10 @@ class MapNotePin extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
     button: true,
     excludeSemantics: true,
-    label: count == 1 ? 'Haritadaki not' : 'Haritadaki $count not',
+    label: count == 1 ? tr('Haritadaki not') : trf('Haritadaki {0} not', [count]),
     child: Tooltip(
       excludeFromSemantics: true,
-      message: count == 1 ? 'Haritadaki not' : '$count not',
+      message: count == 1 ? tr('Haritadaki not') : trf('{0} not', [count]),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onPressed,
@@ -329,7 +331,7 @@ class MapNoteLetter extends StatelessWidget {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    '${note.replyCount} yanıt',
+                    trf('{0} yanıt', [note.replyCount]),
                     style: AppTypography.metadata,
                   ),
                 ],
@@ -381,7 +383,7 @@ class MapNoteReplyTile extends StatelessWidget {
             ),
             if (reply.mine ? onDelete != null : onReport != null)
               PopupMenuButton<String>(
-                tooltip: 'Yanıt seçenekleri',
+                tooltip: tr('Yanıt seçenekleri'),
                 icon: const Icon(Icons.more_horiz_rounded, size: 20),
                 onSelected: (value) =>
                     value == 'delete' ? onDelete?.call() : onReport?.call(),
@@ -488,7 +490,7 @@ class MyLetterCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      ' · ${note.replyCount} cevap',
+                      trf(' · {0} cevap', [note.replyCount]),
                       style: AppTypography.metadata,
                     ),
                   ],

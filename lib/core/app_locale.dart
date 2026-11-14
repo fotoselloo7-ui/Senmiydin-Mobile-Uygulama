@@ -57,6 +57,7 @@ class AppLocale {
 
   static Future<void> set(Locale locale) async {
     notifier.value = Locale(locale.languageCode);
+    rebuildEverything();
     try {
       await (await _file())?.writeAsString(locale.languageCode);
     } catch (_) {
@@ -64,9 +65,26 @@ class AppLocale {
     }
   }
 
+  /// Marks every mounted element dirty so `const` widgets and cached labels pick up the new language too (the
+  /// framework only rebuilds what depends on `Localizations`). The navigation stack and all state are kept.
+  static void rebuildEverything() {
+    void rebuild(Element element) {
+      element.markNeedsBuild();
+      element.visitChildren(rebuild);
+    }
+
+    final binding = WidgetsBinding.instance;
+    // Defer to after the current frame so the language is already set when the dirty elements build.
+    binding.addPostFrameCallback((_) => binding.rootElement?.visitChildren(rebuild));
+    binding.scheduleFrame();
+  }
+
   /// Test hook: forces a language without touching storage.
   @visibleForTesting
-  static void debugSet(Locale locale) => notifier.value = locale;
+  static void debugSet(Locale locale) {
+    notifier.value = locale;
+    rebuildEverything();
+  }
 }
 
 extension AppL10n on BuildContext {
@@ -82,3 +100,13 @@ AppLocalizations get currentL10n => lookupAppLocalizations(AppLocale.current);
 /// English text for a Turkish source string (see `lib/l10n/en_catalog.dart`); Turkish and unknown strings pass through.
 String tr(String turkish) =>
     AppLocale.english ? (enCatalog[turkish] ?? turkish) : turkish;
+
+/// [tr] for sentences with values: the Turkish source uses `{0}`, `{1}` … placeholders, the English catalog entry uses
+/// the same ones, and both languages are filled in here. Without an English entry the Turkish sentence is used.
+String trf(String turkish, List<Object?> values) {
+  var text = tr(turkish);
+  for (var i = 0; i < values.length; i++) {
+    text = text.replaceAll('{$i}', '${values[i]}');
+  }
+  return text;
+}

@@ -1,3 +1,4 @@
+import '../core/app_locale.dart';
 import 'account_api.dart';
 import 'models.dart';
 import 'social_api.dart';
@@ -108,8 +109,8 @@ class MapNoteItem {
   /// "2 gün kaldı", "5 saat kaldı", "Birazdan kalkacak" (active letters only).
   String remaining({DateTime? now}) {
     final left = expiresAt.difference(now ?? DateTime.now());
-    if (left.inDays >= 1) return '${left.inDays} gün kaldı';
-    if (left.inHours >= 1) return '${left.inHours} saat kaldı';
+    if (left.inDays >= 1) return trf('{0} gün kaldı', [left.inDays]);
+    if (left.inHours >= 1) return trf('{0} saat kaldı', [left.inHours]);
     return left.isNegative ? 'Süresi doldu' : 'Birazdan kalkacak';
   }
 }
@@ -396,8 +397,8 @@ String mapNoteTime(DateTime value, {DateTime? now, bool withYear = false}) {
     'Kasım',
     'Aralık',
   ];
-  if (difference == 0) return 'Bugün · $clock';
-  if (difference == 1) return 'Dün · $clock';
+  if (difference == 0) return trf('Bugün · {0}', [clock]);
+  if (difference == 1) return trf('Dün · {0}', [clock]);
   final year = withYear || time.year != today.year ? ' ${time.year}' : '';
-  return '${time.day} ${months[time.month - 1]}$year · $clock';
+  return '${time.day} ${tr(months[time.month - 1])}$year · $clock';
 }

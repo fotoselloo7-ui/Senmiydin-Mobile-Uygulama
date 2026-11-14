@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart' hide Text;
+
 import '../widgets/translated_text.dart';
 
 import '../core/theme.dart';
@@ -45,16 +46,15 @@ class ProfilePage extends StatelessWidget {
                       ? ReportTarget(
                           'user',
                           accountId(p.id),
-                          'Kullanıcı @${p.handle}',
+                          trf('Kullanıcı @{0}', [p.handle]),
                         )
-                      : 'Kullanıcı @${p.handle}',
+                      : trf('Kullanıcı @{0}', [p.handle]),
                 );
               } else if (v == 'block') {
                 if (await confirmAction(
                   context,
                   title: tr('Kullanıcı engellensin mi?'),
-                  message:
-                      'Bu kişi sana mesaj gönderemez; paylaşımlarını akışında görmezsin.',
+                  message: 'Bu kişi sana mesaj gönderemez; paylaşımlarını akışında görmezsin.',
                   action: 'Engelle',
                 )) {
                   if (!context.mounted) return;
@@ -76,10 +76,7 @@ class ProfilePage extends StatelessWidget {
               }
             },
             itemBuilder: (_) => [
-              const PopupMenuItem(
-                value: 'report',
-                child: Text('Şikâyet Et'),
-              ),
+              const PopupMenuItem(value: 'report', child: Text('Şikâyet Et')),
               PopupMenuItem(
                 value: isBlocked ? 'unblock' : 'block',
                 child: Text(isBlocked ? 'Engeli Kaldır' : 'Engelle'),
@@ -170,8 +167,12 @@ class _ProfileContentState extends State<ProfileContent> {
                         title,
                         style: TextStyle(
                           fontSize: 13,
-                          fontWeight: active ? FontWeight.w700 : FontWeight.w600,
-                          color: active ? AppColors.primary : AppColors.textSecondary,
+                          fontWeight: active
+                              ? FontWeight.w700
+                              : FontWeight.w600,
+                          color: active
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
                         ),
                       ),
                     ),
@@ -266,11 +267,7 @@ class _ProfileContentState extends State<ProfileContent> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFE89A7B),
-            Color(0xFFA676C8),
-            Color(0xFF7F71BF),
-          ],
+          colors: [Color(0xFFE89A7B), Color(0xFFA676C8), Color(0xFF7F71BF)],
         ),
       ),
       child: SizedBox(width: double.infinity, height: 135),
@@ -415,8 +412,8 @@ class _ProfileContentState extends State<ProfileContent> {
                   count: p.remote
                       ? (loading ? '…' : '${p.followersCount}')
                       : store.connected
-                          ? '0'
-                          : '${1264 + (following ? 1 : 0)}',
+                      ? '0'
+                      : '${1264 + (following ? 1 : 0)}',
                   label: tr('Takipçi'),
                   onTap: () => openPage(
                     context,
@@ -429,10 +426,10 @@ class _ProfileContentState extends State<ProfileContent> {
                   count: p.remote
                       ? (loading ? '…' : '${p.followingCount}')
                       : store.connected
-                          ? '0'
-                          : own
-                              ? '${store.following.length}'
-                              : '287',
+                      ? '0'
+                      : own
+                      ? '${store.following.length}'
+                      : '287',
                   label: tr('Takip'),
                   onTap: () => openPage(
                     context,
@@ -446,7 +443,7 @@ class _ProfileContentState extends State<ProfileContent> {
           if (!own) ...[
             if (isBlocked)
               InfoNote(
-                '@${p.handle} engellendi. İletişim kurmak için profil menüsünden engeli kaldırabilirsin.',
+                trf('@{0} engellendi. İletişim kurmak için profil menüsünden engeli kaldırabilirsin.', [p.handle]),
                 icon: Icons.block,
               )
             else
@@ -462,8 +459,8 @@ class _ProfileContentState extends State<ProfileContent> {
                                 () => store.toggleFollow(p),
                               )
                             : store.connected
-                                ? null
-                                : () => store.follow(p.id),
+                            ? null
+                            : () => store.follow(p.id),
                         borderRadius: BorderRadius.circular(24),
                         child: Ink(
                           height: 46,
@@ -472,8 +469,7 @@ class _ProfileContentState extends State<ProfileContent> {
                             borderRadius: BorderRadius.circular(24),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.primary
-                                    .withValues(alpha: .24),
+                                color: AppColors.primary.withValues(alpha: .24),
                                 blurRadius: 10,
                                 offset: const Offset(0, 3),
                               ),
@@ -573,8 +569,7 @@ class _ProfileContentState extends State<ProfileContent> {
                           borderRadius: BorderRadius.circular(24),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.primary
-                                  .withValues(alpha: .24),
+                              color: AppColors.primary.withValues(alpha: .24),
                               blurRadius: 10,
                               offset: const Offset(0, 3),
                             ),
@@ -663,18 +658,9 @@ class _ProfileContentState extends State<ProfileContent> {
               Container(height: 1, color: AppColors.line),
               Row(
                 children: [
-                  _buildProfileTab(
-                    'Paylaşımlar',
-                    Icons.view_agenda_outlined,
-                  ),
-                  _buildProfileTab(
-                    'Karşılaşmalar',
-                    Icons.auto_awesome_rounded,
-                  ),
-                  _buildProfileTab(
-                    'Medya',
-                    Icons.photo_library_outlined,
-                  ),
+                  _buildProfileTab('Paylaşımlar', Icons.view_agenda_outlined),
+                  _buildProfileTab('Karşılaşmalar', Icons.auto_awesome_rounded),
+                  _buildProfileTab('Medya', Icons.photo_library_outlined),
                   if (own)
                     _buildProfileTab(
                       'Kaydedilenler',

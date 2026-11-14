@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart' hide Text;
+
 import '../widgets/translated_text.dart';
 
 import '../core/theme.dart';
@@ -41,7 +42,7 @@ class PostDetailPage extends StatelessWidget {
           ],
           if (post.interactionsEnabled) ...[
             SectionHeader(
-              'Yorumlar (${post.displayedCommentCount})',
+              trf('Yorumlar ({0})', [post.displayedCommentCount]),
               action: 'Tümünü Gör',
               onTap: () => showCommentsSheet(context, post),
             ),
@@ -198,7 +199,7 @@ class _SavedPageState extends State<SavedPage> {
       context,
       title: tr('Koleksiyon silinsin mi?'),
       message:
-          '“${collection.name}” silinir; içindeki gönderiler Kaydedilenler’de kalır.',
+          trf('“{0}” silinir; içindeki gönderiler Kaydedilenler’de kalır.', [collection.name]),
       action: 'Sil',
     );
     if (!confirmed || !mounted) return;
@@ -240,7 +241,7 @@ class _SavedPageState extends State<SavedPage> {
                   children: [
                     Expanded(
                       child: Text(
-                        '${selected.name} · ${selected.postsCount} gönderi',
+                        trf('{0} · {1} gönderi', [selected.name, selected.postsCount]),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.metadata,
@@ -248,7 +249,7 @@ class _SavedPageState extends State<SavedPage> {
                     ),
                     IconButton(
                       key: const Key('rename-collection'),
-                      tooltip: 'Yeniden adlandır',
+                      tooltip: tr('Yeniden adlandır'),
                       visualDensity: VisualDensity.compact,
                       icon: const Icon(Icons.edit_outlined, size: 20),
                       onPressed: () => rename(store, selected),

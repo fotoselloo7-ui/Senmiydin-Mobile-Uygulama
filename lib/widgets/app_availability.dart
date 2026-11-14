@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart' hide Text;
+
 import 'translated_text.dart';
+
 import 'package:url_launcher/url_launcher.dart';
 
 import '../data/app_store.dart';

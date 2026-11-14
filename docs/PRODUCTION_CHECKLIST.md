@@ -52,3 +52,14 @@ Production'da development seed veya mevcut yerel kullanıcı DB'si kullanılmaz.
 | Public web `/en`, yasal sayfalar yeni tasarımda | DONE | `WebsiteLocalizationTest`; tarayıcı QA (8 genişlik, 0 taşma) |
 | Operatör kimliği (unvan / adres / sicil / KVKK e-postası) | WAITING FOR EXTERNAL INFO | Yönetim → Ayarlar; eksikse production-check MISSING |
 | Mağaza metni TR / EN, native yerelleştirme | DONE (doküman) | `docs/store/localization/` |
+
+## 15 Kasım 2026 RC eki
+
+| Madde | Durum |
+|---|---|
+| Kuyruk işçisi: `php artisan queue:work database --sleep=3 --tries=3 --timeout=90 --max-time=3600` (DeliverPush backoff 10/60/300 sn, MatchLocationPost 60 sn) | WAITING FOR EXTERNAL INFO (sunucu) |
+| Cron: `* * * * * php artisan schedule:run` — tüm zamanlanmış komutlar `withoutOverlapping` (test: `QueueSchedulerTest`) | WAITING FOR EXTERNAL INFO (sunucu) |
+| `failed_jobs` izleme + `php artisan queue:retry all` (push yeniden denemesi çift bildirim üretmez: `app_notifications.pushed_at`) | Kod hazır |
+| Yeni migration'lar: `2026_11_16_090000_add_last_locale_to_users`, `2026_11_16_100000_add_pushed_at_to_notifications` (sıfırdan MySQL, rollback ve yeniden migrate denendi; seed yalnız şehir/ilgi alanı) | Kod hazır |
+| `.env`: `PUSH_DRIVER=fcm`, `MINIMUM_AGE=16`, `NEARBY_POST_*`, `MESSAGE_LOCATION_GRID`, operatör bilgisi Admin → Ayarlar | `.env.example` güncel |
+| AdMob kimlikleri, UMP mesajı, `app-ads.txt` | EXTERNAL REQUIRED |

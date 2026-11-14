@@ -36,10 +36,10 @@ class AppStore extends ChangeNotifier {
   }) : drafts = drafts ?? ComposeDraftStore(),
        ads = ads ?? AdsService(),
        _api = api,
-      auth = api == null ? null : AuthService(api),
-      _profiles = api == null ? null : ProfileService(api),
-      _catalog = api == null ? null : CatalogService(api),
-      _social = api == null ? null : SocialService(api) {
+       auth = api == null ? null : AuthService(api),
+       _profiles = api == null ? null : ProfileService(api),
+       _catalog = api == null ? null : CatalogService(api),
+       _social = api == null ? null : SocialService(api) {
     api?.onUnauthorized = _clearAccount;
     if (api != null) {
       communication = CommunicationApi(api, _rememberPerson);
@@ -844,14 +844,25 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<SavedCollection> createCollection(String name) async {
-    final data = await _social!.object('POST', 'saved-collections', body: {'name': name});
+    final data = await _social!.object(
+      'POST',
+      'saved-collections',
+      body: {'name': name},
+    );
     collectionsVersion++;
     notifyListeners();
     return SavedCollection.fromJson(data);
   }
 
-  Future<SavedCollection> renameCollection(SavedCollection collection, String name) async {
-    final data = await _social!.object('PUT', 'saved-collections/${collection.id}', body: {'name': name});
+  Future<SavedCollection> renameCollection(
+    SavedCollection collection,
+    String name,
+  ) async {
+    final data = await _social!.object(
+      'PUT',
+      'saved-collections/${collection.id}',
+      body: {'name': name},
+    );
     collectionsVersion++;
     notifyListeners();
     return SavedCollection.fromJson(data);
@@ -865,16 +876,24 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<SocialPage<Post>> loadCollectionPosts(int id, int page) async =>
-      (await _social!.page('saved-collections/$id/posts', page)).map(_rememberPost);
+      (await _social!.page(
+        'saved-collections/$id/posts',
+        page,
+      )).map(_rememberPost);
 
-  Future<void> setCollectionMembership(SavedCollection collection, Post post, bool member) async {
+  Future<void> setCollectionMembership(
+    SavedCollection collection,
+    Post post,
+    bool member,
+  ) async {
     final data = await _social!.object(
       member ? 'PUT' : 'DELETE',
       'saved-collections/${collection.id}/posts/${post.id}',
     );
     collection
       ..containsPost = data['contains_post'] == true
-      ..postsCount = (data['posts_count'] as num?)?.toInt() ?? collection.postsCount;
+      ..postsCount =
+          (data['posts_count'] as num?)?.toInt() ?? collection.postsCount;
     collectionsVersion++;
     notifyListeners();
   }
@@ -1452,7 +1471,7 @@ class AppStore extends ChangeNotifier {
         AppNotice(
           'local-n${notices.length}',
           NoticeKind.request,
-          '${me.name} seni bir karşılaşmada etiketledi.',
+          trf('{0} seni bir karşılaşmada etiketledi.', [me.name]),
           personId: me.id,
           postId: p.id,
           encounterId: e.id,
@@ -1477,7 +1496,7 @@ class AppStore extends ChangeNotifier {
         AppNotice(
           'local-n${notices.length}',
           NoticeKind.approved,
-          '${person(e.toId).name} karşılaşmanı onayladı. Birbirinizi buldunuz!',
+          trf('{0} karşılaşmanı onayladı. Birbirinizi buldunuz!', [person(e.toId).name]),
           personId: e.toId,
           encounterId: e.id,
           postId: e.postId,

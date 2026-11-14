@@ -1,3 +1,6 @@
-// Copy as OAuth.xcconfig after adding the iOS OAuth client in Google Cloud.
+// Copy as OAuth.xcconfig (ignored by git) after adding the iOS OAuth client in Google Cloud and the iOS app in AdMob.
+// tool/configure_mobile.py writes this file for you.
 // GOOGLE_REVERSED_CLIENT_ID is the reverse of the real iOS OAuth client ID.
 GOOGLE_REVERSED_CLIENT_ID =
+// The real AdMob iOS application id (ca-app-pub-<publisher>~<app>). Debug/Release.xcconfig carry Google's sample id.
+// ADMOB_APP_ID_IOS = ca-app-pub-0000000000000000~0000000000

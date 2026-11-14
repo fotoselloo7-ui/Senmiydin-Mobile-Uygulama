@@ -180,50 +180,49 @@ class ComposeDraftStore {
 
   /// Persists [draft] for [account]. Photos outside the draft folder are copied in (private app storage) and
   /// the returned list holds their new paths, in the same order. Files no longer referenced are removed.
-  Future<List<String>> save(Object account, ComposeDraft draft) =>
-      _exclusive(() async {
-        if (draft.isEmpty) {
-          await _clear(account);
-          return const [];
+  Future<List<String>> save(Object account, ComposeDraft draft) => _exclusive(
+    () async {
+      if (draft.isEmpty) {
+        await _clear(account);
+        return const [];
+      }
+      final dir = await _dir(account, create: true);
+      final media = Directory('${dir.path}/media');
+      await media.create(recursive: true);
+      final kept = <String>[];
+      final names = <String>[];
+      for (final source in draft.images) {
+        final file = File(source);
+        if (!await file.exists()) continue;
+        if (file.parent.path == media.path) {
+          kept.add(file.path);
+          names.add(file.uri.pathSegments.last);
+          continue;
         }
-        final dir = await _dir(account, create: true);
-        final media = Directory('${dir.path}/media');
-        await media.create(recursive: true);
-        final kept = <String>[];
-        final names = <String>[];
-        for (final source in draft.images) {
-          final file = File(source);
-          if (!await file.exists()) continue;
-          if (file.parent.path == media.path) {
-            kept.add(file.path);
-            names.add(file.uri.pathSegments.last);
-            continue;
-          }
-          final extension = _extension(source);
-          var name =
-              '${DateTime.now().microsecondsSinceEpoch}_${kept.length}$extension';
-          while (await File('${media.path}/$name').exists()) {
-            name = '_$name';
-          }
-          final copy = await file.copy('${media.path}/$name');
-          kept.add(copy.path);
-          names.add(name);
+        final extension = _extension(source);
+        var name =
+            '${DateTime.now().microsecondsSinceEpoch}_${kept.length}$extension';
+        while (await File('${media.path}/$name').exists()) {
+          name = '_$name';
         }
-        await File('${dir.path}/draft.json.tmp').writeAsString(
-          jsonEncode(draft.toJson(names)),
-          flush: true,
-        );
-        // Write-then-rename: a process kill mid-write leaves the previous draft intact.
-        await File('${dir.path}/draft.json.tmp').rename('${dir.path}/draft.json');
-        if (await media.exists()) {
-          await for (final entry in media.list()) {
-            if (entry is File && !names.contains(entry.uri.pathSegments.last)) {
-              await entry.delete();
-            }
+        final copy = await file.copy('${media.path}/$name');
+        kept.add(copy.path);
+        names.add(name);
+      }
+      await File('${dir.path}/draft.json.tmp')
+          .writeAsString(jsonEncode(draft.toJson(names)), flush: true);
+      // Write-then-rename: a process kill mid-write leaves the previous draft intact.
+      await File('${dir.path}/draft.json.tmp').rename('${dir.path}/draft.json');
+      if (await media.exists()) {
+        await for (final entry in media.list()) {
+          if (entry is File && !names.contains(entry.uri.pathSegments.last)) {
+            await entry.delete();
           }
         }
-        return kept;
-      });
+      }
+      return kept;
+    },
+  );
 
   /// The saved draft, or null when there is none, it is unreadable, or it is empty. Corrupt data is discarded quietly.
   Future<ComposeDraft?> load(Object account) => _exclusive(() async {
@@ -231,7 +230,9 @@ class ComposeDraftStore {
     final file = File('${dir.path}/draft.json');
     if (!await file.exists()) return null;
     try {
-      final parsed = ComposeDraft.fromJson(jsonDecode(await file.readAsString()));
+      final parsed = ComposeDraft.fromJson(
+        jsonDecode(await file.readAsString()),
+      );
       if (parsed == null) {
         await _clear(account);
         return null;
@@ -270,6 +271,8 @@ class ComposeDraftStore {
     final slash = path.lastIndexOf(RegExp(r'[\\/]'));
     if (dot <= slash || path.length - dot > 6) return '.jpg';
     final extension = path.substring(dot).toLowerCase();
-    return RegExp(r'^\.[a-z0-9]{1,5}$').hasMatch(extension) ? extension : '.jpg';
+    return RegExp(r'^\.[a-z0-9]{1,5}$').hasMatch(extension)
+        ? extension
+        : '.jpg';
   }
 }

@@ -1,7 +1,9 @@
 import '../core/navigation.dart';
 
 import 'package:flutter/material.dart' hide Text;
+
 import 'translated_text.dart';
+
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -135,7 +137,7 @@ class PostPlaceField extends StatelessWidget {
                         'current',
                         city: store.activeCity!.name,
                         label:
-                            '${store.activeCity!.name} · Şu anki yaklaşık bölge',
+                            trf('{0} · Şu anki yaklaşık bölge', [store.activeCity!.name]),
                       ),
                     );
                   } else if (context.mounted) {
@@ -335,7 +337,7 @@ class _ApproximatePlacePageState extends State<ApproximatePlacePage> {
                         latitude: chosen!.latitude,
                         longitude: chosen!.longitude,
                         city: widget.city,
-                        label: '${widget.city} · Haritadan yaklaşık bölge',
+                        label: trf('{0} · Haritadan yaklaşık bölge', [widget.city]),
                       ),
                     ),
             ),

@@ -22,8 +22,9 @@ class SafetyController extends Controller
     public function blocks(Request $request): JsonResponse
     {
         $viewer = $request->user()->id;
-        return ApiResponse::page(User::with('city')->whereIn('id', DB::table('user_blocks')->where('blocker_id', $viewer)
-            ->select('blocked_id'))->orderBy('id')->simplePaginate(20), PublicUserResource::class);
+        // Accounts of the other age band stay unreachable (and unnamed) even if they were blocked long ago.
+        return ApiResponse::page(\App\Safety\AgeSafety::scope(User::with('city')->whereIn('users.id', DB::table('user_blocks')->where('blocker_id', $viewer)
+            ->select('blocked_id')), $viewer)->orderBy('users.id')->simplePaginate(20), PublicUserResource::class);
     }
 
     public function block(Request $request, int $user): JsonResponse
@@ -31,6 +32,7 @@ class SafetyController extends Controller
         $id = $request->user()->id;
         abort_if($id === $user, 422);
         User::findOrFail($user);
+        abort_unless(\App\Safety\AgeSafety::sameBand($id, $user), 404);
         DB::transaction(function () use ($request, $id, $user): void {
             Blocks::lockPair($id, $user);
             $key = ['blocker_id' => $id, 'blocked_id' => $user];

@@ -5,6 +5,7 @@ import '../core/polling.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart' hide Text;
+
 import '../widgets/translated_text.dart';
 
 import '../core/ads_config.dart';
@@ -311,7 +312,7 @@ class _NearbyLettersCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
     button: true,
-    label: 'Yakınında $count yeni mektup var. Haritada keşfet.',
+    label: trf('Yakınında {0} yeni mektup var. Haritada keşfet.', [count]),
     child: Material(
       color: AppColors.surfaceLilac,
       shape: RoundedRectangleBorder(
@@ -339,7 +340,7 @@ class _NearbyLettersCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Yakınında $count yeni mektup var',
+                      trf('Yakınında {0} yeni mektup var', [count]),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTypography.body.copyWith(
@@ -582,7 +583,7 @@ class HomeContent extends StatelessWidget {
                         ),
                       ),
                       IconButton(
-                        tooltip: 'Paylaşım yeri',
+                        tooltip: tr('Paylaşım yeri'),
                         onPressed: () =>
                             openPage(context, '/compose', 'location'),
                         icon: const Icon(
@@ -592,7 +593,7 @@ class HomeContent extends StatelessWidget {
                         ),
                       ),
                       IconButton(
-                        tooltip: 'Kamera',
+                        tooltip: tr('Kamera'),
                         onPressed: () =>
                             openPage(context, '/compose', 'camera'),
                         icon: const Icon(
@@ -665,7 +666,9 @@ class HomeContent extends StatelessWidget {
                     itemBuilder: (_, i) {
                       final row = rows[i];
                       if (row.isAd) {
-                        return NativeFeedAd(key: ValueKey('feed-ad-${row.adSlot}'));
+                        return NativeFeedAd(
+                          key: ValueKey('feed-ad-${row.adSlot}'),
+                        );
                       }
                       final post = posts[row.organic!];
                       return PostCard(post, key: ValueKey(post.id));

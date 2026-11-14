@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart' hide Text;
+
 import '../widgets/translated_text.dart';
 
 import '../data/social_sign_in.dart';
@@ -644,7 +645,7 @@ class _AuthPageState extends State<AuthPage> with AccountAction<AuthPage> {
                     labelText: tr('Şifre'),
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
-                      tooltip: 'Şifreyi göster / gizle',
+                      tooltip: tr('Şifreyi göster / gizle'),
                       onPressed: () => setState(() => obscure = !obscure),
                       icon: Icon(
                         obscure
@@ -680,7 +681,7 @@ class _AuthPageState extends State<AuthPage> with AccountAction<AuthPage> {
                               now.day,
                             ),
                             helpText:
-                                'Devam etmek için $age yaşını doldurmalısın',
+                                trf('Devam etmek için {0} yaşını doldurmalısın', [age]),
                           );
                           if (mounted && value != null) {
                             setState(() => birthday = value);
@@ -710,7 +711,7 @@ class _AuthPageState extends State<AuthPage> with AccountAction<AuthPage> {
                     ),
                     Expanded(
                       child: Text(
-                        '${StoreScope.of(context).minimumAge} yaşını doldurdum ve aşağıdaki koşulları kabul ediyorum.',
+                        trf('{0} yaşını doldurdum ve aşağıdaki koşulları kabul ediyorum.', [StoreScope.of(context).minimumAge]),
                         style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.muted,
@@ -1331,7 +1332,7 @@ class _InterestsPageState extends State<InterestsPage>
               ? 'Kaydediliyor…'
               : widget.setup
               ? 'Devam Et'
-              : 'Kaydet (${selected.length})',
+              : trf('Kaydet ({0})', [selected.length]),
           onPressed: busy || selected.length < 5
               ? null
               : () => runAccountAction(() async {
@@ -1381,14 +1382,14 @@ class _InterestsPageState extends State<InterestsPage>
                   const SizedBox(height: Space.lg),
                   TextField(
                     onChanged: (v) => setState(() => query = v),
-                    decoration: const InputDecoration(
-                      hintText: 'Hobi ara',
-                      prefixIcon: Icon(Icons.search),
+                    decoration: InputDecoration(
+                      hintText: tr('Hobi ara'),
+                      prefixIcon: const Icon(Icons.search),
                     ),
                   ),
                   const SizedBox(height: Space.md),
                   InfoNote(
-                    '${selected.length} ilgi alanı seçtin. En az 5 seçim yap.',
+                    trf('{0} ilgi alanı seçtin. En az 5 seçim yap.', [selected.length]),
                   ),
                   const SizedBox(height: Space.md),
                 ],
@@ -1606,7 +1607,7 @@ class _SocialLoginPageState extends State<SocialLoginPage>
     final store = StoreScope.of(context);
     final enabled = store.connected && SocialSignIn.configured(widget.provider);
     return AppPage(
-      title: '${widget.provider} ile Devam Et',
+      title: trf('{0} ile Devam Et', [widget.provider]),
       child: SingleChildScrollView(
         padding: Space.page,
         child: Column(
@@ -1621,7 +1622,7 @@ class _SocialLoginPageState extends State<SocialLoginPage>
             const SizedBox(height: Space.xl),
             Text(
               enabled
-                  ? '${widget.provider} ile giriş'
+                  ? trf('{0} ile giriş', [widget.provider])
                   : 'Giriş şu anda kullanılamıyor',
               style: Theme.of(context).textTheme.headlineMedium,
             ),
@@ -1629,7 +1630,7 @@ class _SocialLoginPageState extends State<SocialLoginPage>
             InfoNote(
               enabled
                   ? 'Kimliğini güvenli şekilde doğrula. Yeni hesap için kayıt bilgilerini tamamlaman istenir.'
-                  : '${widget.provider} ile giriş şu anda kullanılamıyor. E-posta ve şifrenle devam edebilirsin.',
+                  : trf('{0} ile giriş şu anda kullanılamıyor. E-posta ve şifrenle devam edebilirsin.', [widget.provider]),
             ),
             const SizedBox(height: Space.xl),
             if (enabled)

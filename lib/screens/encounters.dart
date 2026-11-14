@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart' hide Text;
+
 import '../widgets/translated_text.dart';
 
 import '../core/navigation.dart';
@@ -249,7 +250,7 @@ class _LiveEncounterPageState extends State<LiveEncounterPage>
     final story = entry.story;
     final source = entry.source;
     final title = pending && !entry.outgoing
-        ? '${entry.requester.name} seni bir karşılaşmada etiketledi!'
+        ? trf('{0} seni bir karşılaşmada etiketledi!', [entry.requester.name])
         : entry.statusLabel;
 
     void respond(String action) {
@@ -297,7 +298,7 @@ class _LiveEncounterPageState extends State<LiveEncounterPage>
         ),
         const SizedBox(height: Space.sm),
         Text(
-          '@${entry.other.handle} · ${entry.outgoing ? 'Gönderilen' : 'Gelen'} · ${entry.time}',
+          '@${entry.other.handle} · ${tr(entry.outgoing ? 'Gönderilen' : 'Gelen')} · ${entry.time}',
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.bodySmall,
         ),

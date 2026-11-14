@@ -53,3 +53,9 @@ Bu Windows çalışmasında gerçek mağaza upload'u, Apple archive, gerçek OAu
 ## Konum-zaman / Yolculuk veri beyanı
 
 Güncel ürün, kullanıcı açarsa 7 günlük varsayılan yaklaşık konum geçmişi ve bundan türeyen süreli eşleşme kaydı işler. Geçmiş kaydı ve eşleşme bildirimi ayrı tercihlerdir. Kullanıcının seçtiği olay saati ile şehir ve isteğe bağlı public Yolculuk (firma/sefer/araç tanımlayıcısı dahil) gönderi içeriğidir; kullanıcıya açık paylaşım tercihi sunulur. Canlı araç takibi veya zorunlu yolculuk grubu yoktur. EXIF/GPS upload türevlerinden temizlenir. Varsayılan şehir tespiti yereldir; üçüncü taraf reverse geocoding çağrısı yapılmaz. Store privacy / Data safety formları işletmecinin gerçek kullanımına göre bu davranışları da kapsamalıdır. Ayrıntılar LOCATION_TIME_TRAVEL.md.
+
+## 15 Kasım 2026 RC eki
+
+- **AdMob kimlikleri:** `tool/store_readiness.py` artık "AdMob production identifiers" satırını üretir (yok → `MISSING`, Google örnek yayıncısı `3940256099942544` → `FAIL`, dört gerçek kimlik → `WAITING`). `tool/build_android_release.ps1` gerçek `ADMOB_APP_ID_ANDROID` ve `ADMOB_NATIVE_AD_UNIT_ANDROID` olmadan store AAB'si üretmez (`-AllowNoAds` bilinçli istisna). Kimlikler `python tool/configure_mobile.py --admob-… ` ile ignore edilen `config/production.local.json` / `ios/Flutter/OAuth.xcconfig` dosyalarına yazılır.
+- **Android manifest:** `ACCESS_ADSERVICES_ATTRIBUTION` ve `ACCESS_ADSERVICES_TOPICS` kaldırıldı (Privacy Sandbox kullanılmıyor); `AD_ID` reklam entegrasyonu nedeniyle kalır ve Play Data Safety "reklam kimliği" beyanıyla uyumlu olmalıdır. Debug manifest'inde `usesCleartextTraffic` yalnız debug kaynak setindedir; ana manifest `false`.
+- **iOS statik:** `InfoPlist.strings (en, tr)` ve `PrivacyInfo.xcprivacy` Xcode projesine bağlandı; `ADMOB_APP_ID_IOS` artık `OAuth.xcconfig` ile geçersiz kılınabilir. Windows'ta Xcode arşivi alınmadı; Mac adımları `docs/FINAL_RELEASE_CANDIDATE.md` içindedir.

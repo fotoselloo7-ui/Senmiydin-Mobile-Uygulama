@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart' hide Text;
+
 import 'translated_text.dart';
 
 import '../core/brand_assets.dart';
@@ -120,7 +121,7 @@ class AppDrawer extends StatelessWidget {
                       BrandAssets.logoPrimaryLight,
                       height: 38,
                       fit: BoxFit.contain,
-                      semanticLabel: 'SenMiydin?',
+                      semanticLabel: tr('SenMiydin?'),
                     ),
                   ),
                 ),
@@ -438,7 +439,7 @@ class _DrawerMenuItem extends StatelessWidget {
       child: Semantics(
         button: true,
         selected: isSelected,
-        label: def.title,
+        label: tr(def.title),
         child: Material(
           color: Colors.transparent,
           child: InkWell(

@@ -4,7 +4,9 @@ import 'post_context.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart' hide Text;
+
 import 'translated_text.dart';
+
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -177,8 +179,8 @@ class _ImageCarouselState extends State<ImageCarousel> {
   );
   Widget carouselArrow(IconData icon, VoidCallback action) => IconButton(
     tooltip: icon == Icons.chevron_left
-        ? 'Önceki fotoğraf'
-        : 'Sonraki fotoğraf',
+        ? tr('Önceki fotoğraf')
+        : tr('Sonraki fotoğraf'),
     onPressed: action,
     icon: CircleAvatar(
       radius: 13,
@@ -263,8 +265,12 @@ class PostCard extends StatelessWidget {
                               ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFFFE4ED),
-                                borderRadius: BorderRadius.circular(AppShape.pill),
-                                border: Border.all(color: const Color(0xFFFBCFE8)),
+                                borderRadius: BorderRadius.circular(
+                                  AppShape.pill,
+                                ),
+                                border: Border.all(
+                                  color: const Color(0xFFFBCFE8),
+                                ),
                               ),
                               child: const Text(
                                 'Karşılaşıldı ✓',
@@ -339,7 +345,7 @@ class PostCard extends StatelessWidget {
                                 int.parse(post.id),
                                 'Paylaşım',
                               )
-                            : 'Paylaşım ${post.id}',
+                            : trf('Paylaşım {0}', [post.id]),
                       );
                     }
                     if (v == 'block' &&
@@ -413,7 +419,7 @@ class PostCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: Space.sm),
               child: Text(
-                'Olay zamanı · ${contextDate(post.occurredAt!)}',
+                trf('Olay zamanı · {0}', [contextDate(post.occurredAt!)]),
                 style: const TextStyle(color: AppColors.muted, fontSize: 12),
               ),
             ),
@@ -514,7 +520,7 @@ class PostCard extends StatelessWidget {
                   icon: post.saved
                       ? Icons.bookmark_rounded
                       : Icons.bookmark_border_rounded,
-                  tooltip: post.saved ? 'Kaydı kaldır' : 'Kaydet',
+                  tooltip: post.saved ? tr('Kaydı kaldır') : tr('Kaydet'),
                   color: post.saved
                       ? AppColors.primary
                       : const Color(0xFF334766),
@@ -740,68 +746,68 @@ class EncounterCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final badge = Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 1.5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: approved
-                            ? const Color(0xFFFFE4ED)
-                            : AppColors.surfaceBlue,
-                        borderRadius: BorderRadius.circular(AppShape.pill),
-                        border: Border.all(
-                          color: approved
-                              ? const Color(0xFFFBCFE8)
-                              : const Color(0xFFD6E4F7),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final badge = Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 1.5,
                         ),
-                      ),
-                      child: Text(
-                        approved ? 'Karşılaşıldı ✓' : e.status.label,
+                        decoration: BoxDecoration(
+                          color: approved
+                              ? const Color(0xFFFFE4ED)
+                              : AppColors.surfaceBlue,
+                          borderRadius: BorderRadius.circular(AppShape.pill),
+                          border: Border.all(
+                            color: approved
+                                ? const Color(0xFFFBCFE8)
+                                : const Color(0xFFD6E4F7),
+                          ),
+                        ),
+                        child: Text(
+                          approved ? 'Karşılaşıldı ✓' : e.status.label,
+                          maxLines: 1,
+                          style: TextStyle(
+                            color: approved
+                                ? AppColors.encounterPink
+                                : AppColors.muted,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 9.5,
+                          ),
+                        ),
+                      );
+                      final titleWidget = Text(
+                        approved ? e.title : 'Sen miydin?',
                         maxLines: 1,
-                        style: TextStyle(
-                          color: approved
-                              ? AppColors.encounterPink
-                              : AppColors.muted,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
                           fontWeight: FontWeight.w800,
-                          fontSize: 9.5,
+                          fontSize: 14,
+                          color: AppColors.navy,
+                          letterSpacing: -.2,
                         ),
-                      ),
-                    );
-                    final titleWidget = Text(
-                      approved ? e.title : 'Sen miydin?',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14,
-                        color: AppColors.navy,
-                        letterSpacing: -.2,
-                      ),
-                    );
-                    if (constraints.maxWidth < 155 ||
-                        MediaQuery.textScalerOf(context).scale(1) > 1.25) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
+                      );
+                      if (constraints.maxWidth < 155 ||
+                          MediaQuery.textScalerOf(context).scale(1) > 1.25) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            badge,
+                            const SizedBox(height: 2),
+                            titleWidget,
+                          ],
+                        );
+                      }
+                      return Row(
                         children: [
+                          Expanded(child: titleWidget),
+                          const SizedBox(width: 8),
                           badge,
-                          const SizedBox(height: 2),
-                          titleWidget,
                         ],
                       );
-                    }
-                    return Row(
-                      children: [
-                        Expanded(child: titleWidget),
-                        const SizedBox(width: 8),
-                        badge,
-                      ],
-                    );
-                  },
-                ),
+                    },
+                  ),
                   Text(
                     '${from.name} & ${to.name}',
                     maxLines: 1,

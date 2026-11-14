@@ -18,7 +18,7 @@ class User extends Authenticatable
         'name', 'username', 'email', 'password', 'birth_date', 'city_id',
         'bio', 'occupation_school', 'connections', 'nearby_visible',
         'encounter_suggestions', 'city_discovery', 'location_history_enabled',
-        'message_privacy', 'show_activity', 'push_preferences', 'preferred_locale',
+        'message_privacy', 'show_activity', 'push_preferences', 'preferred_locale', 'last_locale',
     ];
 
     protected $hidden = ['password', 'remember_token'];

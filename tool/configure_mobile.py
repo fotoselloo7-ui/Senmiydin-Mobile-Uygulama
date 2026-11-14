@@ -2,13 +2,32 @@
 import argparse
 import json
 import plistlib
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser()
 parser.add_argument("--android", type=Path, help="Actual google-services.json")
 parser.add_argument("--ios", type=Path, help="Actual GoogleService-Info.plist")
+parser.add_argument("--admob-android-app-id", help="Real AdMob Android application id (ca-app-pub-…~…)")
+parser.add_argument("--admob-ios-app-id", help="Real AdMob iOS application id (ca-app-pub-…~…)")
+parser.add_argument("--admob-android-native-unit", help="Real AdMob Android native ad unit id (ca-app-pub-…/…)")
+parser.add_argument("--admob-ios-native-unit", help="Real AdMob iOS native ad unit id (ca-app-pub-…/…)")
 args = parser.parse_args()
+SAMPLE_PUBLISHER = "3940256099942544"  # Google's documented sample publisher: never a production id
+
+
+def admob(value, separator, label):
+    pattern = r"ca-app-pub-(\d{16})" + re.escape(separator) + r"(\d{10})"
+    match = re.fullmatch(pattern, value or "")
+    if not match:
+        raise ValueError(f"{label} is not a valid AdMob id")
+    if match.group(1) == SAMPLE_PUBLISHER:
+        raise ValueError(f"{label} is Google's sample id; supply the real production id")
+    return value
+
+
+xcconfig_lines = []
 settings = json.loads((ROOT / "config/production.json").read_text(encoding="utf-8"))
 if args.android:
     source = json.loads(args.android.read_text(encoding="utf-8"))

@@ -80,6 +80,7 @@ Map<String, dynamic> commentJson(
   int? parent,
   int likes = 0,
   bool liked = false,
+  String created = '2026-11-14T11:00:00Z',
   List<Map<String, dynamic>> replies = const [],
 }) => {
   'id': id,
@@ -89,7 +90,7 @@ Map<String, dynamic> commentJson(
   'likes_count': likes,
   'liked_by_me': liked,
   'author': {'id': username.hashCode.abs() % 900 + 30, 'username': username, 'name': '${username.toUpperCase()} Test', 'avatar': null},
-  'created_at': '2026-11-14T11:00:00Z',
+  'created_at': created,
   if (parent == null) 'reply_count': replies.length,
   if (parent == null) 'replies': replies,
 };
@@ -248,6 +249,32 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    testWidgets('Whatever the age of a comment the time label never overflows a narrow reply at 1.5x text (wall-clock independent)', (tester) async {
+      String ago(Duration d) => DateTime.now().toUtc().subtract(d).toIso8601String();
+      for (final age in [const Duration(seconds: 5), const Duration(minutes: 47), const Duration(hours: 23), const Duration(days: 6), const Duration(days: 400)]) {
+        size(tester, 320);
+        final store = await connected((request) async {
+          final path = request.url.path;
+          if (path.endsWith('/auth/login')) return ok({'token': 't', 'user': account()});
+          if (path.endsWith('/posts/5') && request.method == 'GET') return ok(postJson(5, 'Dün sahildeydim.'));
+          if (path.endsWith('/posts/5/comments')) {
+            return ok({
+              'items': [
+                commentJson(10, 'Ana yorum', created: ago(age), replies: [commentJson(11, 'Bir cevap', username: 'kaan', parent: 10, created: ago(age))]),
+              ],
+              'next_page': null,
+            });
+          }
+          return ok({'items': [], 'next_page': null});
+        });
+        addTearDown(store.dispose);
+        await tester.pumpWidget(host(store, const OpenComments('5'), scale: 1.5));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull, reason: 'comment aged $age');
+        await tester.pumpWidget(const SizedBox.shrink());
+      }
     });
 
     testWidgets('A comment_like notification opens the post comments; an unavailable one explains itself', (tester) async {

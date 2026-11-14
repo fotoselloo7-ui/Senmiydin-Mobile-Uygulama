@@ -1,5 +1,8 @@
+import '../core/app_locale.dart';
 import 'package:flutter/material.dart' hide Text;
+
 import 'translated_text.dart';
+
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/theme.dart';
@@ -23,7 +26,8 @@ class MapAttribution extends StatelessWidget {
   static const clearance = 30.0;
 
   /// Short text for small screens: "© OpenStreetMap" (the link still goes to the full copyright page).
-  static String get label => '© ${_provider.replaceFirst(RegExp(r'\s+contributors$'), '')}';
+  static String get label =>
+      '© ${_provider.replaceFirst(RegExp(r'\s+contributors$'), '')}';
 
   @override
   Widget build(BuildContext context) {
@@ -33,12 +37,13 @@ class MapAttribution extends StatelessWidget {
         padding: const EdgeInsets.only(left: 6, top: 4),
         child: Semantics(
           link: true,
-          label: '$_provider, telif bilgisi',
+          label: trf('{0}, telif bilgisi', [_provider]),
           excludeSemantics: true,
           child: GestureDetector(
             key: const Key('map-attribution'),
             behavior: HitTestBehavior.opaque,
-            onTap: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+            onTap: () =>
+                launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
             // Extra transparent padding makes the small pill easy to hit without growing its look.
             child: Padding(
               padding: const EdgeInsets.all(4),
@@ -48,7 +53,10 @@ class MapAttribution extends StatelessWidget {
                   borderRadius: BorderRadius.circular(99),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   child: Text(
                     label,
                     maxLines: 1,

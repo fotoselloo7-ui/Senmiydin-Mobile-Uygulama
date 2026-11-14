@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart' hide Text;
+
 import '../widgets/translated_text.dart';
+
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:uuid/uuid.dart';
@@ -66,7 +68,7 @@ class _MapNotePointPageState extends State<MapNotePointPage> {
                 child: Text(
                   count == 0
                       ? (place.isEmpty ? widget.label : place)
-                      : '${place.isEmpty ? widget.label : place} · $count not',
+                      : trf('{0} · {1} not', [place.isEmpty ? widget.label : place, count]),
                   textAlign: TextAlign.center,
                   style: AppTypography.secondaryBody,
                 ),
@@ -430,7 +432,7 @@ class _MapNoteDetailPageState extends State<MapNoteDetailPage>
                         Text(
                           replies.isEmpty
                               ? 'Henüz yanıt yok'
-                              : '${item.replyCount} yanıt',
+                              : trf('{0} yanıt', [item.replyCount]),
                           style: AppTypography.section,
                         ),
                         const SizedBox(height: Space.sm),
@@ -542,7 +544,7 @@ class _MapNoteDetailPageState extends State<MapNoteDetailPage>
               Padding(
                 padding: const EdgeInsets.only(top: 6),
                 child: Text(
-                  '$sendError Yazdığın metin korunur; tekrar deneyebilirsin.',
+                  trf('{0} Yazdığın metin korunur; tekrar deneyebilirsin.', [sendError]),
                   style: const TextStyle(color: AppColors.danger, fontSize: 12),
                 ),
               ),
@@ -729,11 +731,11 @@ class _MapNoteComposePageState extends State<MapNoteComposePage>
                         children: [
                           Transform.translate(
                             offset: const Offset(0, -26),
-                            child: const Icon(
+                            child: Icon(
                               Icons.mail_outline_rounded,
                               size: 34,
                               color: AppColors.brandPurple,
-                              semanticLabel: 'Seçilen yaklaşık yer',
+                              semanticLabel: tr('Seçilen yaklaşık yer'),
                             ),
                           ),
                           Container(

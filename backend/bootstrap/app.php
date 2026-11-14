@@ -40,6 +40,8 @@ return Application::configure(basePath: dirname(__DIR__))
             if (! $request->is('api/*')) {
                 return null;
             }
+            // Authentication runs before the language middleware: decide the language here as well.
+            app()->setLocale(App\Http\Middleware\SetLocale::forRequest($request));
             if ($error instanceof ValidationException) {
                 return ApiResponse::error('Bilgilerini kontrol et.', 422, $error->errors());
             }

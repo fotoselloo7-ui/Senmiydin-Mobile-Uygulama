@@ -42,7 +42,10 @@ final class AgeSafety
         if ($birthDate === null) {
             return self::ADULT;
         }
-        $birth = Carbon::parse($birthDate, 'Europe/Istanbul')->startOfDay();
+        // A birth date is a calendar day, not an instant: the Eloquent `date` cast hands back midnight UTC, which would
+        // otherwise sit three hours after Istanbul midnight and make the account a teen for one extra day.
+        $day = $birthDate instanceof CarbonInterface ? $birthDate->format('Y-m-d') : substr((string) $birthDate, 0, 10);
+        $birth = Carbon::createFromFormat('Y-m-d', $day, 'Europe/Istanbul')->startOfDay();
 
         return $birth->greaterThan(self::cutoff()) ? self::TEEN : self::ADULT;
     }
@@ -87,12 +90,12 @@ final class AgeSafety
         return $query->where(fn ($either) => $either->whereNull($column)
             ->orWhereExists(fn (Builder $users) => $users->selectRaw('1')->from('users as age_users')
                 ->whereColumn('age_users.id', $column)
-                ->whereRaw('(age_users.birth_date > ?) = ?', [$cutoff, $teen ? 1 : 0])));
+                ->whereRaw('(DATE(age_users.birth_date) > ?) = ?', [$cutoff, $teen ? 1 : 0])));
     }
 
     /** SQL-level restriction of a users query to the band of [$viewer]. */
     public static function scope(Builder|Eloquent $users, int $viewer, string $birthColumn = 'users.birth_date'): Builder|Eloquent
     {
-        return $users->whereRaw("($birthColumn > ?) = ?", [self::cutoff()->toDateString(), self::isTeen($viewer) ? 1 : 0]);
+        return $users->whereRaw("(DATE($birthColumn) > ?) = ?", [self::cutoff()->toDateString(), self::isTeen($viewer) ? 1 : 0]);
     }
 }

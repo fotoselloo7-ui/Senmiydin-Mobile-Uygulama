@@ -226,6 +226,7 @@ class ProfileController extends Controller
         if ($image === false) {
             throw ValidationException::withMessages([$field => 'Fotoğraf okunamadı.']);
         }
+        $image = \App\Media\PrivateImage::upright($image, \App\Media\PrivateImage::orientation($binary));
         $flat = imagecreatetruecolor(imagesx($image), imagesy($image));
         imagefill($flat, 0, 0, imagecolorallocate($flat, 255, 255, 255));
         imagecopy($flat, $image, 0, 0, 0, 0, imagesx($image), imagesy($image));

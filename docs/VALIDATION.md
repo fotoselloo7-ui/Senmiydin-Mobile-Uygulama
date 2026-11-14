@@ -2,6 +2,34 @@
 
 > **Güncel kaynak bu dosyanın ilk bölümüdür (15 Kasım 2026, küresel sosyal sürüm).** Altındaki bölümler önceki turların tarihsel kayıtlarıdır; oradaki sayılar güncel durum değildir.
 
+## Final Release Candidate doğrulaması — 15 Kasım 2026 (en güncel)
+
+Başlangıç `2e8690f` (gerçekten ölçüldü, hiçbir şey değiştirilmeden): Laravel **215 test / 3846 assertion geçti**, `flutter analyze` temiz, Flutter **257 geçti / 2 düştü** (yorum başlığı 320 dp / 1.5× taşması; yalnız saate bağlı olduğu için önceki turda "şimdi" etiketiyle gizlenmişti — gerçek UI hatası, düzeltildi), `release_check` yalnız dış bağımlılık `MISSING`, `store_readiness_check` `READY 53 / WAITING 8 / MISSING 29`. Pixel baseline koşusu, ben çalışırken eklediğim yerel migration henüz uygulanmadığı için 3 testte düştü (yerel API 500); migration uygulanınca geçti — bu yüzden "gerçek baseline" Pixel sayısı olarak son tam koşu esas alınmıştır.
+
+| Kontrol | Final |
+|---|---|
+| Laravel `php artisan test` | **247 test / 5080 assertion geçti** (+32 test: `AgeBandTransitionTest` 4, `NotificationMatrixTest` 10, `AnnouncementBatchTest` 6, `QueueSchedulerTest` 5, `ImagePrivacyTest` 3, `ApiMessageLocaleTest` 3, `GlobalReleaseTest` +1) |
+| `flutter analyze` | **No issues found** |
+| Flutter `flutter test` | **277 test geçti** (+18: `test/release_candidate_test.dart` 18; `comment_likes_collections_drafts_test` +1 saatten bağımsız yorum testi) |
+| Pixel 6a entegrasyon | **9/9 geçti**, `clean=true` |
+| Pixel 6a location-time | **3/3 geçti**, `clean=true` |
+| `tool/release_check.ps1` | Flutter env/pub/analyze/test, Composer, migration, paket kimlikleri, demo seeder koruması, hassas dosya taraması **OK**; yalnız production config ve Android imzası `MISSING` |
+| `tool/store_readiness_check.ps1` | `READY 53 / WAITING 8 / MISSING 30` (+1 satır: "AdMob production identifiers"); `FAIL` yok |
+| Public web | 20 sayfa × 9 genişlik (1920 … 320): yatay taşma 0, kırık bağlantı 0 (44 benzersiz iç bağlantı), kırık görsel 0, konsol hatası 0, tek H1 |
+| Admin konum duyurusu (tarayıcı) | Gerçek form + Leaflet seçici: 500 m ve 1 km duyuru oluşturuldu; 1 km'de 4 hesap (yakınındakiler) bildirim aldı, diğer 11 konumlu hesap almadı; Pixel'de TR metin + "Haritada Gör"; pasifleştirme ve denetim günlüğü kayıtları doğrulandı |
+| Gizli bilgi taraması | 10 commit'in tamamı + izlenen dosyalar: gerçek sır yok; backend ZIP'leri (`.env`, geliştirme DB, test, sır, demo seeder içermez) doğrulandı |
+| Sıfırdan MySQL migration | 47 tablo, rollback `--step=3` ve yeniden migrate, `db:seed` yalnız 82 şehir + 21 ilgi alanı (kullanıcı yok); geliştirme DB'sine dokunmayan `audit_` önekli tablolarda |
+
+**Bu turda bulunan ve düzeltilen gerçek hatalar** `docs/FINAL_RELEASE_CANDIDATE.md` §2 içindedir (yorum başlığı taşması, 18. doğum günü sınır günü PHP/SQL tutarsızlığı, yorum silme / harita yanıtı silme / engel listesinde yaş bandı sızıntıları, push–gelen kutusu dil kararı, `devices:prune` hatası, push idempotansı, EXIF yönü, "DELETE" ile hesap silinememesi, ~190 çevrilmemiş arayüz metni ve broken l10n denetim aracı, API mesajlarının İngilizce olmaması, iOS lproj/PrivacyInfo/AdMob xcconfig, AdMob örnek kimlik koruması, dil değişiminde `const` widget'ların güncellenmemesi).
+
+**Gerçek Pixel 6a senaryoları (Demo ↔ Elif, ASCII metin):**
+- *Kamera:* mesaj `+` → Kamera → gerçek kamera uygulaması (sanal sahne) → fotoğraf → ✓ → önizleme → gönder; sunucu 1440×1920, `image/jpeg`, **EXIF/GPS yok** (APP1 yok); Elif tarafında açıldı ve Media Viewer'da dik görüntülendi.
+- *Mevcut konumu gönder:* izin açık, GPS sağlayıcısı beslenirken konum alındı; sunucu ham `36.54467 / 32.00213` yerine `36.5445 / 32.0020` sakladı ve yalnız bunu döndürdü; Elif'te "Konum · Yaklaşık bölge · Haritada Aç" balonu, haritayı yaklaşık noktaya odakladı. Emülatörde GPS her 2 sn beslenmezse 12 sn'lik zaman aşımı oluşur; bu yüzden artık "Konum alınıyor…" bilgisi gösterilir.
+- *Yaşam döngüsü:* metin + emoji (imleç konumu) + fotoğraf + konum; iyimser gönderim; internet yokken hata ("İnternet bağlantını kontrol edip tekrar dene."), metin korunur, bağlantı gelince aynı istekle yeniden dene (yinelenen mesaj yok); uygulama arka plandayken **0** sorgulama isteği (15 sn), ön plana gelince mesajlar akar; okundu ✓✓; okunmamış rozeti (Mesajlar + zil); kendi mesajını "Benim için sil"; alınan mesajı şikâyet ekranı; engelle → Engellenen Kullanıcılar → engeli kaldır.
+- *Dil:* cihaz English → giriş → Ayarlar → Türkçe → tüm ana ekranlar, Ayarlar alt sayfaları, çekmece sayfaları, bildirim paneli/tam sayfa, sohbet; English'e geri dönüş; yeniden başlatma sonrası seçim korunur; sunucuda `preferred_locale` / `last_locale` güncellenir. Gerçek yürüyüş ~60 çevrilmemiş metin ve canlı geçişte `const` widget'ların eski dilde kalması hatasını ortaya çıkardı (düzeltildi).
+
+---
+
 ## Küresel sosyal sürüm — 15 Kasım 2026 (en güncel)
 
 Başlangıç `9999d9c` (yeniden ölçüldü): Laravel 170 test / 2844 assertion, Flutter 189, analyze temiz, Pixel 9/9, location-time 3/3.
