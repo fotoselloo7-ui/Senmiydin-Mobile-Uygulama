@@ -9,7 +9,8 @@ Denetim: 9 Kasım 2026. Bu belge kesin IARC veya Apple yaş derecesi belirlemez.
 | Konum / yakın keşif | Evet; opt-in cihaz konumu, yaklaşık mesafe, manuel şehir ve geçmiş eşleşmesi; kesin GPS public değil |
 | Fotoğraf yükleme | Evet; video yükleme yok |
 | Anonim içerik | İsteğe bağlı anonim public post var; sistem sahibi bilir. Rastgele anonim sohbet/Chatroulette ürünü yok |
-| Reklam / satın alma / abonelik | Hayır; ilgili SDK/akış yok |
+| Reklam | **Evet** — Google AdMob yerel (native) feed reklamları, “Reklam” etiketli; UMP onayı, 16–17 yaş için yaş kısıtlı işleme |
+| Satın alma / abonelik | Hayır; ilgili SDK/akış yok |
 | Para ile kumar / simüle kumar / loot box | Ürün mekaniği yok |
 | Şiddet, korku, cinsellik, çıplaklık, küfür, madde/alkol referansı | Uygulamanın editoryal teması/özelliği değildir. UGC metin/fotoğraflarında oluşma ihtimali vardır; “UGC’de asla yok” diye otomatik No doldurulmaz. Canlı moderasyon politikası/fiilî içerik sıklığına göre anket cevaplanır |
 | Tıbbi/sağlık tavsiyesi | Özel ürün/SDK yok |

@@ -39,12 +39,27 @@ final class Pages
         ['Gizlilik kontrolleri', 'Konum görünürlüğünü, geçtiğin yerler tercihini ve mesaj izinlerini yönet. Gerektiğinde engelle veya şikâyet et.'],
     ];
 
+    /**
+     * Legal texts for the website fallback and the app API. A page the administrator edited keeps that text; otherwise
+     * the structured, localized content (see LegalContent) is returned as plain text.
+     */
     public function legal(): array
     {
         $saved = DB::table('legal_pages')->get()->keyBy('slug');
-        return collect(self::LEGAL)->map(fn ($default, $slug) => [
-            'title' => $saved->get($slug)?->title ?? $default[0],
-            'body' => $saved->get($slug)?->body ?? $default[1],
-        ])->all();
+        $locale = app()->getLocale() === 'en' ? 'en' : 'tr';
+        $values = Site::operatorValues(app(\App\Administration\Settings::class)->all(), $locale);
+
+        return collect(self::LEGAL)->map(function ($default, $slug) use ($saved, $locale, $values) {
+            $custom = $saved->get($slug);
+            if ($custom && $locale === 'tr') {
+                return ['title' => $custom->title, 'body' => $custom->body];
+            }
+            $page = LegalContent::get($slug, $locale);
+
+            return [
+                'title' => $page['title'] ?? $default[0],
+                'body' => LegalContent::plain($slug, $locale, $values) ?? $default[1],
+            ];
+        })->all();
     }
 }

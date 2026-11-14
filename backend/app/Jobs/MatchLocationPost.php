@@ -13,9 +13,12 @@ class MatchLocationPost implements ShouldQueue
     public int $tries = 3;
     public int $timeout = 60;
     public function __construct(public readonly int $postId) {}
-    public function handle(PostMatcher $matcher): void
+    public function handle(PostMatcher $matcher, \App\Location\CurrentNearby $nearby): void
     {
         $post = Post::find($this->postId);
-        if ($post) $matcher->match($post);
+        if (! $post) return;
+        // History matches first: a stronger Geçtiğim Yerler match for the same post suppresses the nearby notice.
+        $matcher->match($post);
+        $nearby->notify($post);
     }
 }

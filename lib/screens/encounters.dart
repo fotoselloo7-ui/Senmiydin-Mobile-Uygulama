@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import '../widgets/translated_text.dart';
 
 import '../core/navigation.dart';
 import '../core/theme.dart';
@@ -10,6 +11,7 @@ import '../widgets/account_action.dart';
 import '../widgets/common.dart';
 import '../widgets/social.dart';
 import '../widgets/social_page.dart';
+import '../core/app_locale.dart';
 
 class LiveEncountersPage extends StatefulWidget {
   const LiveEncountersPage({
@@ -218,7 +220,7 @@ class _LiveEncounterPageState extends State<LiveEncounterPage>
     final store = StoreScope.of(context);
     request ??= store.loadEncounter(widget.id);
     return AppPage(
-      title: 'Karşılaşma Etiketi',
+      title: tr('Karşılaşma Etiketi'),
       child: FutureBuilder(
         future: request,
         builder: (context, snapshot) {

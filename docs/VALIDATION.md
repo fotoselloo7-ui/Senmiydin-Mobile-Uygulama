@@ -1,8 +1,32 @@
 # Doğrulama
 
-> **Güncel kaynak bu dosyanın ilk bölümüdür (14 Kasım 2026, Compose sadeleştirme ve yorum paneli).** Altındaki bölümler önceki turların tarihsel kayıtlarıdır; oradaki sayılar güncel durum değildir.
+> **Güncel kaynak bu dosyanın ilk bölümüdür (15 Kasım 2026, küresel sosyal sürüm).** Altındaki bölümler önceki turların tarihsel kayıtlarıdır; oradaki sayılar güncel durum değildir.
 
-## Compose sadeleştirme ve yorumları alt panele taşıma — 14 Kasım 2026 (en güncel)
+## Küresel sosyal sürüm — 15 Kasım 2026 (en güncel)
+
+Başlangıç `9999d9c` (yeniden ölçüldü): Laravel 170 test / 2844 assertion, Flutter 189, analyze temiz, Pixel 9/9, location-time 3/3.
+
+| Kontrol | Final |
+|---|---|
+| Laravel `php artisan test` | **215 test / 3846 assertion geçti** (+45: `AgeSafetyTest` 14, `GlobalReleaseTest` 16, `WebsiteLocalizationTest` 15) |
+| `flutter analyze` | **No issues found** |
+| Flutter `flutter test` | **259 test geçti** (+70: `test/global_release_test.dart`) |
+| Pixel 6a entegrasyon | **9/9 geçti**, `clean=true` |
+| Pixel 6a location-time | **3/3 geçti**, `clean=true` |
+| Public web tarayıcı QA | 16 sayfa × 1920 / 1440 / 1200 / 1024 / 768 / 430 / 390 / 360 / 320 px: **yatay taşma 0**, kırık iç bağlantı 0, her sayfada tek H1, sitedeki konsol hatası 0 |
+| Admin konum duyurusu (tarayıcı) | Gerçek form + Leaflet nokta seçici ile oluşturuldu; yarıçap içindeki hesaplara bildirim, dışındaki Elif'e yok; sayılar panelde; pasifleştirilince hedef "kullanılamıyor"; test verisi silindi |
+
+**Hiçbir mevcut test silinmedi veya gevşetilmedi.** Yeni gerekliliğe uyarlananlar: minimum yaş 18 → 16 (`AccountApiTest`, `SocialEngagementTest`, `social_engagement_test.dart`), `ConversationTile` / bildirim paneli / ikon eylemleri için entegrasyon adımları (`communication_test`, `encounter_test`, `social_test`, `media_test`, `app_test`), backend test tabanına Türkçe `Accept-Language`. Araç düzeltmeleri: `tool/store_readiness.py` ATT metnini yalnız AdMob varken kabul eder; regresyon betiği `ADS_DISABLED=true` ile reklamsız koşar.
+
+**Gerçek Pixel 6a (cihaz dili English ile açılış → dil anahtarı → yeniden başlatma):** Home kontrolleri tek satır + şehir altta; profil 2×2 seçenek ızgarası; PostCard / karşılaşma kartı; bildirim paneli (Bugün / Dün / Daha Önce, okunmamış sayısı, Tümünü okundu, Tümünü Gör); konumlu duyuruda **View on map** → harita yaklaşık noktaya odaklandı; mesaj listesi ("Location" önizleme, okunmamış rozeti); sohbette **+** menüsü (Photo / Camera / Location), **emoji** imleçte, metin gönderme, **haritadan seçilen konum mesajı** (sunucuda ızgaraya yuvarlandı), konum balonu + **Open on map**; Ayarlar'da Language / Dil seçimi, **Türkçe seçimi yeniden başlatmada korundu ve hesapta `preferred_locale=tr` oldu**; akışta gerçek **Google test native reklamı** "Reklam" etiketiyle ve AdMob doğrulayıcısı "No implementation issues found" ile görüldü. Test verisi (bildirim, sohbet, duyuru, 10 gönderi) silindi.
+
+**CODE READY / EXTERNAL CREDENTIAL REQUIRED:** CODE READY — bildirim zinciri, tüm push türleri (log sürücüsüyle test), localized FCM gövdesi, nearby_post, konum duyurusu, konum mesajı, yaş bandı, AdMob entegrasyonu, TR/EN. EXTERNAL — gerçek Firebase / FCM service account ve cihaz teslimatı; gerçek AdMob App ID / ad unit ID ve konsolda UMP mesajı; operatör kimliği; mağaza hesapları; iOS derleme / Xcode'a lproj ekleme (Mac).
+
+**Sınırlar (dürüst):** (1) Gerçek FCM ağ teslimatı doğrulanmadı. (2) Kamera ile çekilen fotoğraf Pixel'de denenmedi; galeri fotoğrafı mesajı regresyonda (`communication_test`) doğrulandı. (3) Konum mesajı için "mevcut konumum" yolu cihazda izin penceresine kadar denendi; haritadan seçim yolu uçtan uca doğrulandı. (4) Bildirim dokunma E2E'si Demo hesabında yapıldı (Elif hesabına geçilmedi); yönlendirme tüm türler için widget testiyle kanıtlı. (5) Teen ↔ adult E2E yalnız sunucu testleriyle (istenen); cihazda teen hesabı açılmadı. (6) İngilizce kapsam: yeni ekranlar ARB'de, yerleşik ekranlar ~430 girişli sözlükte; sözlükte olmayan metinler (bazı kayıt / izin açıklamaları, sunucudan gelen ilgi alanı adları, kullanıcı içeriği) Türkçe kalır. (7) iOS derlenmedi.
+
+---
+
+## Compose sadeleştirme ve yorumları alt panele taşıma — 14 Kasım 2026 (önceki tur)
 
 Başlangıç `631123e` (gerçekten çalıştırıldı): Laravel 170 test / 2844 assertion, Flutter 165, analyze temiz, Pixel 9/9, location-time 3/3. Backend bu turda değişmedi.
 

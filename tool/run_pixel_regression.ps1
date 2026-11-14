@@ -39,7 +39,7 @@ try {
     $job=Start-Job -ArgumentList $script:ReleaseRoot,$flutter,$serial,$log,$scenarioDefines,$target -ScriptBlock {
         param($root,$flutter,$serial,$log,$scenarioDefines,$target)
         Set-Location -LiteralPath $root
-        & $flutter test $target -d $serial '--dart-define=API_BASE_URL=http://127.0.0.1:8000/api/v1' "--dart-define-from-file=$scenarioDefines" --reporter expanded *> $log
+        & $flutter test $target -d $serial '--dart-define=API_BASE_URL=http://127.0.0.1:8000/api/v1' '--dart-define=ADS_DISABLED=true' "--dart-define-from-file=$scenarioDefines" --reporter expanded *> $log
         [int]$LASTEXITCODE
     }
     $granted=$false

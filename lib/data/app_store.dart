@@ -1,4 +1,7 @@
 import 'post_context.dart';
+import '../core/ads_config.dart';
+import '../core/app_locale.dart';
+import 'ads_service.dart';
 
 import 'dart:async';
 
@@ -10,6 +13,7 @@ import 'version_policy.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:latlong2/latlong.dart';
 
 import 'account_api.dart';
 import 'encounter_api.dart';
@@ -28,7 +32,9 @@ class AppStore extends ChangeNotifier {
     ApiClient? api,
     LocationDevice? locationDevice,
     ComposeDraftStore? drafts,
+    AdsService? ads,
   }) : drafts = drafts ?? ComposeDraftStore(),
+       ads = ads ?? AdsService(),
        _api = api,
       auth = api == null ? null : AuthService(api),
       _profiles = api == null ? null : ProfileService(api),
@@ -50,6 +56,16 @@ class AppStore extends ChangeNotifier {
   /// Local, per-account composer drafts (private app storage, never uploaded).
   final ComposeDraftStore drafts;
 
+  /// Native feed ads: consent, age treatment and availability. Never fed with any SenMiydin location data.
+  final AdsService ads;
+
+  /// Admin switch (`ads_enabled`) and the organic-posts-per-ad interval (`feed_ad_interval`) from /app-config.
+  bool adsEnabled = true;
+  int feedAdInterval = AdsConfig.defaultInterval;
+
+  /// Whether Home feeds mix in native ads right now: signed in, switched on by the admin, consent given, unit present.
+  bool get showFeedAds => connected && adsEnabled && ads.available;
+
   CommunicationApi? communication;
   MapNotesApi? mapNotes;
 
@@ -68,8 +84,11 @@ class AppStore extends ChangeNotifier {
   /// Set by the Home card so the map opens straight in its Notlar view.
   bool openMapInNotes = false;
 
+  /// One-shot request for the map screen to centre on an approximate point ("Haritada Aç" / "Haritada Gör").
+  LatLng? mapFocus;
+
   /// Server-side minimum registration age (single config value); null until /app-config answered.
-  int minimumAge = 18;
+  int minimumAge = 16;
   String? maintenanceNotice;
   VersionPolicy? versionPolicy;
   (String, String)? homeAnnouncement;
@@ -100,6 +119,19 @@ class AppStore extends ChangeNotifier {
       final featured = data['featured_enabled'] != false;
       final notesModule = data['nearby_notes_enabled'] != false;
       minimumAge = (data['minimum_age'] as num?)?.toInt() ?? minimumAge;
+      final adsOn = data['ads_enabled'] != false;
+      final interval =
+          (data['feed_ad_interval'] as num?)?.toInt() ??
+          AdsConfig.defaultInterval;
+      if (adsOn != adsEnabled || interval != feedAdInterval) {
+        adsEnabled = adsOn;
+        feedAdInterval = interval;
+        notifyListeners();
+      }
+      if (adsOn) {
+        // Consent first, SDK only afterwards; teen accounts get the age-restricted treatment.
+        unawaited(ads.start(teen: _account?.ageBand == 'teen'));
+      }
       final maintenance = data['maintenance_message'] as String?;
       final item = data['announcement'] as Map<String, dynamic>?;
       final announcement = item == null
@@ -126,6 +158,20 @@ class AppStore extends ChangeNotifier {
       // Configuration is refreshed on the next foreground poll.
     } finally {
       _loadingHomeConfig = false;
+    }
+  }
+
+  /// Switches the app language (tr / en), persists it on the device and, when signed in, on the account so the
+  /// server can localize notification texts and push bodies. The server call is best effort.
+  Future<void> setLanguage(String code) async {
+    await AppLocale.set(Locale(code));
+    notifyListeners();
+    final social = _social;
+    if (!authenticated || social == null) return;
+    try {
+      await social.object('PUT', 'profile', body: {'preferred_locale': code});
+    } catch (_) {
+      // The device choice already applies; the account preference syncs the next time the user changes it.
     }
   }
 
@@ -1094,6 +1140,7 @@ class AppStore extends ChangeNotifier {
     _account = null;
     _accountPerson = null;
     authenticated = false;
+    ads.reset();
     push?.endSession();
     _remotePosts.clear();
     _remotePeople.clear();

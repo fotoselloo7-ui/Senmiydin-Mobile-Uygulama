@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->replace(\Illuminate\Http\Middleware\TrustProxies::class, App\Http\Middleware\TrustedProxies::class);
         $middleware->replace(\Illuminate\Http\Middleware\HandleCors::class, App\Http\Middleware\ProductionSecurity::class);
+        $middleware->appendToGroup('api', App\Http\Middleware\SetLocale::class);
         $middleware->appendToGroup('api', App\Http\Middleware\MobileAvailability::class);
         $middleware->validateCsrfTokens(except: ['auth/apple/callback']);
         $middleware->redirectGuestsTo(fn () => null);

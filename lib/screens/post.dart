@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import '../widgets/translated_text.dart';
 
 import '../core/theme.dart';
 import '../core/navigation.dart';
@@ -10,6 +11,7 @@ import '../widgets/comments_sheet.dart';
 import '../widgets/common.dart';
 import '../widgets/social.dart';
 import '../widgets/social_page.dart';
+import '../core/app_locale.dart';
 
 class PostDetailPage extends StatelessWidget {
   const PostDetailPage(this.id, {super.key, this.openComments = false});
@@ -180,7 +182,7 @@ class _SavedPageState extends State<SavedPage> {
   Future<void> rename(AppStore store, SavedCollection collection) async {
     final name = await askCollectionName(
       context,
-      title: 'Koleksiyonu yeniden adlandır',
+      title: tr('Koleksiyonu yeniden adlandır'),
       action: 'Kaydet',
       initial: collection.name,
     );
@@ -194,7 +196,7 @@ class _SavedPageState extends State<SavedPage> {
   Future<void> remove(AppStore store, SavedCollection collection) async {
     final confirmed = await confirmAction(
       context,
-      title: 'Koleksiyon silinsin mi?',
+      title: tr('Koleksiyon silinsin mi?'),
       message:
           '“${collection.name}” silinir; içindeki gönderiler Kaydedilenler’de kalır.',
       action: 'Sil',
@@ -221,7 +223,7 @@ class _SavedPageState extends State<SavedPage> {
       }
       final selected = current;
       return AppPage(
-        title: 'Kaydedilenler',
+        title: tr('Kaydedilenler'),
         child: Column(
           children: [
             const SizedBox(height: Space.sm),
@@ -253,7 +255,7 @@ class _SavedPageState extends State<SavedPage> {
                     ),
                     IconButton(
                       key: const Key('delete-collection'),
-                      tooltip: 'Koleksiyonu sil',
+                      tooltip: tr('Koleksiyonu sil'),
                       visualDensity: VisualDensity.compact,
                       icon: const Icon(Icons.delete_outline_rounded, size: 20),
                       onPressed: () => remove(store, selected),
@@ -306,7 +308,7 @@ class _SavedPageState extends State<SavedPage> {
         .where((p) => p.saved && !store.blocked.contains(p.authorId))
         .toList();
     return AppPage(
-      title: 'Kaydedilenler',
+      title: tr('Kaydedilenler'),
       child: saved.isEmpty
           ? const SingleChildScrollView(
               child: EmptyState(

@@ -47,7 +47,7 @@ Android’de Geçtiğim Yerler’i açıkça etkinleştirdiğinde konum kaydı, 
 | Web sitesi | [GERÇEK BİLGİ GEREKLİ] — yayınlanmış gerçek kök adres |
 | Privacy Policy URL | [GERÇEK BİLGİ GEREKLİ] — uygulamadaki /gizlilik yolu |
 | Account deletion URL | [GERÇEK BİLGİ GEREKLİ] — /hesap-silme yolu |
-| Reklam içeriyor mu? | Hayır: reklam kodu/SDK/AD_ID bulunmadı; ayrıntı SDK_AUDIT.md |
+| Reklam içeriyor mu? | **Evet (Contains ads = YES):** Google AdMob native feed reklamları; ayrıntı SDK_AUDIT.md. Hedef kitle 16+; 16–17 için yaş kısıtlı reklam işleme |
 | Uygulama içi satın alma | Hayır; ödeme/abonelik/billing akışı yok |
 | Hedef kitle | Mevcut kayıt alt sınırı 18; Console hedef kitlesi yetişkinler olarak seçilmeli. Bu bilgi IARC sonucunun yerine geçmez |
 | Erişim | Hesap gereklidir. E-posta/kullanıcı adı + parola; Google/Apple yalnız gerçek yapılandırma etkinse alternatif |

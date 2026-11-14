@@ -2,9 +2,9 @@
 
 Denetim: 9 Kasım 2026. Bundle ID com.senmiydin.app. “Data Not Collected” seçilemez. Sunucuya kaydedilen hesap, konum ve kullanıcı içeriği vardır. Anonymous post public kimliği gizler; backend user_id bağı devam ettiği için App Privacy’de “not linked” sayılmaz.
 
-Tracking için mevcut karar: **Hayır**. Reklam hedefleme/ölçümü amacıyla üçüncü taraf veri birleştirme, IDFA, ATT izni veya veri broker’ı entegrasyonu bulunmadı. Uygulamanın kendi geçmişinden içerik önermesi reklam tracking’i değildir. Nihai SDK/native privacy report Mac üzerinde doğrulanmalıdır.
+Tracking için güncel karar (15 Kasım 2026): **Evet — Google AdMob (Google Mobile Ads SDK) eklendi.** Yetişkin hesaplarda, kullanıcı UMP / ATT izin akışında onay verirse reklam kimliği (IDFA) kişiselleştirilmiş reklam için kullanılır; reddedilirse veya 16–17 yaşındaki hesapta yaş kısıtlı, kişiselleştirilmemiş reklam istenir. SenMiydin? konum verisini, konum geçmişini veya profil verisini AdMob isteğine eklemez. Uygulamanın kendi geçmişinden içerik önermesi reklam tracking’i değildir. Nihai SDK/native privacy report Mac üzerinde doğrulanmalıdır.
 
-Amaçlar: AF=App Functionality (hesap, güvenlik, destek ve mesajlaşma dahil); PP=Product Personalization. Kodda Developer Advertising/Third-Party Advertising veya özel analytics event sistemi yoktur.
+Amaçlar: AF=App Functionality (hesap, güvenlik, destek ve mesajlaşma dahil); PP=Product Personalization; **TPA=Third-Party Advertising** (yalnızca Google AdMob). Özel analytics event sistemi yoktur. AdMob satırları (Google’ın yayımlanmış AdMob / Firebase App Store veri toplama rehberine göre; **işletici nihai Privacy Report ve rehberle doğrular**): Identifiers → Device ID (Advertising Identifier) — TPA; Usage Data → Advertising Data / Product Interaction — TPA; Diagnostics — AF; Location → Coarse Location yalnızca IP’den türetilen yaklaşık konum olarak değerlendirilir. **Konum verisi reklam amacıyla toplanmaz veya gönderilmez.**
 
 | Apple veri tipi | Gerçek alanlar | Collected? | Linked to identity? | Tracking? | Purpose / sınır |
 |---|---|---|---|---|---|

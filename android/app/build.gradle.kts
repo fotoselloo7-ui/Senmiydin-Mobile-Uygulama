@@ -53,6 +53,13 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
+        // AdMob needs an application id in the manifest at startup. The production id comes from the build
+        // (--dart-define=ADMOB_APP_ID_ANDROID=...); without it Google's documented sample id keeps the app
+        // starting, and the app renders no ads at all in release (no ad unit id), see lib/core/ads_config.dart.
+        manifestPlaceholders["admobAppId"] =
+            dartDefines["ADMOB_APP_ID_ANDROID"]?.takeIf { it.isNotBlank() }
+                ?: "ca-app-pub-3940256099942544~3347511713"
+
         // Firebase's native receiver must be able to start before the Flutter engine.
         val firebaseResources = mapOf(
             "google_app_id" to "FCM_ANDROID_APP_ID",

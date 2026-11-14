@@ -4,8 +4,10 @@ import '../core/polling.dart';
 
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import '../widgets/translated_text.dart';
 
+import '../core/ads_config.dart';
 import '../core/theme.dart';
 import '../core/navigation.dart';
 import '../data/app_store.dart';
@@ -14,11 +16,14 @@ import '../data/models.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/common.dart';
 import '../widgets/location_ui.dart';
+import '../widgets/native_feed_ad.dart';
+import '../widgets/notifications_sheet.dart';
 import '../widgets/social.dart';
 import '../widgets/social_page.dart';
 import 'discovery.dart';
 import 'profile.dart';
 import 'messages.dart';
+import '../core/app_locale.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -59,7 +64,7 @@ class _HomeShellState extends State<HomeShell> {
     final store = StoreScope.of(context);
     if (store.maintenanceNotice case final notice?) {
       return AppPage(
-        title: 'Bakım çalışması',
+        title: tr('Bakım çalışması'),
         child: ListView(
           padding: Space.page,
           children: [
@@ -82,7 +87,7 @@ class _HomeShellState extends State<HomeShell> {
           leadingWidth: 46,
           leading: Builder(
             builder: (ctx) => IconButton(
-              tooltip: 'Menü',
+              tooltip: tr('Menü'),
               icon: const Icon(Icons.menu_rounded, size: 24),
               onPressed: () => Scaffold.of(ctx).openDrawer(),
             ),
@@ -97,7 +102,7 @@ class _HomeShellState extends State<HomeShell> {
           actions: tab == 4
               ? [
                   IconButton(
-                    tooltip: 'Ayarlar',
+                    tooltip: tr('Ayarlar'),
                     icon: const Icon(Icons.settings_outlined, size: 24),
                     onPressed: () => openPage(context, '/settings'),
                   ),
@@ -105,13 +110,13 @@ class _HomeShellState extends State<HomeShell> {
                 ]
               : [
                   IconButton(
-                    tooltip: 'Ara',
+                    tooltip: tr('Ara'),
                     icon: const Icon(Icons.search_rounded, size: 24),
                     onPressed: () => openPage(context, '/search'),
                   ),
                   IconButton(
-                    tooltip: 'Bildirimler',
-                    onPressed: () => openPage(context, '/notifications'),
+                    tooltip: tr('Bildirimler'),
+                    onPressed: () => showNotificationsSheet(context),
                     icon: Badge(
                       isLabelVisible: store.connected
                           ? store.unreadNotifications > 0
@@ -208,7 +213,7 @@ class AppBottomNav extends StatelessWidget {
                 child: Center(
                   child: Semantics(
                     button: true,
-                    label: 'Paylaşım oluştur',
+                    label: tr('Paylaşım oluştur'),
                     child: InkWell(
                       key: const Key('compose-button'),
                       borderRadius: BorderRadius.circular(25),
@@ -568,7 +573,7 @@ class HomeContent extends StatelessWidget {
                         ),
                       ),
                       IconButton(
-                        tooltip: 'Fotoğraflı paylaşım',
+                        tooltip: tr('Fotoğraflı paylaşım'),
                         onPressed: () => openPage(context, '/compose', 'photo'),
                         icon: const Icon(
                           Icons.image_outlined,
@@ -646,10 +651,27 @@ class HomeContent extends StatelessWidget {
           else
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: Space.lg),
-              sliver: SliverList.builder(
-                itemCount: posts.length,
-                itemBuilder: (_, i) =>
-                    PostCard(posts[i], key: ValueKey(posts[i].id)),
+              sliver: Builder(
+                builder: (context) {
+                  // Native ads: after the 7th organic post, then every `feed_ad_interval` posts. The layout depends
+                  // only on how many organic posts are loaded, so paging never shuffles what is already on screen.
+                  final rows = feedRows(
+                    posts.length,
+                    ads: store.showFeedAds,
+                    interval: store.feedAdInterval,
+                  );
+                  return SliverList.builder(
+                    itemCount: rows.length,
+                    itemBuilder: (_, i) {
+                      final row = rows[i];
+                      if (row.isAd) {
+                        return NativeFeedAd(key: ValueKey('feed-ad-${row.adSlot}'));
+                      }
+                      final post = posts[row.organic!];
+                      return PostCard(post, key: ValueKey(post.id));
+                    },
+                  );
+                },
               ),
             ),
           if (footer != null) SliverToBoxAdapter(child: footer),
@@ -669,7 +691,7 @@ class HomeContent extends StatelessWidget {
   ) {
     Widget composeItem() => Semantics(
       button: true,
-      label: 'Paylaşım oluştur',
+      label: tr('Paylaşım oluştur'),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppShape.pill),
         onTap: () => openPage(context, '/compose'),
@@ -869,49 +891,77 @@ class HomeContent extends StatelessWidget {
 class _FeedControls extends StatelessWidget {
   const _FeedControls(this.store);
   final AppStore store;
+
+  static const _entries = [
+    ('Akış', Icons.format_list_bulleted_rounded, 'Yeni'),
+    ('Takip', Icons.people_outline_rounded, 'Takip'),
+    ('Yakın', Icons.location_on_rounded, 'En yakın'),
+    ('Popüler', Icons.local_fire_department_rounded, 'Popüler'),
+  ];
+
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
-      final text = TextPainter(
-        text: TextSpan(
-          text: store.city,
-          style: AppTypography.metadata.copyWith(fontWeight: FontWeight.w700),
-        ),
-        textDirection: Directionality.of(context),
-        textScaler: MediaQuery.textScalerOf(context),
-      )..layout();
-      final stacked =
-          constraints.maxWidth < 330 ||
-          MediaQuery.textScalerOf(context).scale(1) > 1.2 ||
-          text.width + 52 > 125;
-      final tabs = SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final (idx, entry) in [
-              ('Akış', Icons.format_list_bulleted_rounded, 'Yeni'),
-              ('Takip', Icons.people_outline_rounded, 'Takip'),
-              ('Yakın', Icons.location_on_rounded, 'En yakın'),
-              ('Popüler', Icons.local_fire_department_rounded, 'Popüler'),
-            ].indexed) ...[
-              if (idx > 0) const SizedBox(width: 6),
-              _FeedTab(
-                entry.$1,
-                entry.$2,
-                selected: store.filter.sort == entry.$3,
-                onTap: () =>
-                    store.applyFilter(store.filter.copy()..sort = entry.$3),
-              ),
-            ],
-          ],
-        ),
-      );
+      final width = constraints.maxWidth;
+      // Phones (<= 430 dp wide screens) always get the social tabs on their own full-width row and the city picker
+      // below, right aligned: nothing is clipped or covered. Only genuinely wide layouts keep them on one line.
+      final wide = width >= 560;
+      final bigText = MediaQuery.textScalerOf(context).scale(1) > 1.3;
+      final iconless = width < 340 || bigText;
+      Widget tab(int idx) {
+        final entry = _entries[idx];
+        return _FeedTab(
+          entry.$1,
+          entry.$2,
+          showIcon: !iconless,
+          selected: store.filter.sort == entry.$3,
+          onTap: () => store.applyFilter(store.filter.copy()..sort = entry.$3),
+        );
+      }
+
+      final tabs = wide
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var i = 0; i < _entries.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 6),
+                  tab(i),
+                ],
+              ],
+            )
+          : bigText
+          // Very large text: two even rows of two instead of squeezing a word.
+          ? Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: tab(0)),
+                    const SizedBox(width: 6),
+                    Expanded(child: tab(1)),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(child: tab(2)),
+                    const SizedBox(width: 6),
+                    Expanded(child: tab(3)),
+                  ],
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                for (var i = 0; i < _entries.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 6),
+                  Expanded(child: tab(i)),
+                ],
+              ],
+            );
       final city = ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: stacked ? constraints.maxWidth : 128,
-        ),
+        constraints: BoxConstraints(maxWidth: wide ? 160 : width),
         child: TextButton(
+          key: const Key('feed-city'),
           onPressed: () async {
             final selected = await chooseCity(context, store.city);
             if (selected != null && context.mounted) {
@@ -921,7 +971,8 @@ class _FeedControls extends StatelessWidget {
           style: TextButton.styleFrom(
             foregroundColor: AppColors.navy,
             backgroundColor: Colors.white,
-            minimumSize: const Size(0, 42),
+            minimumSize: const Size(0, 36),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
               side: const BorderSide(color: Color(0xFFE9D5FF)),
@@ -930,7 +981,7 @@ class _FeedControls extends StatelessWidget {
               fontWeight: FontWeight.w800,
               fontSize: 12.5,
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -952,20 +1003,20 @@ class _FeedControls extends StatelessWidget {
           ),
         ),
       );
-      return stacked
-          ? Column(
+      return wide
+          ? Row(
+              children: [
+                Expanded(child: tabs),
+                const SizedBox(width: Space.sm),
+                city,
+              ],
+            )
+          : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 tabs,
                 const SizedBox(height: Space.sm),
                 Align(alignment: Alignment.centerRight, child: city),
-              ],
-            )
-          : Row(
-              children: [
-                Expanded(child: tabs),
-                const SizedBox(width: Space.sm),
-                city,
               ],
             );
     },
@@ -978,10 +1029,12 @@ class _FeedTab extends StatelessWidget {
     this.icon, {
     required this.selected,
     required this.onTap,
+    this.showIcon = true,
   });
   final String label;
   final IconData icon;
   final bool selected;
+  final bool showIcon;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) => InkWell(
@@ -1007,23 +1060,31 @@ class _FeedTab extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: const Color(0xFFD6E4F7)),
             ),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            size: 15,
-            color: selected ? Colors.white : AppColors.primary,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 12.5,
-              color: selected ? Colors.white : AppColors.navy,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (showIcon) ...[
+              Icon(
+                icon,
+                size: 15,
+                color: selected ? Colors.white : AppColors.primary,
+              ),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              label,
+              maxLines: 1,
+              softWrap: false,
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 12.5,
+                color: selected ? Colors.white : AppColors.navy,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     ),
   );

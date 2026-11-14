@@ -16,6 +16,8 @@ class ProfileResource extends JsonResource
             'username' => $this->username,
             'email' => $this->email,
             'birth_date' => $this->birth_date->toDateString(),
+            // Server-derived and read-only: drives ad treatment and age-appropriate messaging in the app.
+            'age_band' => \App\Safety\AgeSafety::band($this->birth_date),
             'city_id' => $this->city_id,
             'active_city' => $this->activeCity?->only('id', 'name', 'slug'),
             'active_city_source' => $this->active_city_source,
@@ -28,6 +30,7 @@ class ProfileResource extends JsonResource
             'last_seen_at' => $this->last_seen_at?->toISOString(),
             'message_privacy' => $this->message_privacy,
             'show_activity' => $this->show_activity,
+            'preferred_locale' => $this->preferred_locale,
             'push_preferences' => ($this->push_preferences ?? []) + Inbox::DEFAULTS,
             'connections' => $this->connections ?? [],
             'nearby_visible' => $this->nearby_visible,

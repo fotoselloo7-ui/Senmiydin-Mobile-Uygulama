@@ -14,8 +14,13 @@ final class Blocks
         User::whereKey(array_unique([$a, $b]))->orderBy('id')->lockForUpdate()->get(['id']);
     }
 
+    /** True when A and B must not interact: blocked in either direction, or in different age bands (teen / adult). */
     public static function between(int $a, int $b): bool
     {
+        if (! AgeSafety::sameBand($a, $b)) {
+            return true;
+        }
+
         return DB::table('user_blocks')->where(fn (Builder $query) => $query
             ->where('blocker_id', $a)->where('blocked_id', $b))
             ->orWhere(fn (Builder $query) => $query->where('blocker_id', $b)->where('blocked_id', $a))->exists();
@@ -23,6 +28,8 @@ final class Blocks
 
     public static function exclude(Builder|Eloquent $query, int $viewer, string $column): Builder|Eloquent
     {
+        AgeSafety::exclude($query, $viewer, $column);
+
         return $query->whereNotExists(fn (Builder $blocks) => $blocks->selectRaw('1')->from('user_blocks')
             ->where('blocker_id', $viewer)->whereColumn('blocked_id', $column))
             ->whereNotExists(fn (Builder $blocks) => $blocks->selectRaw('1')->from('user_blocks')

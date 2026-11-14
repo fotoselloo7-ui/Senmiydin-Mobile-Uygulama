@@ -203,7 +203,7 @@ void main() {
     expect(find.text('Yayınlamayı Onayla'), findsNothing);
     debugPrint('The joint story is waiting for partner approval.');
 
-    await tap(back);
+    // The bell opens a quick panel over Home now (no Bildirimler page in the stack): one back reaches Home.
     await tap(back);
     await openInbox(rejectedId);
     await waitFor(find.text('Reddet'));
@@ -251,7 +251,6 @@ void main() {
     await waitFor(publishedAction);
     debugPrint('Demo approved the story for publication.');
     final publishedId = (await store.loadEncounter(accepted.id)).story!.id;
-    await tap(back);
     await tap(back);
     await waitFor(find.byType(PublishedEncounterCard));
     final featured = find.byWidgetPredicate(

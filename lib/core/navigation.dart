@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import '../widgets/translated_text.dart';
 
 Future<T?> openPage<T>(
   BuildContext context,

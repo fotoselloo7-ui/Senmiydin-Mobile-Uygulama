@@ -30,6 +30,8 @@ final class Inbox
         'encounter_story_published' => ['/encounter', 'Ortak karşılaşma hikâyen yayınlandı.'],
         'location_match' => ['/post', 'Birine denk gelmiş olabilirsin 👀'],
         'nearby_activity' => ['/post', 'Geçtiğin bölgede bir paylaşım var.'],
+        // Someone nearby right now (current-location behaviour); independent from the history based nearby_activity.
+        'nearby_post' => ['/post', 'Yakınında yeni bir paylaşım var.'],
         'system' => ['/notifications', 'Yeni bir SenMiydin? duyurusu var.'],
         'map_note_nearby' => ['/map-note', 'Yakınına bir not bırakıldı.'],
         'map_note_reply' => ['/map-note', 'Notuna bir cevap geldi.'],
@@ -37,6 +39,35 @@ final class Inbox
 
     /** Optional second line shown under the notification text. Never carries identity. */
     public const SUBTITLES = ['map_note_nearby' => 'Birisi bulunduğun bölgede dijital bir not bıraktı.'];
+
+    /** Localized notification text for [$type]; defaults to the active request locale (Turkish when unknown). */
+    public static function message(string $type, ?string $locale = null): string
+    {
+        return __('inbox.'.$type, [], self::locale($locale));
+    }
+
+    public static function subtitle(string $type, ?string $locale = null): ?string
+    {
+        return isset(self::SUBTITLES[$type]) ? __('inbox.subtitles.'.$type, [], self::locale($locale)) : null;
+    }
+
+    private static function locale(?string $locale): string
+    {
+        return in_array($locale, ['tr', 'en'], true) ? $locale : (in_array(app()->getLocale(), ['tr', 'en'], true) ? app()->getLocale() : 'tr');
+    }
+
+    /** Preference category a notification type is governed by. */
+    public static function category(string $type): string
+    {
+        return str_starts_with($type, 'encounter_') ? 'encounter' : match ($type) {
+            'comment_reply' => 'comment',
+            // A like on a comment follows the existing "like" preference.
+            'comment_like' => 'like',
+            // Nearby posts follow the same switch as the history based nearby_activity.
+            'nearby_post' => 'nearby_activity',
+            default => $type,
+        };
+    }
 
     public static function add(int $user, ?int $actor, string $type, ?int $entity = null, bool $inApp = true, bool $push = true, ?int $announcement = null): void
     {
@@ -64,12 +95,7 @@ final class Inbox
     public static function permitted(\App\Models\User $user, string $type): bool
     {
         // Replies share the existing "comment" preference; no extra settings row.
-        $category = str_starts_with($type, 'encounter_') ? 'encounter' : match ($type) {
-            'comment_reply' => 'comment',
-            // A like on a comment follows the existing "like" preference.
-            'comment_like' => 'like',
-            default => $type,
-        };
+        $category = self::category($type);
         return isset(self::DEFAULTS[$category]) &&
             (($user->push_preferences ?? []) + self::DEFAULTS)[$category] &&
             (! in_array($type, ['location_match', 'nearby_activity'], true) || $user->location_history_enabled) &&

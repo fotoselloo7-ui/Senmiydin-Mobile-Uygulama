@@ -19,6 +19,11 @@ Route::get('/{slug}', [WebsiteController::class, 'page'])->whereIn('slug', [
     'topluluk-kurallari', 'iletisim', 'hesap-silme',
 ])->name('website.page');
 Route::post('/{slug}', [WebsiteController::class, 'submit'])->whereIn('slug', ['iletisim', 'hesap-silme'])->middleware('throttle:website-form');
+Route::prefix('en')->group(function (): void {
+    Route::get('/', [WebsiteController::class, 'pageEn'])->defaults('path', '')->name('website.home.en');
+    Route::get('/{path}', [WebsiteController::class, 'pageEn'])->whereIn('path', array_values(array_filter(\App\Website\Site::EN_PATHS)))->name('website.page.en');
+    Route::post('/{path}', [WebsiteController::class, 'submitEn'])->whereIn('path', ['contact', 'delete-account'])->middleware('throttle:website-form');
+});
 Route::get('/sitemap.xml', [WebsiteController::class, 'sitemap']);
 Route::get('/robots.txt', [WebsiteController::class, 'robots']);
 

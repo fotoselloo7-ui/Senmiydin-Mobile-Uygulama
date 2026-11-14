@@ -72,7 +72,7 @@ class AuthController extends Controller
             $hash = $user?->password ?? '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.';
             $valid = Hash::check($data['password'], $hash);
             if (! $user || ! $valid || $user->account_status !== 'active') {
-                return ApiResponse::error('Giriş bilgilerin hatalı.', 401);
+                return ApiResponse::error(__('api.login_failed'), 401);
             }
             if (Hash::needsRehash($user->password)) {
                 $user->password = Hash::make($data['password']);
@@ -90,7 +90,7 @@ class AuthController extends Controller
             $token->delete();
         });
 
-        return ApiResponse::ok(message: 'Oturum kapatıldı.');
+        return ApiResponse::ok(message: __('api.logged_out'));
     }
 
     public function forgot(Request $request): JsonResponse
@@ -99,7 +99,7 @@ class AuthController extends Controller
         $data = $request->validate(['email' => ['required', 'email', 'max:254']], self::validationMessages());
         Password::sendResetLink([...$data, 'account_status' => 'active']);
 
-        return ApiResponse::ok(message: 'Bu adresle kayıtlı bir hesap varsa sıfırlama kodu e-postana gönderilir.');
+        return ApiResponse::ok(message: __('api.forgot_sent'));
     }
 
     public function reset(Request $request): JsonResponse
@@ -193,32 +193,15 @@ class AuthController extends Controller
                 return;
             }
             if (strlen($value) > 72) {
-                $fail('Şifren en fazla 72 bayt olabilir.');
+                $fail(__('api.password_max_bytes'));
             } elseif (str_contains($value, "\0")) {
-                $fail('Şifren geçersiz bir karakter içeriyor.');
+                $fail(__('api.password_invalid_char'));
             }
         };
     }
 
     public static function validationMessages(): array
     {
-        return [
-            'required' => 'Bu alan zorunlu.',
-            'email.email' => 'Geçerli bir e-posta adresi gir.',
-            'email.unique' => 'Bu e-posta adresi kullanımda.',
-            'username.unique' => 'Bu kullanıcı adı kullanımda.',
-            'username.regex' => 'Kullanıcı adında harf, rakam, nokta ve alt çizgi kullanabilirsin.',
-            'username.min' => 'Kullanıcı adı en az 3 karakter olmalı.',
-            'username.max' => 'Kullanıcı adı en fazla 24 karakter olabilir.',
-            'birth_date.before_or_equal' => 'Devam etmek için '.app(\App\Administration\Settings::class)->get('minimum_age').' yaşını doldurmalısın.',
-            'birth_date.*' => 'Geçerli bir doğum tarihi gir.',
-            'city_id.exists' => 'Listeden bir şehir seç.',
-            'accepted_terms.accepted' => 'Devam etmek için koşulları kabul etmelisin.',
-            'password.confirmed' => 'Yeni şifreler eşleşmiyor.',
-            'password.different' => 'Yeni şifre mevcut şifreden farklı olmalı.',
-            'password.min' => 'Şifre en az 10 karakter olmalı.',
-            'password.letters' => 'Şifre en az bir harf içermeli.',
-            'password.numbers' => 'Şifre en az bir rakam içermeli.',
-        ];
+        return trans('api.validation', ['age' => app(\App\Administration\Settings::class)->get('minimum_age')]);
     }
 }

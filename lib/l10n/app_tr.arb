@@ -1,0 +1,109 @@
+{
+  "@@locale": "tr",
+  "appName": "SenMiydin?",
+  "close": "Kapat",
+  "cancel": "Vazgeç",
+  "save": "Kaydet",
+  "send": "Gönder",
+  "retry": "Tekrar dene",
+  "back": "Geri",
+  "language": "Dil",
+  "languageTurkish": "Türkçe",
+  "languageEnglish": "English",
+  "navHome": "Ana Sayfa",
+  "navMap": "Harita",
+  "navMessages": "Mesajlar",
+  "navProfile": "Profil",
+  "search": "Ara",
+  "settings": "Ayarlar",
+  "feedAll": "Akış",
+  "feedFollowing": "Takip",
+  "feedNearby": "Yakın",
+  "feedPopular": "Popüler",
+  "notificationsTitle": "Bildirimler",
+  "notificationsUnreadCount": "{count} okunmamış",
+  "@notificationsUnreadCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notificationsAllRead": "Hepsi okundu",
+  "notificationsMarkAll": "Tümünü okundu",
+  "notificationsMarkAllTooltip": "Tümünü okundu işaretle",
+  "notificationsSeeAll": "Tümünü Gör",
+  "notificationsGroupToday": "Bugün",
+  "notificationsGroupYesterday": "Dün",
+  "notificationsGroupEarlier": "Daha Önce",
+  "notificationsFilterAll": "Tümü",
+  "notificationsFilterUnread": "Okunmamış",
+  "notificationsEmptyTitle": "Her şey güncel.",
+  "notificationsEmptyBody": "Yeni etkileşimlerin burada görünecek.",
+  "notificationsUnavailable": "Bu içerik artık kullanılamıyor.",
+  "notificationsContentUnavailable": "İçerik kullanılamıyor",
+  "notificationsUnreadSemantics": "Okunmamış bildirim",
+  "notificationsReadSemantics": "Okundu",
+  "notificationsLoadError": "Bildirimler yüklenemedi.",
+  "seeOnMap": "Haritada Gör",
+  "timeJustNow": "Az önce",
+  "timeMinutesAgo": "{count} dk önce",
+  "@timeMinutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "timeHoursAgo": "{count} sa önce",
+  "@timeHoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "timeDaysAgo": "{count} gün önce",
+  "@timeDaysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "messagesTitle": "Mesajlar",
+  "messagesTabMessages": "Mesajlar",
+  "messagesTabRequests": "İstekler",
+  "messagesSearchHint": "Mesajlarda ara",
+  "messagesEmptyTitle": "Henüz mesaj yok.",
+  "messagesEmptyBody": "Bir profilden mesaj göndererek sohbet başlatabilirsin.",
+  "messagesPreviewPhoto": "Fotoğraf",
+  "messagesPreviewLocation": "Konum",
+  "chatWriteHint": "Mesaj yaz…",
+  "chatAttach": "Ekle",
+  "chatEmoji": "Emoji",
+  "chatSendTooltip": "Mesajı gönder",
+  "chatAttachPhoto": "Fotoğraf",
+  "chatAttachCamera": "Kamera",
+  "chatAttachLocation": "Konum",
+  "chatLocationTitle": "Konum",
+  "chatLocationApprox": "Yaklaşık bölge",
+  "chatOpenOnMap": "Haritada Aç",
+  "chatSendCurrentLocation": "Mevcut konumumu gönder",
+  "chatPickOnMap": "Haritada yer seç",
+  "chatLocationHint": "Konum yaklaşık olarak, yaklaşık 100 metrelik bir bölge olarak paylaşılır.",
+  "chatPhotoPreviewSend": "Fotoğrafı gönder",
+  "chatLocked": "Bu sohbete yeni mesaj gönderilemiyor.",
+  "settingsLanguage": "Dil / Language",
+  "settingsLanguageSubtitle": "Türkçe veya English",
+  "settingsAdPrivacy": "Reklam Gizlilik Tercihleri",
+  "settingsAdPrivacySubtitle": "Reklam kişiselleştirme izni",
+  "adLabel": "Reklam",
+  "unavailableContent": "Bu içerik artık kullanılamıyor.",
+  "connectionsHeader": "Aradığın bağlantılar",
+  "messagesNew": "Yeni mesaj",
+  "messagesTabChats": "Sohbetler",
+  "messagesRequestPending": "Onay bekliyor",
+  "messagesRequestIncoming": "Gelen istek",
+  "messagesSayHi": "Bir merhaba gönder."
+}

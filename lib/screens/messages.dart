@@ -1,5 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import '../widgets/translated_text.dart';
 
+import '../core/app_locale.dart';
 import '../core/theme.dart';
 import '../core/navigation.dart';
 import '../data/app_store.dart';
@@ -14,15 +16,19 @@ class MessagesContent extends StatefulWidget {
 }
 
 class _MessagesContentState extends State<MessagesContent> {
-  String tab = 'Sohbetler', query = '';
+  // 0 = chats, 1 = requests.
+  int tabIndex = 0;
+  String query = '';
   @override
   Widget build(BuildContext context) {
     final store = StoreScope.of(context);
+    final text = context.l10n;
+    final requestsTab = tabIndex == 1;
     final chats = store.conversations
         .where(
           (c) =>
               !store.blocked.contains(c.personId) &&
-              c.request == (tab == 'İstekler') &&
+              c.request == requestsTab &&
               store
                   .person(c.personId)
                   .name
@@ -42,12 +48,12 @@ class _MessagesContentState extends State<MessagesContent> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Mesajlar',
+                      text.messagesTitle,
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                   ),
                   IconButton(
-                    tooltip: 'Yeni mesaj',
+                    tooltip: text.messagesNew,
                     onPressed: () => openPage(
                       context,
                       store.connected ? '/message-recipient' : '/search',
@@ -58,29 +64,31 @@ class _MessagesContentState extends State<MessagesContent> {
               ),
               const SizedBox(height: Space.md),
               TextField(
+                key: const Key('messages-search'),
                 onChanged: (v) => setState(() => query = v),
-                decoration: const InputDecoration(
-                  hintText: 'Sohbetlerde ara',
-                  prefixIcon: Icon(Icons.search),
+                decoration: InputDecoration(
+                  hintText: text.messagesSearchHint,
+                  prefixIcon: const Icon(Icons.search),
+                  isDense: true,
                 ),
               ),
               const SizedBox(height: Space.md),
-              ChoicePills(
-                options: const ['Sohbetler', 'İstekler'],
-                value: tab,
-                onChanged: (v) => setState(() => tab = v),
+              _MessageTabs(
+                labels: [text.messagesTabChats, text.messagesTabRequests],
+                selected: tabIndex,
+                onChanged: (v) => setState(() => tabIndex = v),
               ),
             ],
           ),
         ),
         Expanded(
           child: store.connected
-              ? DirectConversationList(tab == 'İstekler', query)
+              ? DirectConversationList(requestsTab, query)
               : chats.isEmpty
-              ? const SingleChildScrollView(
+              ? SingleChildScrollView(
                   child: EmptyState(
-                    'Bir merhaba ile başlar.',
-                    'Yeni sohbetler ve mesaj istekleri burada görünecek.',
+                    text.messagesEmptyTitle,
+                    text.messagesEmptyBody,
                     icon: Icons.chat_bubble_outline,
                   ),
                 )
@@ -106,7 +114,7 @@ class MessageRow extends StatelessWidget {
         p = store.person(c.personId);
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(vertical: Space.sm),
-      leading: Avatar(p, size: 53, online: c.unread > 0),
+      leading: Avatar(p, size: 53),
       title: Row(
         children: [
           Expanded(
@@ -237,7 +245,7 @@ class _ChatPageState extends State<ChatPage> {
         ),
         actions: [
           PopupMenuButton<String>(
-            tooltip: 'Sohbet seçenekleri',
+            tooltip: tr('Sohbet seçenekleri'),
             onSelected: (v) async {
               if (v == 'report') {
                 openPage(context, '/report', 'Sohbet @${p.handle}');
@@ -245,8 +253,8 @@ class _ChatPageState extends State<ChatPage> {
                 store.unblock(p.id);
               } else if (await confirmAction(
                 context,
-                title: 'Kullanıcı engellensin mi?',
-                message: 'Bu kişiyle mesajlaşma durdurulacak.',
+                title: tr('Kullanıcı engellensin mi?'),
+                message: tr('Bu kişiyle mesajlaşma durdurulacak.'),
                 action: 'Engelle',
               )) {
                 store.block(p.id);
@@ -409,8 +417,8 @@ class _ChatPageState extends State<ChatPage> {
                         maxLines: 5,
                         maxLength: 2000,
                         onChanged: (_) => setState(() {}),
-                        decoration: const InputDecoration(
-                          hintText: 'Bir mesaj yaz…',
+                        decoration: InputDecoration(
+                          hintText: tr('Bir mesaj yaz…'),
                           counterText: '',
                         ),
                         onSubmitted: (_) => send(),
@@ -418,7 +426,7 @@ class _ChatPageState extends State<ChatPage> {
                     ),
                     const SizedBox(width: 8),
                     IconButton.filled(
-                      tooltip: 'Mesajı gönder',
+                      tooltip: tr('Mesajı gönder'),
                       onPressed: text.text.trim().isEmpty ? null : send,
                       icon: const Icon(Icons.send_rounded),
                     ),
@@ -439,7 +447,7 @@ class SharePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final store = StoreScope.of(context);
     return AppPage(
-      title: 'Mesajla Gönder',
+      title: tr('Mesajla Gönder'),
       child: ListView(
         padding: Space.page,
         children: [
@@ -473,4 +481,58 @@ class SharePage extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Two equal tabs ("Sohbetler" / "İstekler") in one soft container: a clear, balanced split instead of loose pills.
+class _MessageTabs extends StatelessWidget {
+  const _MessageTabs({
+    required this.labels,
+    required this.selected,
+    required this.onChanged,
+  });
+  final List<String> labels;
+  final int selected;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(4),
+    decoration: BoxDecoration(
+      color: AppColors.surfaceBlue,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: const Color(0xFFD6E4F7)),
+    ),
+    child: Row(
+      children: [
+        for (final (i, label) in labels.indexed)
+          Expanded(
+            child: Semantics(
+              button: true,
+              selected: i == selected,
+              child: InkWell(
+                key: ValueKey('messages-tab-$i'),
+                borderRadius: BorderRadius.circular(11),
+                onTap: () => onChanged(i),
+                child: Container(
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.symmetric(vertical: 9),
+                  decoration: BoxDecoration(
+                    color: i == selected ? AppColors.action : Colors.transparent,
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13.5,
+                      color: i == selected ? Colors.white : AppColors.navy,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
 }

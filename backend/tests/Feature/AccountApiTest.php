@@ -58,7 +58,7 @@ class AccountApiTest extends TestCase
         $this->postJson('/api/v1/auth/register', $this->registration([
             'username' => 'DENIZ',
             'email' => 'DENIZ@example.test',
-            'birth_date' => now('Europe/Istanbul')->subYears(17)->toDateString(),
+            'birth_date' => now('Europe/Istanbul')->subYears(15)->toDateString(),
             'accepted_terms' => false,
         ]))->assertUnprocessable()->assertJsonValidationErrors([
             'username', 'email', 'birth_date', 'accepted_terms',

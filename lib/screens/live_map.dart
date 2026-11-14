@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import '../widgets/translated_text.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -15,6 +16,7 @@ import '../widgets/common.dart';
 import '../widgets/location_ui.dart';
 import '../widgets/map_attribution.dart';
 import '../widgets/map_note_widgets.dart';
+import '../core/app_locale.dart';
 
 enum _MapMode { people, posts, notes }
 
@@ -50,6 +52,11 @@ class _LiveMapContentState extends State<LiveMapContent> {
   Timer? debounce;
   bool consumedHomeRequest = false;
 
+  /// An approximate point another screen asked this map to show ("Haritada Aç" in a chat, "Haritada Gör" in an
+  /// announcement). Shown with a pin; the camera moves there once.
+  LatLng? focusPoint;
+  bool moveToFocus = false;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -57,6 +64,11 @@ class _LiveMapContentState extends State<LiveMapContent> {
       consumedHomeRequest = true;
       // The Home card "Yakınında N yeni mektup var" opens the map straight in its Notlar view.
       final store = StoreScope.of(context);
+      if (store.mapFocus case final focus?) {
+        store.mapFocus = null;
+        focusPoint = focus;
+        moveToFocus = true;
+      }
       if (store.openMapInNotes && store.mapNotes != null) {
         store.openMapInNotes = false;
         mode = _MapMode.notes;
@@ -203,14 +215,14 @@ class _LiveMapContentState extends State<LiveMapContent> {
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     Text(
-                      '${store.city} · Yaklaşık konumlar',
+                      '${store.city} · ${tr('Yaklaşık konumlar')}',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
                 ),
               ),
               IconButton(
-                tooltip: 'Haritayı yenile',
+                tooltip: tr('Haritayı yenile'),
                 onPressed: () => setState(() {
                   query = null;
                   tileUnavailable = false;
@@ -427,6 +439,14 @@ class _LiveMapContentState extends State<LiveMapContent> {
         });
       }
     }
+    if (moveToFocus && focusPoint != null) {
+      moveToFocus = false;
+      needsInitialFocus = false;
+      final target = focusPoint!;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) mapController.move(target, 15);
+      });
+    }
     final groups = <(double, double), List<MapPostPoint>>{};
     for (final point in points) {
       (groups[(point.latitude, point.longitude)] ??= []).add(point);
@@ -470,6 +490,23 @@ class _LiveMapContentState extends State<LiveMapContent> {
               userAgentPackageName: 'com.senmiydin.app',
               panBuffer: 0,
             ),
+            if (focusPoint case final focus?)
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: focus,
+                    width: 48,
+                    height: 48,
+                    alignment: Alignment.topCenter,
+                    child: const Icon(
+                      Icons.location_on_rounded,
+                      key: Key('map-focus-pin'),
+                      size: 44,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
             MarkerLayer(
               markers: [
                 if (posts)
@@ -547,7 +584,7 @@ class _LiveMapContentState extends State<LiveMapContent> {
                       ),
                     ),
                     IconButton(
-                      tooltip: 'Haritayı tekrar yükle',
+                      tooltip: tr('Haritayı tekrar yükle'),
                       icon: const Icon(Icons.refresh),
                       onPressed: () => setState(() {
                         tileUnavailable = false;

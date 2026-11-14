@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import 'translated_text.dart';
 
 import '../core/navigation.dart';
 import '../core/theme.dart';
@@ -6,6 +7,7 @@ import '../data/account_api.dart';
 import '../data/app_store.dart';
 import '../data/models.dart';
 import 'common.dart';
+import '../core/app_locale.dart';
 
 /// Runs a create / rename call and explains a refusal (duplicate name, limit) in the user's language.
 Future<void> collectionAction(
@@ -268,7 +270,7 @@ class CollectionChips extends StatelessWidget {
         children: [
           chip(
             key: const Key('collection-all'),
-            label: 'Tümü',
+            label: tr('Tümü'),
             on: selected == null,
             onTap: () => onSelect(null),
           ),

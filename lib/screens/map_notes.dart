@@ -1,6 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import '../widgets/translated_text.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:uuid/uuid.dart';
@@ -17,6 +18,7 @@ import '../widgets/common.dart';
 import '../widgets/map_attribution.dart';
 import '../widgets/map_note_widgets.dart';
 import '../widgets/social_page.dart';
+import '../core/app_locale.dart';
 
 /// "Bu noktaya bırakılan notlar": every active note at one approximate point, newest first.
 class MapNotePointPage extends StatefulWidget {
@@ -252,7 +254,7 @@ class _MapNoteDetailPageState extends State<MapNoteDetailPage>
     final store = StoreScope.of(context);
     final confirmed = await confirmAction(
       context,
-      title: 'Mektubu haritadan kaldıralım mı?',
+      title: tr('Mektubu haritadan kaldıralım mı?'),
       message: 'Mektup herkese kapanır ve Mektuplarım → Arşiv’e taşınır. İstediğin zaman tekrar paylaşabilirsin.',
       action: 'Haritadan Kaldır',
     );
@@ -324,7 +326,7 @@ class _MapNoteDetailPageState extends State<MapNoteDetailPage>
   Widget build(BuildContext context) {
     final item = note;
     return AppPage(
-      title: 'Harita Notu',
+      title: tr('Harita Notu'),
       child: loading
           ? const Padding(
               padding: Space.page,
@@ -515,8 +517,8 @@ class _MapNoteDetailPageState extends State<MapNoteDetailPage>
                     maxLines: 4,
                     maxLength: 500,
                     textInputAction: TextInputAction.newline,
-                    decoration: const InputDecoration(
-                      hintText: 'Yanıtla…',
+                    decoration: InputDecoration(
+                      hintText: tr('Yanıtla…'),
                       counterText: '',
                     ),
                     onChanged: (_) => setState(() => sendError = null),
@@ -525,7 +527,7 @@ class _MapNoteDetailPageState extends State<MapNoteDetailPage>
                 const SizedBox(width: 8),
                 IconButton.filled(
                   key: const Key('send-map-note-reply'),
-                  tooltip: 'Yanıtı gönder',
+                  tooltip: tr('Yanıtı gönder'),
                   onPressed: sending || text.text.trim().isEmpty ? null : send,
                   icon: sending
                       ? const SizedBox.square(
@@ -629,7 +631,7 @@ class _MapNoteComposePageState extends State<MapNoteComposePage>
   Widget build(BuildContext context) {
     final store = StoreScope.of(context);
     return AppPage(
-      title: 'Buraya Not Bırak',
+      title: tr('Buraya Not Bırak'),
       child: SingleChildScrollView(
         padding: Space.page,
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -654,8 +656,8 @@ class _MapNoteComposePageState extends State<MapNoteComposePage>
                 minLines: 5,
                 maxLines: 9,
                 maxLength: 700,
-                decoration: const InputDecoration(
-                  hintText: 'Notunu yaz…',
+                decoration: InputDecoration(
+                  hintText: tr('Notunu yaz…'),
                   border: InputBorder.none,
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,
@@ -800,7 +802,7 @@ class _MyLettersPageState extends State<MyLettersPage> {
     final store = StoreScope.of(context);
     final archive = scope == 'Arşiv';
     return AppPage(
-      title: 'Mektuplarım',
+      title: tr('Mektuplarım'),
       child: Column(
         children: [
           Padding(

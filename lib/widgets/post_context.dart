@@ -1,6 +1,7 @@
 import '../core/navigation.dart';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import 'translated_text.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -11,6 +12,7 @@ import '../data/social_api.dart';
 import '../widgets/account_action.dart';
 import 'common.dart';
 import 'map_attribution.dart';
+import '../core/app_locale.dart';
 
 Future<DateTime?> selectContextTime(
   BuildContext context, {
@@ -278,7 +280,7 @@ class _ApproximatePlacePageState extends State<ApproximatePlacePage> {
         ? const LatLng(39.1, 35.2)
         : LatLng(position.latitude, position.longitude);
     return AppPage(
-      title: 'Yaklaşık yer seç',
+      title: tr('Yaklaşık yer seç'),
       child: Column(
         children: [
           const Padding(
@@ -365,7 +367,7 @@ class TravelFields extends StatelessWidget {
         DropdownButtonFormField<String>(
           key: const Key('travel-transport'),
           initialValue: draft.transport,
-          decoration: const InputDecoration(labelText: 'Ulaşım türü'),
+          decoration: InputDecoration(labelText: tr('Ulaşım türü')),
           items: transportLabels.entries
               .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
               .toList(),

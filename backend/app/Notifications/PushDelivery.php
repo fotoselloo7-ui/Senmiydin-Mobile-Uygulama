@@ -20,15 +20,17 @@ class PushDelivery
         }
         $user = User::where('account_status', 'active')->find($row->user_id);
         if ($row->type === 'location_match' && !$user?->location_history_enabled) return;
-        $category = str_starts_with($row->type, 'encounter_') ? 'encounter' : match ($row->type) {
-            'comment_reply' => 'comment',
-            'comment_like' => 'like',
-            default => $row->type,
-        };
+        $category = Inbox::category($row->type);
         if (! $user || ! (($user->push_preferences ?? []) + Inbox::DEFAULTS)[$category]) {
             return;
         }
-        [$route, $message] = Inbox::TYPES[$row->type];
+        [$route] = Inbox::TYPES[$row->type];
+        // The push body follows the recipient's language (announcements carry their own TR/EN text).
+        $locale = $user->preferred_locale === 'en' ? 'en' : 'tr';
+        $message = Inbox::message($row->type, $locale);
+        if ($row->announcement_id && ($announcement = DB::table('announcements')->find($row->announcement_id))) {
+            $message = $locale === 'en' && filled($announcement->title_en) ? $announcement->title_en : $announcement->title;
+        }
         $payload = [
             // comment_reply stores the reply id internally; a tap always opens the post.
             'type' => $row->type, 'route' => $route,

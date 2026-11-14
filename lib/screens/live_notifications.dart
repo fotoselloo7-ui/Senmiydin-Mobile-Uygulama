@@ -1,12 +1,16 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import '../widgets/translated_text.dart';
+import 'package:latlong2/latlong.dart';
 
+import '../core/app_locale.dart';
 import '../core/theme.dart';
 import '../data/app_store.dart';
 import '../data/communication_api.dart';
 import '../widgets/account_action.dart';
 import '../widgets/common.dart';
+import '../widgets/notifications_sheet.dart';
 import '../widgets/social_page.dart';
 
 Future<void> routeInboxNotification(
@@ -17,24 +21,36 @@ Future<void> routeInboxNotification(
     ScaffoldMessenger.of(navigator.context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        const SnackBar(content: Text('Bu içerik artık kullanılamıyor.')),
+        SnackBar(content: Text(navigator.context.l10n.notificationsUnavailable)),
       );
     return;
   }
   if (item.announcementBody case final body?) {
-    await showDialog<void>(
+    final store = StoreScope.of(navigator.context);
+    final openMap = await showDialog<bool>(
       context: navigator.context,
       builder: (context) => AlertDialog(
         title: Text(item.text),
         content: SingleChildScrollView(child: Text(body)),
         actions: [
+          // A location announcement can show its approximate target on the app's own map; never a user's position.
+          if (item.hasMapTarget)
+            TextButton(
+              key: const Key('announcement-see-on-map'),
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(context.l10n.seeOnMap),
+            ),
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Kapat'),
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(context.l10n.close),
           ),
         ],
       ),
     );
+    if (openMap == true && navigator.mounted) {
+      store.mapFocus = LatLng(item.mapLatitude!, item.mapLongitude!);
+      await navigator.pushNamed('/map');
+    }
     return;
   }
   final entity = item.entity?.toString();
@@ -67,11 +83,12 @@ class _LiveNotificationsPageState extends State<LiveNotificationsPage>
   @override
   Widget build(BuildContext context) {
     final store = StoreScope.of(context);
+    final text = context.l10n;
     return AppPage(
-      title: 'Bildirimler',
+      title: text.notificationsTitle,
       actions: [
         IconButton(
-          tooltip: 'Tümünü okundu işaretle',
+          tooltip: text.notificationsMarkAllTooltip,
           onPressed: busy
               ? null
               : () => runAccountAction(() async {
@@ -86,10 +103,16 @@ class _LiveNotificationsPageState extends State<LiveNotificationsPage>
           Padding(
             padding: Space.page,
             child: ChoicePills(
-              options: const ['Tümü', 'Okunmamış'],
-              value: unread ? 'Okunmamış' : 'Tümü',
-              onChanged: (value) =>
-                  setState(() => unread = value == 'Okunmamış'),
+              options: [
+                text.notificationsFilterAll,
+                text.notificationsFilterUnread,
+              ],
+              value: unread
+                  ? text.notificationsFilterUnread
+                  : text.notificationsFilterAll,
+              onChanged: (value) => setState(
+                () => unread = value == text.notificationsFilterUnread,
+              ),
             ),
           ),
           Expanded(
@@ -101,86 +124,42 @@ class _LiveNotificationsPageState extends State<LiveNotificationsPage>
                 onRefresh: refresh,
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: Space.lg),
+                  padding: const EdgeInsets.only(bottom: Space.xl),
                   children: [
                     if (items.isEmpty && footer == null)
-                      const EmptyState(
-                        'Her şey güncel.',
-                        'Yeni etkileşimlerin burada görünecek.',
+                      EmptyState(
+                        text.notificationsEmptyTitle,
+                        text.notificationsEmptyBody,
                         icon: Icons.notifications_none,
                       ),
-                    for (final item in items)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: Space.sm),
-                        child: Container(
-                          decoration: AppShape.card(
-                            color: item.read ? Colors.white : AppColors.pale,
-                          ),
-                          child: Material(
-                            type: MaterialType.transparency,
-                            borderRadius: AppShape.rounded,
-                            clipBehavior: Clip.antiAlias,
-                            child: Semantics(
-                              label: item.read
-                                  ? 'Okundu'
-                                  : 'Okunmamış bildirim',
-                              child: ListTile(
-                                key: ValueKey(('notification', item.id)),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                                leading: _NoticeAvatar(item),
-                                title: Text(
-                                  item.text,
-                                  style: TextStyle(
-                                    fontWeight: item.read
-                                        ? FontWeight.w500
-                                        : FontWeight.w700,
-                                  ),
-                                ),
-                                subtitle: Text(
-                                  item.available
-                                      ? [?item.subtitle, item.time].join(' · ')
-                                      : '${item.time} · İçerik kullanılamıyor',
-                                  style: const TextStyle(
-                                    color: AppColors.muted,
-                                  ),
-                                ),
-                                trailing: item.read
-                                    ? null
-                                    : const Icon(
-                                        Icons.circle,
-                                        size: 7,
-                                        color: AppColors.blue,
+                    for (final group in groupNotifications(items)) ...[
+                      NotificationGroupHeader(group.label(text)),
+                      for (final item in group.items)
+                        NotificationTile(
+                          key: ValueKey(('notification', item.id)),
+                          item: item,
+                          onTap: busy
+                              ? () {}
+                              : () => runAccountAction(() async {
+                                  if (!item.read) {
+                                    await store.communication!
+                                        .readNotification(item.id);
+                                    store.communicationChanged();
+                                  }
+                                  if (context.mounted &&
+                                      (!item.available ||
+                                          item.route != '/notifications' ||
+                                          item.announcementBody != null)) {
+                                    unawaited(
+                                      routeInboxNotification(
+                                        Navigator.of(context),
+                                        item,
                                       ),
-                                onTap: busy
-                                    ? null
-                                    : () => runAccountAction(() async {
-                                        if (!item.read) {
-                                          await store.communication!
-                                              .readNotification(item.id);
-                                          store.communicationChanged();
-                                        }
-                                        if (context.mounted &&
-                                            (!item.available ||
-                                                item.route !=
-                                                    '/notifications' ||
-                                                item.announcementBody !=
-                                                    null)) {
-                                          unawaited(
-                                            routeInboxNotification(
-                                              Navigator.of(context),
-                                              item,
-                                            ),
-                                          );
-                                        }
-                                      }),
-                              ),
-                            ),
-                          ),
+                                    );
+                                  }
+                                }),
                         ),
-                      ),
+                    ],
                     ?footer,
                   ],
                 ),
@@ -189,47 +168,6 @@ class _LiveNotificationsPageState extends State<LiveNotificationsPage>
           ),
         ],
       ),
-    );
-  }
-}
-
-class _NoticeAvatar extends StatelessWidget {
-  const _NoticeAvatar(this.item);
-  final InboxNotification item;
-
-  @override
-  Widget build(BuildContext context) {
-    final icon = switch (item.type) {
-      'like' => Icons.favorite_border,
-      'comment' || 'comment_reply' => Icons.chat_bubble_outline,
-      'comment_like' => Icons.favorite_border,
-      'follow' => Icons.person_add_outlined,
-      'message' || 'message_request' => Icons.mail_outline,
-      'location_match' || 'nearby_activity' => Icons.location_on_outlined,
-      'map_note_nearby' || 'map_note_reply' => Icons.mail_outline_rounded,
-      'system' => Icons.campaign_outlined,
-      _ => Icons.favorite_border,
-    };
-    if (item.actor == null) {
-      return CircleAvatar(
-        backgroundColor: Colors.white,
-        child: Icon(icon, color: AppColors.blue),
-      );
-    }
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Avatar(item.actor, size: 43),
-        Positioned(
-          right: -3,
-          bottom: -3,
-          child: CircleAvatar(
-            radius: 10,
-            backgroundColor: Colors.white,
-            child: Icon(icon, color: AppColors.blue, size: 13),
-          ),
-        ),
-      ],
     );
   }
 }

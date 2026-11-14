@@ -5,7 +5,8 @@ import '../data/compose_draft.dart';
 import '../data/post_context.dart';
 import '../widgets/post_context.dart';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import '../widgets/translated_text.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
@@ -21,6 +22,7 @@ import '../data/models.dart';
 import '../data/mock_data.dart';
 import '../widgets/common.dart';
 import '../widgets/social.dart';
+import '../core/app_locale.dart';
 
 class ComposePage extends StatefulWidget {
   const ComposePage({
@@ -511,8 +513,8 @@ class _ComposePageState extends State<ComposePage>
         }
         if (await confirmAction(
               context,
-              title: 'Paylaşımdan çıkılsın mı?',
-              message: 'Bu ekrandaki taslağın silinecek.',
+              title: tr('Paylaşımdan çıkılsın mı?'),
+              message: tr('Bu ekrandaki taslağın silinecek.'),
               action: 'Çık',
             ) &&
             context.mounted) {
@@ -549,7 +551,7 @@ class _ComposePageState extends State<ComposePage>
                   key: const Key('encounter-story-title'),
                   controller: storyTitle,
                   maxLength: 100,
-                  decoration: const InputDecoration(labelText: 'Başlık'),
+                  decoration: InputDecoration(labelText: tr('Başlık')),
                   onChanged: (_) => setState(() {}),
                 ),
               TextField(
@@ -661,14 +663,14 @@ class _ComposePageState extends State<ComposePage>
                     _QuickAction(
                       key: const Key('compose-photo'),
                       icon: Icons.image_outlined,
-                      tooltip: 'Fotoğraf Ekle',
+                      tooltip: tr('Fotoğraf Ekle'),
                       onPressed: busy ? null : pickPhotos,
                     ),
                     const SizedBox(width: 8),
                     _QuickAction(
                       key: const Key('compose-camera'),
                       icon: Icons.camera_alt_outlined,
-                      tooltip: 'Kamerayı Aç',
+                      tooltip: tr('Kamerayı Aç'),
                       onPressed: busy ? null : camera,
                     ),
                   ],
@@ -720,7 +722,7 @@ class _ComposePageState extends State<ComposePage>
                     trailing: taggedId == null
                         ? null
                         : IconButton(
-                            tooltip: 'Etiketi kaldır',
+                            tooltip: tr('Etiketi kaldır'),
                             onPressed: () => setState(() => taggedId = null),
                             icon: const Icon(Icons.close),
                           ),
@@ -805,7 +807,7 @@ class _ComposePageState extends State<ComposePage>
                               });
                             }
                           },
-                    subtitle: 'Cihaz konumundan yaklaşık bir bölge eklenir.',
+                    subtitle: tr('Cihaz konumundan yaklaşık bir bölge eklenir.'),
                   ),
                 PreferenceRow(
                   'Anonim paylaş',
@@ -816,7 +818,7 @@ class _ComposePageState extends State<ComposePage>
                       taggedId = null;
                     }
                   }),
-                  subtitle: 'Adın ve profilin bu paylaşımda görünmez.',
+                  subtitle: tr('Adın ve profilin bu paylaşımda görünmez.'),
                 ),
               ],
               const SizedBox(height: Space.md),

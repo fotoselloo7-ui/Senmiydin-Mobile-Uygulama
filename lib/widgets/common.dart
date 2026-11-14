@@ -1,12 +1,14 @@
 import '../core/brand_assets.dart';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import 'translated_text.dart';
 
 import '../core/theme.dart';
 import '../core/navigation.dart';
 import '../data/account_api.dart';
 import '../data/app_store.dart';
 import '../data/models.dart';
+import '../core/app_locale.dart';
 
 class Brand extends StatelessWidget {
   const Brand({super.key, this.size = 27, this.alignment = Alignment.center});
@@ -65,7 +67,7 @@ class AppPage extends StatelessWidget {
                 Row(
                   children: [
                     IconButton(
-                      tooltip: 'Geri',
+                      tooltip: tr('Geri'),
                       onPressed: () => Navigator.maybePop(context),
                       icon: const Icon(Icons.chevron_left_rounded, size: 29),
                     ),
@@ -881,6 +883,106 @@ class PreferenceRow extends StatelessWidget {
   );
 }
 
+/// Multi-select options laid out in an even grid: an even number of options (4 -> 2x2, 6 -> 2x3) never leaves one
+/// orphan option alone on the last row, and every tile in a row has the same width and height. Odd counts fall back
+/// to a centred wrap. Used where balance matters (profile "Aradığın bağlantılar"); [ChoicePills] is untouched.
+class BalancedChoiceGrid extends StatelessWidget {
+  const BalancedChoiceGrid({
+    super.key,
+    required this.options,
+    required this.isSelected,
+    required this.onToggle,
+    this.enabled = true,
+  });
+  final List<String> options;
+  final bool Function(String option) isSelected;
+  final void Function(String option, bool selected) onToggle;
+  final bool enabled;
+
+  Widget _tile(String option) {
+    final on = isSelected(option);
+    return Semantics(
+      button: true,
+      selected: on,
+      label: option,
+      excludeSemantics: true,
+      child: Material(
+        color: on ? AppColors.action : AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(color: on ? AppColors.action : AppColors.line),
+        ),
+        child: InkWell(
+          key: ValueKey('choice-$option'),
+          customBorder: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          onTap: enabled ? () => onToggle(option, !on) : null,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (on) ...[
+                    const Icon(Icons.check_rounded, size: 16, color: Colors.white),
+                    const SizedBox(width: 4),
+                  ],
+                  Flexible(
+                    child: Text(
+                      option,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: 'NunitoSans',
+                        fontSize: 13,
+                        height: 1.2,
+                        fontWeight: on ? FontWeight.w800 : FontWeight.w600,
+                        color: on ? Colors.white : AppColors.navy,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (options.length.isOdd || options.length < 2) {
+      return Wrap(
+        alignment: WrapAlignment.center,
+        spacing: Space.sm,
+        runSpacing: Space.sm,
+        children: [for (final o in options) _tile(o)],
+      );
+    }
+    return Column(
+      children: [
+        for (var i = 0; i < options.length; i += 2) ...[
+          if (i > 0) const SizedBox(height: Space.sm),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: _tile(options[i])),
+                const SizedBox(width: Space.sm),
+                Expanded(child: _tile(options[i + 1])),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class ChoicePills extends StatelessWidget {
   const ChoicePills({
     super.key,
@@ -1033,8 +1135,8 @@ class _CityPickerState extends State<_CityPicker> {
             const SizedBox(height: Space.sm),
             if (widget.store.connected)
               TextField(
-                decoration: const InputDecoration(
-                  hintText: 'Şehir ara',
+                decoration: InputDecoration(
+                  hintText: tr('Şehir ara'),
                   prefixIcon: Icon(Icons.search),
                 ),
                 onChanged: (value) => setState(() => query = value),
@@ -1139,7 +1241,7 @@ class _FieldState extends State<Field> {
       maxLength: widget.maxLength,
       onChanged: widget.onChanged,
       decoration: InputDecoration(
-        labelText: widget.label,
+        labelText: tr(widget.label),
         prefixIcon: Icon(widget.icon, size: AppDimensions.icon),
         suffixIcon: !widget.obscure
             ? null

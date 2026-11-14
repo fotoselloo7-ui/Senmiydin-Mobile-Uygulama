@@ -1,12 +1,14 @@
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import 'translated_text.dart';
 
 import '../core/brand_assets.dart';
 import '../core/navigation.dart';
 import '../core/theme.dart';
 import '../data/app_store.dart';
 import 'common.dart';
+import '../core/app_locale.dart';
 
 /// Production-ready side drawer matching the approved SenMiydin visual reference.
 ///
@@ -269,7 +271,7 @@ class _DrawerProfileCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: 'Profilimi aç',
+      label: tr('Profilimi aç'),
       child: Material(
         color: Colors.transparent,
         child: InkWell(

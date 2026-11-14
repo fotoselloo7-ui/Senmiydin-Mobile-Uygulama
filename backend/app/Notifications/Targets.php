@@ -55,7 +55,7 @@ final class Targets
             ->whereIn('id', $items->pluck('announcement_id')->filter())->pluck('id')->flip();
 
         return $items->mapWithKeys(fn ($item) => [$item->id => match (true) {
-            in_array($item->type, ['like', 'comment', 'location_match', 'nearby_activity'], true) => $posts->has($item->entity_id),
+            in_array($item->type, ['like', 'comment', 'location_match', 'nearby_activity', 'nearby_post'], true) => $posts->has($item->entity_id),
             in_array($item->type, ['message', 'message_request'], true) => $chats->has($item->entity_id),
             in_array($item->type, ['comment_reply', 'comment_like'], true) => isset($replies[$item->entity_id]),
             in_array($item->type, ['map_note_nearby', 'map_note_reply'], true) => $notes->has($item->entity_id),

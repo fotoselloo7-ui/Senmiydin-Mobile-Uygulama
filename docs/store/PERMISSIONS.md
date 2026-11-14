@@ -16,7 +16,8 @@ Denetim: 9 Kasım 2026. Kanıt yalnız source manifest değildir: Gradle :app:pr
 | CAMERA | **Yok** | image_picker dış kamera uygulaması/intent | Kamera eylemi isteğe bağlı | Kamera app yoksa/iptalde hata veya seçili mevcut metin; yeni kamera izni eklenmez |
 | READ_MEDIA_IMAGES / READ_MEDIA_VIDEO / READ_EXTERNAL_STORAGE / WRITE_EXTERNAL_STORAGE | **Yok** | Sistem photo picker, kullanıcı seçimi ve URI erişimi | Fotoğraf ekle, profil/mesaj seçimi isteğe bağlı | İptal/ret durumunda metinle devam; geniş galeri taraması yok |
 | RECORD_AUDIO / READ_CONTACTS / ACTIVITY_RECOGNITION | **Yok** | Ses, rehber tarama veya aktivite SDK özelliği yok | Talep edilmez | — |
-| com.google.android.gms.permission.AD_ID / AD_SERVICES_* / BILLING | **Yok** | Reklam / IAP yok | Talep edilmez | — |
+| com.google.android.gms.permission.AD_ID / AD_SERVICES_* | **Var (google_mobile_ads ile birleşir)** | AdMob reklam kimliği | Play “Advertising ID” beyanı **Evet, reklam amaçlı** | Konum bu izinle ilişkilendirilmez |
+| BILLING | **Yok** | IAP yok | Talep edilmez | — |
 | USE_BIOMETRIC / USE_FINGERPRINT | **Yok**, source merger remove | Güvenli depolamanın kullanılmayan biyometri izni çıkarılmış | Talep edilmez | Parola/secure-storage akışı |
 | WAKE_LOCK / ACCESS_NETWORK_STATE | Birleşik manifestte var | Firebase/transport altyapı bağımlılıkları | Normal izin; runtime prompt yok | Yapılandırılmamış push başarılı sayılmaz |
 | com.google.android.c2dm.permission.RECEIVE | Birleşik manifestte var | FCM receiver | Normal Google altyapı izni | Push isteğe bağlı |

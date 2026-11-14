@@ -43,7 +43,7 @@
             @elseif(in_array($key, ['moderation_banned_words','moderation_blocked_domains'], true))
                 <label>{{ $label }}<textarea name="{{ $key }}" rows="4" maxlength="4000">{{ old($key, $settings[$key]) }}</textarea></label>
             @else
-                <label>{{ $label }}<input name="{{ $key }}" value="{{ old($key, $settings[$key]) }}" @if(in_array($key, ['minimum_age','max_post_photos','location_history_days','moderation_max_mentions','moderation_max_links','moderation_post_repeats','moderation_comment_repeats','moderation_repeat_seconds'], true)) type="number" min="1" @endif></label>
+                <label>{{ $label }}<input name="{{ $key }}" value="{{ old($key, $settings[$key]) }}" @if(in_array($key, ['minimum_age','feed_ad_interval','max_post_photos','location_history_days','moderation_max_mentions','moderation_max_links','moderation_post_repeats','moderation_comment_repeats','moderation_repeat_seconds'], true)) type="number" min="1" @endif></label>
             @endif
         @endforeach</div>
         <button class="button">Ayarları kaydet</button>
@@ -88,9 +88,30 @@
         </section>
     @elseif($section === 'announcements')
         <form class="panel fields" method="post" action="{{ route('admin.announcements.create') }}">
-            @csrf<h2>Duyuru oluştur</h2><label>Başlık<input name="title" required maxlength="120" value="{{ old('title') }}"></label>
-            <label>Açıklama<textarea name="body" required maxlength="2000" rows="4">{{ old('body') }}</textarea></label>
-            <div class="field-grid"><label>Hedef şehir<select name="city_id"><option value="">Tüm kullanıcılar</option>@foreach($cities as $city)<option value="{{ $city->id }}">{{ $city->name }}</option>@endforeach</select></label>
+            @csrf<h2>Duyuru oluştur</h2>
+            <div class="field-grid">
+                <label>Türkçe başlık<input name="title" required maxlength="120" value="{{ old('title') }}"></label>
+                <label>English title (optional)<input name="title_en" maxlength="120" value="{{ old('title_en') }}"></label>
+            </div>
+            <div class="field-grid">
+                <label>Türkçe metin<textarea name="body" required maxlength="2000" rows="4">{{ old('body') }}</textarea></label>
+                <label>English body (optional, falls back to Turkish)<textarea name="body_en" maxlength="2000" rows="4">{{ old('body_en') }}</textarea></label>
+            </div>
+            <fieldset class="target-picker">
+                <legend>Hedef</legend>
+                <label class="toggle"><input type="radio" name="target_type" value="all" @checked(old('target_type', 'all') === 'all')> Tüm kullanıcılar</label>
+                <label class="toggle"><input type="radio" name="target_type" value="city" @checked(old('target_type') === 'city')> Şehir</label>
+                <label class="toggle"><input type="radio" name="target_type" value="location" @checked(old('target_type') === 'location')> Yaklaşık konum</label>
+            </fieldset>
+            <div class="field-grid"><label>Şehir (şehir hedefi için; konum hedefinde isteğe bağlı kısıt)<select name="city_id"><option value="">Seçilmedi</option>@foreach($cities as $city)<option value="{{ $city->id }}" @selected(old('city_id') == $city->id)>{{ $city->name }}</option>@endforeach</select></label>
+            <label>Konum yarıçapı<select name="target_radius_m"><option value="500" @selected(old('target_radius_m') == 500)>500 m</option><option value="1000" @selected(old('target_radius_m', 1000) == 1000)>1 km</option><option value="5000" @selected(old('target_radius_m') == 5000)>5 km</option></select></label></div>
+            <div id="target-map-box" class="panel" hidden>
+                <p>Haritaya dokunarak yaklaşık hedef noktayı seç. Yalnızca bu bölgede yakın zamanda bulunan hesaplara gönderilir; kimsenin konumu burada listelenmez.</p>
+                <div id="target-map" role="application" aria-label="Duyuru hedef noktası" style="height:320px;border-radius:12px"></div>
+                <div class="field-grid"><label>Enlem<input id="target_latitude" name="target_latitude" inputmode="decimal" value="{{ old('target_latitude') }}"></label>
+                <label>Boylam<input id="target_longitude" name="target_longitude" inputmode="decimal" value="{{ old('target_longitude') }}"></label></div>
+            </div>
+            <div class="field-grid">
             <label>Yayın zamanı (Türkiye)<input type="datetime-local" name="publish_at" value="{{ old('publish_at') }}"></label>
             <label>Bitiş zamanı (opsiyonel)<input type="datetime-local" name="expires_at" value="{{ old('expires_at') }}"></label></div>
             <label class="toggle"><input type="hidden" name="show_in_app" value="0"><input type="checkbox" name="show_in_app" value="1" checked> Uygulama içinde göster</label>
@@ -98,6 +119,38 @@
             <label class="toggle"><input type="hidden" name="is_active" value="0"><input type="checkbox" name="is_active" value="1" checked> Aktif olarak yayınla</label>
             <button class="button">Duyuruyu kaydet</button>
         </form>
+        <link rel="stylesheet" href="{{ asset('web/vendor/leaflet/leaflet.css') }}">
+        <script src="{{ asset('web/vendor/leaflet/leaflet.js') }}"></script>
+        <script>
+        (function () {
+            var radios = document.querySelectorAll('input[name=target_type]');
+            var box = document.getElementById('target-map-box');
+            var lat = document.getElementById('target_latitude'), lng = document.getElementById('target_longitude');
+            var map = null, marker = null, circle = null;
+            var radius = document.querySelector('select[name=target_radius_m]');
+            function draw() {
+                if (!map || !lat.value || !lng.value) return;
+                var point = [parseFloat(lat.value), parseFloat(lng.value)];
+                if (isNaN(point[0]) || isNaN(point[1])) return;
+                if (!marker) marker = L.marker(point).addTo(map); else marker.setLatLng(point);
+                if (!circle) circle = L.circle(point, {radius: parseInt(radius.value, 10)}).addTo(map); else circle.setLatLng(point).setRadius(parseInt(radius.value, 10));
+            }
+            function show() {
+                var on = document.querySelector('input[name=target_type]:checked').value === 'location';
+                box.hidden = !on;
+                if (on && !map) {
+                    map = L.map('target-map').setView([lat.value ? parseFloat(lat.value) : 36.544, lng.value ? parseFloat(lng.value) : 32.0], lat.value ? 13 : 10);
+                    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 18, attribution: '© OpenStreetMap contributors'}).addTo(map);
+                    map.on('click', function (e) { lat.value = e.latlng.lat.toFixed(5); lng.value = e.latlng.lng.toFixed(5); draw(); });
+                    draw();
+                }
+                if (map) setTimeout(function () { map.invalidateSize(); }, 50);
+            }
+            radios.forEach(function (r) { r.addEventListener('change', show); });
+            radius.addEventListener('change', draw); lat.addEventListener('change', draw); lng.addEventListener('change', draw);
+            show();
+        })();
+        </script>
     @endif
     <section class="panel table-panel"><div class="table-wrap"><table>
         <thead><tr><th scope="col">Kayıt</th><th scope="col">Bilgi</th><th scope="col">Durum / İşlem</th></tr></thead>
@@ -145,8 +198,8 @@
                     @break
                 @case('announcements')
                     @php($expired = $row->expires_at && \Illuminate\Support\Carbon::parse($row->expires_at)->isPast())
-                    <td>{{ $row->title }}<small>{{ \Illuminate\Support\Str::limit($row->body, 120) }}</small></td>
-                    <td>{{ $cities->firstWhere('id', $row->city_id)?->name ?? 'Tüm kullanıcılar' }}<small>Yayın: {{ Records::time($row->publish_at) }}{{ $row->expires_at ? ' · Bitiş: '.Records::time($row->expires_at) : '' }}</small></td>
+                    <td>{{ $row->title }}<small>{{ \Illuminate\Support\Str::limit($row->body, 120) }}</small>@if($row->title_en)<small>EN: {{ $row->title_en }}</small>@endif</td>
+                    <td>@if(($row->target_type ?? 'all') === 'location')Yaklaşık konum · {{ $row->target_radius_m >= 1000 ? ($row->target_radius_m / 1000).' km' : $row->target_radius_m.' m' }}{{ $row->city_id ? ' · '.$cities->firstWhere('id', $row->city_id)?->name : '' }}@else{{ $cities->firstWhere('id', $row->city_id)?->name ?? 'Tüm kullanıcılar' }}@endif<small>Hedeflenen: {{ $row->targeted_count }} · Bildirim oluşturulan: {{ $row->delivered_count }}</small><small>Yayın: {{ Records::time($row->publish_at) }}{{ $row->expires_at ? ' · Bitiş: '.Records::time($row->expires_at) : '' }}</small></td>
                     <td>
                         <span class="chip">{{ !$row->is_active ? 'Pasif' : ($expired ? 'Süresi doldu' : ($row->published_at ? 'Yayınlandı' : 'Planlandı')) }}</span>
                         <form method="post" action="{{ route('admin.announcements.update', $row->id) }}" class="inline-form">@csrf

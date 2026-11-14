@@ -1,5 +1,7 @@
 import 'package:image_picker/image_picker.dart';
 
+import '../core/app_locale.dart';
+
 import 'account_api.dart';
 import 'models.dart';
 import 'social_api.dart';
@@ -18,11 +20,27 @@ class DirectMessage {
       image = ApiClient.mediaUrl(json['image'] as String?),
       read = json['read_at'] != null,
       date = DateTime.parse(json['created_at'] as String).toLocal(),
-      preview = json['type'] == 'image' ? 'Fotoğraf' : json['body'] as String;
+      type = json['type'] as String? ?? 'text',
+      latitude = ((json['location'] as Map?)?['latitude'] as num?)?.toDouble(),
+      longitude = ((json['location'] as Map?)?['longitude'] as num?)
+          ?.toDouble(),
+      placeLabel = (json['location'] as Map?)?['place_label'] as String?;
   final int id;
-  final String body, image, preview;
+  final String body, image, type;
+  final String? placeLabel;
   final bool mine, read;
   final DateTime date;
+
+  /// Approximate point of a location message (the server already snapped it; never a live position).
+  final double? latitude, longitude;
+  bool get isLocation => type == 'location' && latitude != null;
+
+  /// One-line text for conversation lists and notifications.
+  String get preview => switch (type) {
+    'image' => currentL10n.messagesPreviewPhoto,
+    'location' => currentL10n.messagesPreviewLocation,
+    _ => body,
+  };
 }
 
 class DirectConversation {
@@ -63,6 +81,11 @@ class InboxNotification {
       subtitle = json['subtitle'] as String?,
       read = json['read'] == true,
       available = json['available'] != false,
+      createdAt = DateTime.parse(json['created_at'] as String).toLocal(),
+      mapLatitude = ((json['map_target'] as Map?)?['latitude'] as num?)
+          ?.toDouble(),
+      mapLongitude = ((json['map_target'] as Map?)?['longitude'] as num?)
+          ?.toDouble(),
       time = socialTime(json['created_at'] as String);
   final int id;
   final int? entity;
@@ -71,6 +94,11 @@ class InboxNotification {
   final Person? actor;
   final bool read;
   final bool available;
+  final DateTime createdAt;
+
+  /// Approximate target of a location announcement ("Haritada Gör"); never a user's position.
+  final double? mapLatitude, mapLongitude;
+  bool get hasMapTarget => mapLatitude != null && mapLongitude != null;
 }
 
 int accountId(String id) => int.parse(id.replaceFirst('account-', ''));
@@ -129,13 +157,23 @@ class CommunicationApi {
     Person peer,
     String body,
     String requestId,
-    XFile? image,
-  ) async {
+    XFile? image, {
+    ({double latitude, double longitude, String? label})? location,
+  }) async {
     final data = await client.send(
       'POST',
       'users/${accountId(peer.id)}/messages',
       authenticated: true,
-      body: {'body': body, 'request_id': requestId},
+      body: {
+        'body': body,
+        'request_id': requestId,
+        if (location != null) ...{
+          'latitude': location.latitude,
+          'longitude': location.longitude,
+          if (location.label != null && location.label!.isNotEmpty)
+            'place_label': location.label,
+        },
+      },
       messageImage: image,
     ) as Map<String, dynamic>;
     return (

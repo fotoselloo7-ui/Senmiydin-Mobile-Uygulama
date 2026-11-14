@@ -554,7 +554,12 @@ void main() {
         expect(find.byKey(const Key('comments-context')), findsOneWidget);
         expect(
           tester
-              .widget<Text>(find.byKey(const Key('comments-context')))
+              .widget<Text>(
+                find.descendant(
+                  of: find.byKey(const Key('comments-context')),
+                  matching: find.byType(Text),
+                ),
+              )
               .maxLines,
           1,
         );

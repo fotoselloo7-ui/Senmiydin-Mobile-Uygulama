@@ -1,6 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import '../widgets/translated_text.dart';
 
 import '../core/theme.dart';
 import '../core/navigation.dart';
@@ -13,6 +14,7 @@ import '../widgets/location_ui.dart';
 import 'live_map.dart';
 import '../widgets/social.dart';
 import '../widgets/social_page.dart';
+import '../core/app_locale.dart';
 
 String searchKey(String value) => turkishSearchKey(value);
 
@@ -32,7 +34,7 @@ class _FilterPageState extends State<FilterPage> {
     interests ??= store.loadInterests();
     final f = draft!;
     return AppPage(
-      title: 'Filtreler',
+      title: tr('Filtreler'),
       actions: [
         TextButton(
           onPressed: () => setState(() => draft = FeedFilter()),
@@ -265,7 +267,7 @@ class _SearchPageState extends State<SearchPage> {
                       suffixIcon: controller.text.isEmpty
                           ? null
                           : IconButton(
-                              tooltip: 'Aramayı temizle',
+                              tooltip: tr('Aramayı temizle'),
                               onPressed: () {
                                 controller.clear();
                                 searchChanged(store.connected);
@@ -475,7 +477,7 @@ class NearbyPage extends StatelessWidget {
     final store = StoreScope.of(context);
     if (store.connected) {
       return AppPage(
-        title: 'Yakınındaki İnsanlar',
+        title: tr('Yakınındaki İnsanlar'),
         child: NearbyResults(
           builder: (context, people, status, retry) => ListView(
             padding: Space.page,
@@ -509,7 +511,7 @@ class NearbyPage extends StatelessWidget {
         .where((p) => p.id != store.me.id)
         .toList();
     return AppPage(
-      title: 'Yakınındaki İnsanlar',
+      title: tr('Yakınındaki İnsanlar'),
       child: ListView(
         padding: Space.page,
         children: [
@@ -755,7 +757,7 @@ class _MapContentState extends State<MapContent> {
                           const SizedBox(height: 6),
                           FloatingActionButton.small(
                             heroTag: 'zoom-out',
-                            tooltip: 'Haritayı sıfırla',
+                            tooltip: tr('Haritayı sıfırla'),
                             backgroundColor: Colors.white,
                             foregroundColor: AppColors.blue,
                             onPressed: () =>

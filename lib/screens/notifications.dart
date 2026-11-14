@@ -1,10 +1,12 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import '../widgets/translated_text.dart';
 
 import '../core/theme.dart';
 import '../core/navigation.dart';
 import '../data/app_store.dart';
 import '../data/models.dart';
 import '../widgets/common.dart';
+import '../core/app_locale.dart';
 
 class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key});
@@ -25,10 +27,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
             )
             .toList();
     return AppPage(
-      title: 'Bildirimler',
+      title: tr('Bildirimler'),
       actions: [
         IconButton(
-          tooltip: 'Tümünü okundu işaretle',
+          tooltip: tr('Tümünü okundu işaretle'),
           onPressed: store.readAll,
           icon: const Icon(Icons.done_all, color: AppColors.blue),
         ),

@@ -190,7 +190,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 250));
     }
     expect(store.unreadMessages, 0);
-    await tap(find.byTooltip('Fotoğraf ekle'));
+    // Photo goes through the new attachment menu: [ + ] → Fotoğraf.
+    await tap(find.byKey(const Key('chat-attach')));
+    await tap(find.byKey(const ValueKey('attach-photo')));
     await waitFor(find.text('Fotoğraf eklendi'));
     await tap(find.byTooltip('Mesajı gönder'));
     await waitFor(
@@ -209,8 +211,8 @@ void main() {
 
     await tap(find.byType(BackButton));
 
-    await waitFor(find.widgetWithText(ListTile, elif.name));
-    await tap(find.widgetWithText(ListTile, elif.name));
+    await waitFor(find.widgetWithText(ConversationTile, elif.name));
+    await tap(find.widgetWithText(ConversationTile, elif.name));
     await waitFor(find.byTooltip('Sohbet seçenekleri'));
     final nearbyBefore =
         await client.send('GET', 'nearby/users', authenticated: true) as Map;
@@ -244,8 +246,8 @@ void main() {
     await tap(find.text('Engeli Kaldır'));
     await waitFor(find.text('Engellenen kullanıcı yok.'));
     await tap(back);
-    await waitFor(find.widgetWithText(ListTile, elif.name));
-    await tap(find.widgetWithText(ListTile, elif.name));
+    await waitFor(find.widgetWithText(ConversationTile, elif.name));
+    await tap(find.widgetWithText(ConversationTile, elif.name));
     await waitFor(input);
     await enter(input, 'Tekrar merhaba, fotoğrafı görebildin mi?');
     await tap(find.byTooltip('Mesajı gönder'));

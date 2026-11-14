@@ -1,6 +1,35 @@
 # Yaş, mağaza ve 16+ hazırlık raporu
 
-Durum: 14 Kasım 2026. **Üretim minimum yaşı 18 olarak kalır.** Bu belge, 16+ desteğine geçmeden önce ne yapılması gerektiğini ve uygulamanın şu an mağaza formlarında neyi beyan etmesi gerektiğini açıklar. Hiçbir beyan, ürünün gerçek özelliklerini gizleyecek şekilde yazılmamalıdır.
+## 0. Güncel durum — 15 Kasım 2026: minimum yaş 16, teen / adult ayrımı uygulandı
+
+`MINIMUM_AGE` varsayılanı **16** oldu (`config/mobile.php` → doğrulama, `/app-config`, panel sınırı 16–25, Flutter tarih seçici ve metinleri tek kaynaktan). 13–15 yaş kabul edilmez. Bu değişiklik, aşağıdaki bölüm 4'te "yapılmadan 16'ya geçilmez" denen güvenlik açıklarının **sunucu tarafında kapatılmasından sonra** yapıldı.
+
+**Yaş bandı modeli (`App\Safety\AgeSafety`):** `TEEN = 16–17`, `ADULT = 18+`. Band yalnızca `users.birth_date` değerinden türetilir (18. doğum günü kesin sınırdır, Europe/Istanbul); kullanıcı, istek alanı veya panel değiştiremez (`age_band` profilde salt okunurdur). 18 yaşına gelen hesap otomatik yetişkin bandına geçer.
+
+**Uygulama noktası:** kullanıcılar arası her "A, B'yi görebilir mi / etkileşebilir mi" kararı zaten `Blocks::between` / `Blocks::exclude` üzerinden geçtiği için yaş bandı bariyeri bu iki merkezi fonksiyona eklendi; bandı farklı iki hesap **engellenmiş çift gibi** davranır. Böylece bir yüzey unutulamaz ve Flutter filtresine güvenilmez.
+
+| Bölüm 4 satırı | Durum | Kanıt |
+|---|---|---|
+| Yetişkin ↔ genç doğrudan mesaj / mesaj isteği | KAPALI (404, kayıt oluşmaz) | `AgeSafetyTest::test_direct_messages_and_requests_are_never_created_across_bands` |
+| Mevcut cross-band sohbet (18'e geçiş dahil) | Gizlenir ve kilitlenir; yeni mesaj 404; deterministik, çökme yok | `test_an_existing_conversation_locks_when_the_bands_stop_matching` |
+| Kullanıcı arama, profil erişimi, takip, takipçi / takip edilen | Yalnız aynı band | `test_user_search_and_profiles_stay_inside_the_band`, `test_follow_followers_and_following_do_not_cross_bands` |
+| Yakındaki İnsanlar | Yalnız aynı band; teen için varsayılan kapalı (opt-in) | `test_nearby_people_exclude_the_other_band`, `test_registration_accepts_sixteen_and_rejects_fifteen` |
+| Karşılaşma etiketi / arama / isteği | Cross-band etiket 422, istek oluşmaz | `test_encounter_tag_search_and_requests_do_not_cross_bands` |
+| Harita notu görünürlüğü ve yanıtları | Teen notu yalnız teen'e görünür; yetişkin yanıtlayamaz | `test_map_notes_and_replies_stay_inside_the_band` |
+| Konum bildirimleri (nearby / location_match / yakındaki mektup / yakındaki paylaşım) | Cross-band bildirim üretilmez | `test_notifications_never_cross_bands`, `GlobalReleaseTest::test_nearby_post_skips_blocked_other_band_and_stronger_history_matches` |
+| Akış, gönderi, yorum etkileşimi | Aynı band; sonradan farklılaşan yorumlar gizlenir | `test_feed_posts_and_comments_stay_inside_the_band`, `test_a_comment_written_before_the_barrier_is_hidden_from_the_other_band` |
+| Reklam | Teen hesapta yaş kısıtlı işleme + kişiselleştirilmemiş istek; konum reklama gitmez | `test/global_release_test.dart` (Native feed ads) |
+| Yaş doğrulama (belge) | **Kapsam dışı / dış karar:** yalnız beyan; yanlış beyan süreci işletici politikasına bağlıdır | — |
+
+Admin / moderatör hesapları ayrı `admins` modelindedir ve tüm içerikleri görebilir.
+
+**Apple App Store yaş anketi (gerçek özelliklere göre):** Social Media = **Evet**; User Generated Content = **Evet**; Messaging = **Evet** (birebir, istek tabanlı); Shared Location = **Evet** (yaklaşık konum, Harita Notları, konum mesajı; canlı takip yok); Advertising = **Evet** (AdMob); Dating and Relationships: ürün bir flört / eşleşme deste uygulaması değildir ancak gerçek karşılaşma, etiketleme ve birebir mesaj özellikleri gizlenmeden incelemede **açıkça anlatılır** (review notları `docs/store/localization/*/app_store.json`). Apple'ın hesapladığı minimum derecelendirme kodla aşılmaya çalışılmaz; doğru anket yanıtları sonucu belirler.
+
+**Google Play:** hedef kitle 16+ (13–15 dışarıda); *Contains ads = Yes*; Data Safety'de doğum tarihi (yaş kontrolü), mesajlar, yaklaşık konum, AdMob reklam kimliği beyan edilir ([GOOGLE_PLAY_DATA_SAFETY.md](store/GOOGLE_PLAY_DATA_SAFETY.md)).
+
+**EXTERNAL:** işletici kimliği (unvan, adres, MERSIS, KVKK e-postası) panelden girilmeden `senmiydin:production-check` "Operator identity" satırı MISSING verir; gerçek AdMob App ID / ad unit ID'leri ve AdMob konsolunda UMP mesajı; yaş doğrulama stratejisi kararı.
+
+Durum: 14 Kasım 2026 (tarihsel). **Güncel durum 15 Kasım 2026: üretim minimum yaşı 16** — bkz. bölüm 0. Bu belge, 16+ desteğine geçmeden önce ne yapılması gerektiğini ve uygulamanın şu an mağaza formlarında neyi beyan etmesi gerektiğini açıklar. Hiçbir beyan, ürünün gerçek özelliklerini gizleyecek şekilde yazılmamalıdır.
 
 ## 1. Kod hazırlığı (bu turda tamamlandı)
 

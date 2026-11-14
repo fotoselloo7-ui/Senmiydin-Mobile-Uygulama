@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import 'translated_text.dart';
 
 import '../core/navigation.dart';
 import '../core/theme.dart';
@@ -8,6 +9,7 @@ import '../data/models.dart';
 import 'account_action.dart';
 import 'common.dart';
 import 'social_page.dart';
+import '../core/app_locale.dart';
 
 /// Opens the comments of [post] as a bottom sheet over the current screen (Home, profile, search, saved, detail…).
 /// The screen underneath keeps its scroll position and updates its comment count live.
@@ -112,7 +114,7 @@ class _PanelHeader extends SliverPersistentHeaderDelegate {
                 ),
                 IconButton(
                   key: const Key('comments-close'),
-                  tooltip: 'Kapat',
+                  tooltip: tr('Kapat'),
                   icon: const Icon(Icons.close_rounded),
                   onPressed: close,
                 ),
@@ -359,7 +361,7 @@ class _CommentsPanelState extends State<CommentsPanel>
                       ),
                       IconButton(
                         key: const Key('cancel-reply'),
-                        tooltip: 'Yanıtı iptal et',
+                        tooltip: tr('Yanıtı iptal et'),
                         visualDensity: VisualDensity.compact,
                         icon: const Icon(Icons.close_rounded, size: 18),
                         onPressed: busy ? null : cancelReply,

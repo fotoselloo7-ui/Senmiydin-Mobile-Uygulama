@@ -93,12 +93,20 @@ final class Readiness
                     (config('deployment.operator_name') ?? '').' '.(config('deployment.operator_contact') ?? ''))
                 && filled(config('deployment.operator_name'))
                 && filled(config('deployment.operator_contact'));
+            // The structured legal pages (KVKK, privacy, terms, community) are filled from the operator identity in the
+            // admin settings; a page the administrator edited by hand must not carry placeholder data.
             foreach (Pages::LEGAL as $slug => $default) {
-                $body = $legal->get($slug)?->body ?? '';
-                $ready = $ready && filled($body) && trim($body) !== trim($default[1])
-                    && !preg_match('/lorem ipsum|example\.com|example\.test|@.*\.local/i', $body);
+                $body = $legal->get($slug)?->body;
+                if ($body !== null) {
+                    $ready = $ready && filled($body) && !preg_match('/lorem ipsum|example\.com|example\.test|@.*\.local/i', $body);
+                }
             }
-            $add('Operator identity and reviewed legal CMS', $ready, 'external');
+            $operator = \App\Website\Site::operatorValues($settings->all(), 'tr');
+            $identity = \App\Website\Site::operatorComplete($settings->all())
+                && !preg_match('/lorem ipsum|\bDemo\b|example\.(com|test)|@.*\.local/i', implode(' ', array_filter([
+                    $operator['operator_name'], $operator['operator_address'], $operator['operator_registration'], $operator['contact_email'],
+                ])));
+            $add('Operator identity and reviewed legal CMS', $ready && $identity, 'external');
             $add('No development administrator', !DB::table('admins')->where('email', 'like', '%@senmiydin.local')->exists(), 'data');
             $add('No demo or QA member data', !DB::table('users')->where(fn ($q) => $q
                 ->where('email', 'like', '%@senmiydin.local')->orWhere('email', 'like', '%@example.test'))->exists(), 'data');

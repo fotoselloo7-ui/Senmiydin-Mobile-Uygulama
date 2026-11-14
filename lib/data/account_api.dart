@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
 import '../core/api_config.dart';
+import '../core/app_locale.dart';
 
 class ApiFailure implements Exception {
   const ApiFailure(this.message, {this.status, this.errors = const {}});
@@ -169,6 +170,7 @@ class ApiClient {
 
     request.followRedirects = false;
     request.headers['Accept'] = 'application/json';
+    request.headers['Accept-Language'] = AppLocale.code;
     if (token != null) request.headers['Authorization'] = 'Bearer $token';
 
     final http.Response response;
@@ -356,7 +358,13 @@ class AccountProfile {
       cityDiscovery = json['city_discovery'] as bool,
       locationHistoryEnabled = json['location_history_enabled'] == true,
       onboardingStep = json['onboarding_step'] as int,
+      ageBand = json['age_band'] as String? ?? 'adult',
+      preferredLocale = json['preferred_locale'] as String?,
       interests = CatalogItem.list(json['interests']);
+
+  /// Server-derived `teen` (16–17) or `adult`; read-only here.
+  final String ageBand;
+  final String? preferredLocale;
 
   final String messagePrivacy;
   final bool showActivity;

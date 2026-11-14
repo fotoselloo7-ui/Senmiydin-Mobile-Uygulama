@@ -1,4 +1,5 @@
-<div class="stores" aria-label="Uygulama mağazaları">
+@php($c ??= \App\Website\Site::chrome($locale ?? 'tr'))
+<div class="stores" aria-label="{{ $c['stores_aria'] }}">
     @foreach(['app_store_url' => ['App Store', 'iOS Uygulaması', 'apple'], 'play_store_url' => ['Google Play', 'Android Uygulaması', 'google']] as $key => [$label, $sub, $type])
         @if(filled($settings[$key]))
             <a href="{{ $settings[$key] }}" class="store store-{{ $type }}">
@@ -10,8 +11,8 @@
                     @endif
                 </span>
                 <span class="store-text">
-                    <small>{{ $label }}'den</small>
-                    <strong>İndirin</strong>
+                    <small>{{ ($locale ?? 'tr') === 'en' ? $c['stores_from'].' '.$label : $label."'den" }}</small>
+                    <strong>{{ $c['stores_download'] }}</strong>
                 </span>
             </a>
         @else
@@ -24,8 +25,8 @@
                     @endif
                 </span>
                 <span class="store-text">
-                    <small>Yakında · {{ $label }}</small>
-                    <strong>İndirin</strong>
+                    <small>{{ $c['stores_soon'] }} · {{ $label }}</small>
+                    <strong>{{ $c['stores_download'] }}</strong>
                 </span>
             </span>
         @endif

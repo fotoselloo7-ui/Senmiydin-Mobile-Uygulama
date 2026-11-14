@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:geolocator/geolocator.dart';
 
+import '../core/app_locale.dart';
+
 enum DeviceLocationState {
   idle('Cihaz konumu kullanılabilir.'),
   disabled('Cihazın konum servisi kapalı.'),
@@ -57,11 +59,16 @@ class LocationDevice {
                 distanceFilter: 150,
                 intervalDuration: const Duration(minutes: 1),
                 foregroundNotificationConfig: background
-                    ? const ForegroundNotificationConfig(
-                        notificationTitle: 'SenMiydin? · Geçtiğim Yerler',
-                        notificationText:
-                            'Yaklaşık bölgeler konum geçmişine ekleniyor.',
-                        notificationChannelName: 'Geçtiğim Yerler',
+                    ? ForegroundNotificationConfig(
+                        notificationTitle: AppLocale.english
+                            ? 'SenMiydin? · Places I Passed'
+                            : 'SenMiydin? · Geçtiğim Yerler',
+                        notificationText: AppLocale.english
+                            ? 'Approximate areas are being added to your location history.'
+                            : 'Yaklaşık bölgeler konum geçmişine ekleniyor.',
+                        notificationChannelName: AppLocale.english
+                            ? 'Places I Passed'
+                            : 'Geçtiğim Yerler',
                         setOngoing: true,
                       )
                     : null,

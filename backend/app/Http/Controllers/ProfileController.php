@@ -45,6 +45,7 @@ class ProfileController extends Controller
             'location_history_enabled' => ['sometimes', 'boolean'],
             'message_privacy' => ['sometimes', Rule::in(['everyone', 'following', 'encounters'])],
             'show_activity' => ['sometimes', 'boolean'],
+            'preferred_locale' => ['sometimes', Rule::in(['tr', 'en'])],
             'push_preferences' => ['sometimes', 'array:'.implode(',', array_keys(Inbox::DEFAULTS))],
             'push_preferences.*' => ['boolean'],
             'complete_profile' => ['sometimes', 'boolean'],

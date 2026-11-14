@@ -501,19 +501,21 @@ class SocialEngagementTest extends TestCase
 
     public function test_minimum_age_is_one_config_value_shared_by_validation_app_config_and_admin_bounds(): void
     {
-        $this->assertSame(18, (int) config('mobile.minimum_age'), 'Production default stays 18 until the 16+ safeguards exist.');
-        $this->getJson('/api/v1/app-config')->assertOk()->assertJsonPath('data.minimum_age', 18);
+        $this->assertSame(16, (int) config('mobile.minimum_age'), 'Production minimum is 16 now that the teen/adult separation is enforced.');
+        $this->getJson('/api/v1/app-config')->assertOk()->assertJsonPath('data.minimum_age', 16);
         $register = fn (string $birth, string $name) => $this->postJson('/api/v1/auth/register', [
             'name' => 'Yeni Kullanıcı', 'username' => $name, 'email' => $name.'@example.test', 'password' => 'TestPassword1234',
             'password_confirmation' => 'TestPassword1234', 'birth_date' => $birth, 'city_id' => $this->alanya,
             'accepted_terms' => true, 'device_name' => 'test',
         ]);
         $seventeen = now('Europe/Istanbul')->subYears(17)->subDay()->toDateString();
-        $register($seventeen, 'genc17')->assertStatus(422)->assertJsonValidationErrors('birth_date');
-        // A single setting change moves validation and /app-config together (16 is the lowest value the admin accepts).
-        app(Settings::class)->save(['minimum_age' => 16]);
-        $this->getJson('/api/v1/app-config')->assertJsonPath('data.minimum_age', 16);
-        $this->assertSame(422, $register(now('Europe/Istanbul')->subYears(15)->subDay()->toDateString(), 'genc15')->status());
-        $register($seventeen, 'genc17b')->assertStatus(201);
+        $fifteen = now('Europe/Istanbul')->subYears(15)->subDay()->toDateString();
+        $register($fifteen, 'genc15')->assertStatus(422)->assertJsonValidationErrors('birth_date');
+        $register($seventeen, 'genc17')->assertStatus(201);
+        // A single setting change moves validation and /app-config together (the admin may raise it; 16 is the lowest it accepts).
+        app(Settings::class)->save(['minimum_age' => 18]);
+        $this->getJson('/api/v1/app-config')->assertJsonPath('data.minimum_age', 18);
+        $this->assertSame(422, $register($seventeen, 'genc17b')->status());
+        $register(now('Europe/Istanbul')->subYears(18)->subDay()->toDateString(), 'yetiskin18')->assertStatus(201);
     }
 }

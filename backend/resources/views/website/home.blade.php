@@ -1,11 +1,5 @@
 @php
-$icon = [
-    'pin' => '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
-    'mail' => '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 7 8.5 6 8.5-6"/></svg>',
-    'check' => '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
-    'shield' => '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
-    'arrow' => '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>',
-];
+$icon = \App\Website\Icons::all();
 $slides = [
     ['tram', 'İstanbul · İstiklal', 'Kırmızı tramvay durağındaki o an', '“Elinde kahve, kulaklığı boynunda olan; tramvaya birlikte baktığımız sen miydin?”', 'web/hero-istanbul-tram.webp', 1200, 670, 'İstiklal Caddesi’nde kırmızı tramvayın önünde konuşan iki kişi', 'Temsili paylaşım'],
     ['ferry', 'İstanbul · Kadıköy', 'Akşam vapurunda gün batımı', '“Martılara simit atarken göz göze geldiğimiz sen miydin?”', 'web/polaroid-kiz-kulesi.webp', 1024, 1024, 'Gün batımında Kız Kulesi ve Boğaz', 'Temsili paylaşım'],
@@ -140,7 +134,9 @@ $gallery = [
                 <div><dt>Kapsam</dt><dd>Tüm şehir · 5 km · 10 km · 25 km</dd></div>
                 <div><dt>Sıralama</dt><dd>Yakın · Yeni · Popüler</dd></div>
                 <div><dt>Filtreler</dt><dd>İçerik türü, fotoğraf ve ilgi alanı birlikte kullanılabilir.</dd></div>
+                <div><dt>Takip</dt><dd>Takip ettiğin insanların paylaşımları, şehir akışından ayrı bir akışta toplanır.</dd></div>
             </dl>
+            <p class="h-note">Her paylaşımın altında tek seviyeli bir yorum sohbeti kurulur: yoruma yanıt verebilir, yorumları ve yanıtları beğenebilirsin. Beğendiğin paylaşımları isteğe bağlı, yalnızca sana görünen koleksiyonlarda saklarsın.</p>
         </div>
         <figure class="h-shot h-visual">
             <img src="{{ asset('web/screens/app-home.webp') }}" alt="SenMiydin Ana Sayfa: şehir akışı ve karşılaşma hikâyeleri" loading="lazy" decoding="async" width="540" height="1200">
@@ -199,7 +195,9 @@ $gallery = [
                     <li>Açık ya da anonim</li>
                     <li>Cevaplanabilir</li>
                     <li>Yaklaşık nokta</li>
+                    <li>Mektuplarım ve arşiv</li>
                 </ul>
+                <p class="h-note">Mektuplarım ekranında aktif ve arşivdeki mektuplarını görürsün; süresi dolan bir mektubu istediğinde yeniden paylaşabilirsin. Yakınına yeni bir mektup bırakıldığında küçük bir bildirim alırsın; mektubun sahibi bu bildirimde görünmez.</p>
                 <p class="h-note">Harita notu, @kullanıcıadı ile onaylanan karşılaşmadan ayrıdır: bir mekâna bırakılmış, herkesin okuyabildiği açık bir mektuptur.</p>
             </div>
             <figure class="h-shot h-visual h-notes-hero">
@@ -286,7 +284,8 @@ $gallery = [
             <p>İlk mesaj bir istektir; alıcı kabul ettiğinde sohbet devam eder. Karşılaşma onaylandıktan sonra da iletişim aynı izinli sohbet üzerinden sürer.</p>
             <ul class="h-checks">
                 <li>Mesaj isteğini kabul etme veya reddetme</li>
-                <li>Fotoğraf mesajı, okundu bilgisi ve okunmamış sayacı</li>
+                <li>Fotoğraf mesajı (galeriden ya da kameradan), emoji, okundu bilgisi ve okunmamış sayacı</li>
+                <li>İstersen yaklaşık bir bölge gönderebilirsin; canlı konum paylaşımı yoktur</li>
                 <li>Sohbeti gizleme, kullanıcıyı engelleme ve şikâyet etme</li>
             </ul>
             <p class="h-note">Grup sohbeti ve arama yoktur; SenMiydin sade, birebir mesajlaşmaya odaklanır.</p>
@@ -308,6 +307,7 @@ $gallery = [
             <li><h3>Engelle ve şikâyet et</h3><p>İstemediğin kişiyi engelle, uygunsuz içeriği ve davranışı bildir.</p></li>
             <li><h3>Moderasyon</h3><p>Şikâyetler incelenir; uygunsuz içerikler kaldırılabilir.</p></li>
             <li><h3>Konum tercihleri</h3><p>“Yakınımda görün”, Geçtiğim Yerler ve bildirimler ayrı ayrı açılıp kapanır.</p></li>
+            <li><h3>Yaş grupları</h3><p>SenMiydin 16 yaş ve üzeri içindir. 16–17 yaşındaki hesaplar yalnızca kendi yaş grubuyla, 18 yaş ve üzeri hesaplar yalnızca yetişkinlerle karşılaşır; bu ayrım sunucuda uygulanır.</p></li>
             <li><h3>Hesap silme</h3><p>Hesabını uygulamadan ya da web’deki Hesap Silme sayfasından talep ederek kapatabilirsin.</p></li>
         </ul>
         <div class="h-links">

@@ -78,13 +78,8 @@
 </div></section>
 @endif
 
-{{-- LEGAL PAGES CMS --}}
-@if($legal)
-<article class="wrap article"><div class="legal-sheet"><span class="kicker">YASAL BİLGİLENDİRME</span><h1>{{ $legal['title'] }}</h1>
-    <div class="legal-copy">{!! nl2br(e($legal['body'])) !!}</div>
-    @if(filled($settings['support_email']))<p class="legal-contact">Destek ve veri talepleri: <a href="mailto:{{ $settings['support_email'] }}">{{ $settings['support_email'] }}</a></p>@endif
-</div></article>
-@endif
+{{-- LEGAL PAGES: structured, localized content, or the administrator's own CMS text --}}
+@include('website.legal')
 
 {{-- CONTACT AND ACCOUNT DELETION FORM --}}
 @if(in_array($slug, ['iletisim', 'hesap-silme'], true))
@@ -92,6 +87,13 @@
     @if($slug === 'hesap-silme')
         <p>Uygulamada Profil → Ayarlar → Hesabımı Sil ekranından şifreni doğrulayıp SİL yazarak hesabını kalıcı olarak kapatabilirsin. Uygulamaya erişemiyorsan aşağıdaki formdan talep iletebilirsin.</p>
         <p>Form bir talep kaydı oluşturur. E-posta adresini yazmak tek başına hesabı silmez. Destek ekibi hesabın sana ait olduğunu doğruladıktan sonra uygulanacak işlemi ve durumunu bildirir.</p>
+        <h2>Adımlar</h2>
+        <ol class="delete-steps">
+            <li>Uygulamayı aç ve giriş yap.</li>
+            <li>Profil → Ayarlar → Hesabımı Sil ekranına git.</li>
+            <li>Şifreni gir ve onay için SİL yaz.</li>
+            <li>Uygulamaya erişemiyorsan hesabına kayıtlı e-posta ile aşağıdaki formu doldur.</li>
+        </ol>
         <h2>Talep hangi verileri kapsar?</h2>
         <p>Uygulama içinden silme sonrasında profil ve içeriklerin erişime kapanır. Kimlik bilgilerin anonimleştirilir; oturumların, cihazların, konum kayıtların ve geçmişin temizlenir. Paylaştığın metin ve görseller kaldırılır. İlişkiler için kişisel bilgi içermeyen kimlik kayıtları ve moderasyon işlem durumları kalır. Diğer kullanıcıların kendi içerikleri ve yedekler ayrı saklama politikasına tabidir. Yedeklerin ve destek kayıtlarının gerçek saklama süreleri veri sorumlusu tarafından açıklanmalıdır.</p>
     @else

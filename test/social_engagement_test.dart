@@ -826,13 +826,13 @@ void main() {
       },
     );
 
-    test('Default stays 18 until the server says otherwise', () async {
+    test('Default is the production minimum 16 until the server says otherwise', () async {
       FlutterSecureStorage.setMockInitialValues({});
       final store = AppStore(
         api: ApiClient(httpClient: MockClient((_) async => ok({}))),
         locationDevice: _Device(),
       );
-      expect(store.minimumAge, 18);
+      expect(store.minimumAge, 16);
       store.dispose();
     });
   });

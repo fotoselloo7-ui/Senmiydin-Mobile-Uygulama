@@ -1,10 +1,12 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import 'translated_text.dart';
 
 import '../core/navigation.dart';
 import '../core/theme.dart';
 import 'common.dart';
 import '../data/account_api.dart';
 import '../data/social_api.dart';
+import '../core/app_locale.dart';
 
 class PagedContent<T> extends StatefulWidget {
   const PagedContent({
@@ -97,7 +99,7 @@ class _PagedContentState<T> extends State<PagedContent<T>> {
             padding: Space.page,
             child: InlineState(
               icon: Icons.wifi_off_outlined,
-              title: 'İçerik yüklenemedi',
+              title: tr('İçerik yüklenemedi'),
               description: _error!,
               actionLabel: 'Tekrar Dene',
               onAction: _loadMore,

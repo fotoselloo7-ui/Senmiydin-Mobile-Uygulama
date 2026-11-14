@@ -36,3 +36,19 @@ Durumlar kod çalışması ile dış yayın bağımlılıklarını ayırır. Yer
 | Gerçek iOS archive / cihaz / privacy report | WAITING FOR MAC | Mac / Xcode ve gerçek signing |
 
 Production'da development seed veya mevcut yerel kullanıcı DB'si kullanılmaz. Yayın kontrolünü gerçek production .env, boş/gerçek production DB ve gerçek operatör ayarlarıyla yeniden çalıştır. Bilgiler gelmeden sahte credential, uydurma işletmeci veya final logo oluşturulmadı.
+
+## 15 Kasım 2026 ekleri — küresel sosyal sürüm
+
+| İş | Durum | Kanıt / sonraki işlem |
+|---|---|---|
+| Minimum yaş 16 + sunucu tarafı teen / adult ayrımı | DONE | `AgeSafetyTest` (14 test); `MINIMUM_AGE=16` |
+| Bildirim hızlı paneli, tam sayfa, tarih grupları; tüm türlerin yönlendirmesi | DONE | `test/global_release_test.dart`; Pixel regresyon |
+| FCM zinciri (DB → tercih → DeliverPush → FCM → tıklama) kod ve testle doğrulandı | DONE (kod) | `GlobalReleaseTest` push matrisi; **gerçek FCM teslimatı EXTERNAL CREDENTIAL** |
+| Yakındaki yeni paylaşım bildirimi (`nearby_post`, 1000 m / 30 dk, tek bildirim) | DONE | `GlobalReleaseTest`; `config/location.php` |
+| Admin konum hedefli duyuru (500 m / 1 km / 5 km), TR/EN içerik, "Haritada Gör" | DONE | `GlobalReleaseTest`, tarayıcı E2E |
+| Konum mesajı (yaklaşık ~55 m ızgara), fotoğraf / emoji / kamera mesajı | DONE | `GlobalReleaseTest`, `global_release_test.dart`, Pixel |
+| AdMob native feed reklamı, UMP onayı, teen yaş kısıtı, admin anahtarı (`ads_enabled`, `feed_ad_interval`) | DONE (kod, debug test reklamı Pixel'de görüldü) | **Gerçek App ID / ad unit ID: WAITING FOR CREDENTIAL**; AdMob konsolunda UMP mesajı: EXTERNAL |
+| Türkçe / İngilizce (uygulama, API, bildirim, push, duyuru, web) | DONE | gen_l10n ARB + sözlük; Pixel dil testi |
+| Public web `/en`, yasal sayfalar yeni tasarımda | DONE | `WebsiteLocalizationTest`; tarayıcı QA (8 genişlik, 0 taşma) |
+| Operatör kimliği (unvan / adres / sicil / KVKK e-postası) | WAITING FOR EXTERNAL INFO | Yönetim → Ayarlar; eksikse production-check MISSING |
+| Mağaza metni TR / EN, native yerelleştirme | DONE (doküman) | `docs/store/localization/` |

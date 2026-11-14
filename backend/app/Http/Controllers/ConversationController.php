@@ -10,6 +10,7 @@ use App\Models\EncounterRequest;
 use App\Models\Message;
 use App\Models\User;
 use App\Notifications\Inbox;
+use App\Location\Geo;
 use App\Safety\Blocks;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -91,14 +92,22 @@ class ConversationController extends Controller
         $viewer = $request->user();
         $peer = $this->getPeer($viewer->id, $user);
         $data = $request->validate([
-            'body' => 'required_without:image|nullable|string|max:2000',
+            'body' => 'required_without_all:image,latitude|nullable|string|max:2000',
             'request_id' => 'required|uuid',
-            'image' => 'sometimes|'.PrivateImage::RULES,
+            'image' => 'sometimes|prohibits:latitude|'.PrivateImage::RULES,
+            // A private location message: one approximate point, never live tracking.
+            'latitude' => 'nullable|required_with:longitude|numeric|between:-90,90',
+            'longitude' => 'nullable|required_with:latitude|numeric|between:-180,180',
+            'place_label' => 'sometimes|nullable|string|max:80',
         ]);
+        $point = isset($data['latitude'], $data['longitude']) ? [
+            Geo::grid((float) $data['latitude'], (float) config('location.message_grid')),
+            Geo::grid((float) $data['longitude'], (float) config('location.message_grid')),
+        ] : null;
         $disk = Storage::disk(config('mobile.post_media_disk'));
         $path = null;
         try {
-            [$chat, $message, $created] = DB::transaction(function () use ($viewer, $peer, $data, $disk, &$path) {
+            [$chat, $message, $created] = DB::transaction(function () use ($viewer, $peer, $data, $disk, $point, &$path) {
                 Blocks::lockPair($viewer->id, $peer->id);
                 $peer->refresh();
                 abort_unless($peer->account_status === 'active' && ! Blocks::between($viewer->id, $peer->id), 403);
@@ -136,7 +145,8 @@ class ConversationController extends Controller
                 }
                 $message = Message::create([
                     'conversation_id' => $chat->id, 'sender_id' => $viewer->id, 'request_id' => $data['request_id'],
-                    'body' => $data['body'] ?? '', 'type' => $path ? 'image' : 'text', 'image_path' => $path,
+                    'body' => $data['body'] ?? '', 'type' => $path ? 'image' : ($point ? 'location' : 'text'), 'image_path' => $path,
+                    ...($point ? ['approx_latitude' => $point[0], 'approx_longitude' => $point[1], 'place_label' => $data['place_label'] ?? null] : []),
                 ]);
                 $chat->touch();
                 Inbox::add($peer->id, $viewer->id, $type, $chat->id);
@@ -274,6 +284,11 @@ class ConversationController extends Controller
         return ['id' => $message->id, 'body' => $message->body, 'type' => $message->type,
             'mine' => $message->sender_id === $viewer, 'request_id' => $message->sender_id === $viewer ? $message->request_id : null,
             'image' => $message->image_path ? route('messages.image', ['message' => $message->id], false) : null,
+            // Location messages expose only the snapped approximate point (never the point the sender's device reported).
+            ...($message->type === 'location' ? ['location' => [
+                'latitude' => (float) $message->approx_latitude, 'longitude' => (float) $message->approx_longitude,
+                'place_label' => $message->place_label,
+            ]] : []),
             'read_at' => $message->read_at?->toISOString(), 'created_at' => $message->created_at->toISOString()];
     }
 }

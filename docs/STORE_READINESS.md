@@ -1,5 +1,7 @@
 # Store readiness — 9 Kasım 2026
 
+> **Güncel ek — 15 Kasım 2026.** Minimum yaş **16** (teen / adult ayrımı sunucuda uygulandı, bkz. [AGE_AND_STORE_READINESS.md](AGE_AND_STORE_READINESS.md)). **Google AdMob eklendi:** Play *Contains ads = YES*, Data Safety / App Privacy / SDK audit / izin matrisi güncellendi (`docs/store/`). Mağaza metni **Türkçe + İngilizce** için `docs/store/localization/{tr-TR,en-US}/` altındadır; Android (`values/`, `values-tr/`) ve iOS (`en.lproj`, `tr.lproj` InfoPlist.strings, `CFBundleLocalizations`) yerelleştirmesi hazırdır — **iOS lproj dosyalarının Xcode projesine eklenmesi Mac'te yapılmalıdır** (pbxproj Windows'ta düzenlenmedi). Gerçek AdMob kimlikleri: `--dart-define=ADMOB_APP_ID_ANDROID=…`, `ADMOB_NATIVE_AD_UNIT_ANDROID=…`, `ADMOB_NATIVE_AD_UNIT_IOS=…`, iOS `ADMOB_APP_ID_IOS` (xcconfig); kimlik yoksa release'te reklam alanı hiç çizilmez, debug'da Google test birimleri kullanılır.
+
 Bu belge mevcut kodu esas alır. Mağaza onayı veya canlı hizmet teslimatı iddiası değildir. Android applicationId ve iOS bundle id: **com.senmiydin.app**. Sürüm/build **0.1.0+1**. Onaylı Home ve mevcut geçici marka korunur.
 
 ## Store submission hazırlığı

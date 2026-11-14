@@ -1,6 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import '../widgets/translated_text.dart';
 
 import '../data/social_sign_in.dart';
 
@@ -15,6 +16,7 @@ import '../data/app_store.dart';
 import '../widgets/account_action.dart';
 import '../widgets/common.dart';
 import '../widgets/location_ui.dart';
+import '../core/app_locale.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key, this.initialGazeOffset});
@@ -639,7 +641,7 @@ class _AuthPageState extends State<AuthPage> with AccountAction<AuthPage> {
                   obscureText: obscure,
                   validator: widget.register ? newPasswordError : requiredText,
                   decoration: InputDecoration(
-                    labelText: 'Şifre',
+                    labelText: tr('Şifre'),
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
                       tooltip: 'Şifreyi göster / gizle',
@@ -1211,31 +1213,13 @@ class _CompleteProfilePageState extends State<CompleteProfilePage>
                 'Aradığın bağlantılar',
                 icon: Icons.favorite_border,
               ),
-              Wrap(
-                spacing: Space.sm,
-                children: AppStore.connectionChoices.values
-                    .map(
-                      (c) => FilterChip(
-                        label: Text(
-                          c,
-                          style: TextStyle(
-                            color: connections.contains(c)
-                                ? Colors.white
-                                : AppColors.navy,
-                          ),
-                        ),
-                        checkmarkColor: Colors.white,
-                        selected: connections.contains(c),
-                        onSelected: busy
-                            ? null
-                            : (v) => setState(
-                                () => v
-                                    ? connections.add(c)
-                                    : connections.remove(c),
-                              ),
-                      ),
-                    )
-                    .toList(),
+              BalancedChoiceGrid(
+                options: AppStore.connectionChoices.values.toList(),
+                enabled: !busy,
+                isSelected: connections.contains,
+                onToggle: (c, v) => setState(
+                  () => v ? connections.add(c) : connections.remove(c),
+                ),
               ),
               PreferenceRow(
                 'Konumumu şehir içinde göster',

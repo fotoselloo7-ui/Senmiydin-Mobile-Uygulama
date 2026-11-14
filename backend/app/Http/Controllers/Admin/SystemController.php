@@ -33,6 +33,9 @@ class SystemController
             'moderation_post_repeats' => 'sometimes|integer|between:2,20',
             'moderation_comment_repeats' => 'sometimes|integer|between:2,20',
             'moderation_repeat_seconds' => 'sometimes|integer|between:10,600',
+            'feed_ad_interval' => 'sometimes|integer|between:8,30',
+            'operator_name' => 'sometimes|nullable|string|max:160', 'operator_address' => 'sometimes|nullable|string|max:300',
+            'operator_registration' => 'sometimes|nullable|string|max:80', 'operator_contact_email' => 'sometimes|nullable|email|max:254',
         ];
         foreach (Settings::SWITCHES as $key) {
             $rules[$key] = 'sometimes|boolean';
@@ -66,7 +69,7 @@ class SystemController
             }
         }
         $data = collect($data)->map(fn ($value, $key) => in_array($key, Settings::SWITCHES, true)
-            ? (bool) $value : (in_array($key, ['minimum_age', 'max_post_photos', 'location_history_days', 'moderation_max_mentions', 'moderation_max_links', 'moderation_post_repeats', 'moderation_comment_repeats', 'moderation_repeat_seconds'], true) ? (int) $value : $value))->all();
+            ? (bool) $value : (in_array($key, ['minimum_age', 'feed_ad_interval', 'max_post_photos', 'location_history_days', 'moderation_max_mentions', 'moderation_max_links', 'moderation_post_repeats', 'moderation_comment_repeats', 'moderation_repeat_seconds'], true) ? (int) $value : $value))->all();
         DB::transaction(function () use ($request, $settings, $data): void {
             $settings->save($data);
             Audit::record($request, 'settings.update', 'settings', null, $data);
@@ -117,6 +120,12 @@ class SystemController
     {
         $data = $request->validate([
             'title' => 'required|string|max:120', 'body' => 'required|string|max:2000',
+            'title_en' => 'nullable|string|max:120', 'body_en' => 'nullable|string|max:2000',
+            // all = everyone, city = people whose city is the chosen one, location = people currently near an approximate point.
+            'target_type' => 'sometimes|in:all,city,location',
+            'target_latitude' => 'required_if:target_type,location|nullable|numeric|between:-90,90',
+            'target_longitude' => 'required_if:target_type,location|nullable|numeric|between:-180,180',
+            'target_radius_m' => ['required_if:target_type,location', 'nullable', 'integer', Rule::in([500, 1000, 5000])],
             'city_id' => ['nullable', 'integer', Rule::exists('cities', 'id')->where('is_active', true)],
             'publish_at' => 'nullable|date_format:Y-m-d\TH:i',
             'expires_at' => 'nullable|date_format:Y-m-d\TH:i',
@@ -126,22 +135,35 @@ class SystemController
         if (! $data['send_push'] && ! $data['show_in_app']) {
             throw ValidationException::withMessages(['show_in_app' => 'En az bir yayın kanalı seç.']);
         }
+        $target = $data['target_type'] ?? (empty($data['city_id']) ? 'all' : 'city');
+        if ($target === 'city' && empty($data['city_id'])) {
+            throw ValidationException::withMessages(['city_id' => 'Şehir hedefi için bir şehir seç.']);
+        }
+        // The stored target is an approximate point on the dedicated grid (~55 m), never anything more precise.
+        $grid = (float) config('map_notes.location_grid');
         $publishAt = empty($data['publish_at']) ? now() : Carbon::parse($data['publish_at'], 'Europe/Istanbul')->utc();
         $expiresAt = empty($data['expires_at']) ? null : Carbon::parse($data['expires_at'], 'Europe/Istanbul')->utc();
         if ($expiresAt && $expiresAt->lte($publishAt)) {
             throw ValidationException::withMessages(['expires_at' => 'Bitiş zamanı yayın zamanından sonra olmalı.']);
         }
-        $id = DB::transaction(function () use ($request, $data, $publishAt, $expiresAt): int {
+        $id = DB::transaction(function () use ($request, $data, $publishAt, $expiresAt, $target, $grid): int {
             $id = DB::table('announcements')->insertGetId([
                 'title' => $data['title'], 'body' => $data['body'],
-                'city_id' => $data['city_id'] ?? null, 'admin_id' => $request->user('admin')->id,
+                'title_en' => filled($data['title_en'] ?? null) ? $data['title_en'] : null,
+                'body_en' => filled($data['body_en'] ?? null) ? $data['body_en'] : null,
+                'target_type' => $target,
+                'target_latitude' => $target === 'location' ? \App\Location\Geo::grid((float) $data['target_latitude'], $grid) : null,
+                'target_longitude' => $target === 'location' ? \App\Location\Geo::grid((float) $data['target_longitude'], $grid) : null,
+                'target_radius_m' => $target === 'location' ? (int) $data['target_radius_m'] : null,
+                'city_id' => $target === 'all' ? null : ($data['city_id'] ?? null), 'admin_id' => $request->user('admin')->id,
                 'publish_at' => $publishAt, 'expires_at' => $expiresAt,
                 'send_push' => (bool) $data['send_push'], 'show_in_app' => (bool) $data['show_in_app'],
                 'is_active' => (bool) ($data['is_active'] ?? true),
                 'created_at' => now(), 'updated_at' => now(),
             ]);
             Audit::record($request, 'announcement.create', 'announcement', $id, [
-                'city_id' => $data['city_id'] ?? null,
+                'city_id' => $data['city_id'] ?? null, 'target_type' => $target,
+                'target_radius_m' => $target === 'location' ? (int) $data['target_radius_m'] : null,
                 'is_active' => (bool) ($data['is_active'] ?? true),
             ]);
             return $id;

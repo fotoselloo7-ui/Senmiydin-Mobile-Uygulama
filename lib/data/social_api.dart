@@ -1,3 +1,4 @@
+import '../core/app_locale.dart';
 import 'post_context.dart';
 
 import 'package:image_picker/image_picker.dart';
@@ -56,10 +57,11 @@ class SocialService {
 String socialTime(String value) {
   final time = DateTime.parse(value).toLocal();
   final elapsed = DateTime.now().difference(time);
-  if (elapsed.inMinutes < 1) return 'Az önce';
-  if (elapsed.inHours < 1) return '${elapsed.inMinutes} dk önce';
-  if (elapsed.inDays < 1) return '${elapsed.inHours} sa önce';
-  if (elapsed.inDays < 7) return '${elapsed.inDays} gün önce';
+  final text = currentL10n;
+  if (elapsed.inMinutes < 1) return text.timeJustNow;
+  if (elapsed.inHours < 1) return text.timeMinutesAgo(elapsed.inMinutes);
+  if (elapsed.inDays < 1) return text.timeHoursAgo(elapsed.inHours);
+  if (elapsed.inDays < 7) return text.timeDaysAgo(elapsed.inDays);
   return '${time.day}.${time.month}.${time.year}';
 }
 

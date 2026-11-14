@@ -3,7 +3,8 @@ import 'post_context.dart';
 
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import 'translated_text.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -18,6 +19,7 @@ import 'comments_sheet.dart';
 import 'common.dart';
 import 'media_viewer.dart';
 import 'social_page.dart';
+import '../core/app_locale.dart';
 
 Widget socialMediaImage(
   AppStore store,
@@ -204,7 +206,7 @@ class PostCard extends StatelessWidget {
     final canInteract = !preview && post.interactionsEnabled;
     return Container(
       margin: const EdgeInsets.only(bottom: Space.md),
-      padding: const EdgeInsets.fromLTRB(Space.md, 13, Space.md, 4),
+      padding: const EdgeInsets.fromLTRB(Space.md, 14, Space.md, 6),
       decoration: AppShape.card(
         elevated: true,
         borderColor: const Color(0xFFE2ECF7),
@@ -233,28 +235,31 @@ class PostCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
+                      Text(
+                        pair.isEmpty
+                            ? author?.name ?? 'Anonim'
+                            : pair.map((person) => person.name).join(' & '),
+                        maxLines: pair.isEmpty ? 1 : 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          height: 1.2,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      // Badge and metadata share one wrapping line: they flow onto a second line instead of colliding.
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 3,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          Flexible(
-                            child: Text(
-                              pair.isEmpty
-                                  ? author?.name ?? 'Anonim'
-                                  : pair.map((person) => person.name).join(' & '),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 14.5,
-                                color: AppColors.navy,
-                              ),
-                            ),
-                          ),
-                          if (post.encounterConfirmed) ...[
-                            const SizedBox(width: 6),
+                          if (post.encounterConfirmed)
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 1.5,
+                                horizontal: 7,
+                                vertical: 2,
                               ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFFFE4ED),
@@ -265,29 +270,28 @@ class PostCard extends StatelessWidget {
                                 'Karşılaşıldı ✓',
                                 style: TextStyle(
                                   color: AppColors.encounterPink,
-                                  fontSize: 9.5,
+                                  fontSize: 10,
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
                             ),
-                          ],
+                          Text(
+                            [
+                              post.time,
+                              post.locationLabel ?? post.city,
+                              if (post.distanceMeters case final meters?)
+                                locationDistance(meters),
+                              if (!store.connected && !post.remote)
+                                '${post.distance.toStringAsFixed(1).replaceAll('.', ',')} km',
+                            ].join(' · '),
+                            style: const TextStyle(
+                              color: AppColors.muted,
+                              fontSize: 12,
+                              height: 1.25,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ],
-                      ),
-                      const SizedBox(height: 1),
-                      Text(
-                        [
-                          post.time,
-                          post.locationLabel ?? post.city,
-                          if (post.distanceMeters case final meters?)
-                            locationDistance(meters),
-                          if (!store.connected && !post.remote)
-                            '${post.distance.toStringAsFixed(1).replaceAll('.', ',')} km',
-                        ].join(' · '),
-                        style: const TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
                       ),
                     ],
                   ),
@@ -295,7 +299,7 @@ class PostCard extends StatelessWidget {
               ),
               if (canInteract)
                 PopupMenuButton<String>(
-                  tooltip: 'Paylaşım seçenekleri',
+                  tooltip: tr('Paylaşım seçenekleri'),
                   padding: EdgeInsets.zero,
                   iconSize: 20,
                   iconColor: AppColors.muted,
@@ -307,7 +311,7 @@ class PostCard extends StatelessWidget {
                     if (v == 'delete') {
                       final confirmed = await confirmAction(
                         context,
-                        title: 'Paylaşım silinsin mi?',
+                        title: tr('Paylaşım silinsin mi?'),
                         message:
                             'Paylaşım akıştan ve profilinden kaldırılacak.',
                         action: 'Sil',
@@ -341,7 +345,7 @@ class PostCard extends StatelessWidget {
                     if (v == 'block' &&
                         await confirmAction(
                           context,
-                          title: 'Kullanıcı engellensin mi?',
+                          title: tr('Kullanıcı engellensin mi?'),
                           message: 'Bu kullanıcının paylaşımlarını ve mesajlarını görmezsin.',
                           action: 'Engelle',
                         )) {
@@ -383,7 +387,7 @@ class PostCard extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 10),
           if (post.encounterRequestId case final request?)
             TextButton(
               onPressed: () => openPage(context, '/encounter', request),
@@ -419,23 +423,32 @@ class PostCard extends StatelessWidget {
                 ? null
                 : () => openPage(context, '/post', post.id),
             child: Padding(
-              padding: const EdgeInsets.only(bottom: Space.sm),
+              padding: const EdgeInsets.only(bottom: 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (post.storyTitle case final title?)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 2),
+                      padding: const EdgeInsets.only(bottom: 4),
                       child: Text(
                         title,
-                        style: Theme.of(context).textTheme.titleMedium,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 17,
+                              height: 1.25,
+                              color: AppColors.navy,
+                            ),
                       ),
                     ),
                   Text(
                     post.text,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      height: 1.48,
+                    style: TextStyle(
+                      // A short text-only post gets a larger, airier body so the card never looks empty.
+                      fontSize: post.images.isEmpty && post.text.length <= 90
+                          ? 17
+                          : 15.5,
+                      height: 1.5,
                       fontWeight: FontWeight.w500,
                       color: AppColors.navy,
                     ),
@@ -463,6 +476,11 @@ class PostCard extends StatelessWidget {
               child: const Text('Paylaşımı Gör'),
             ),
           if (canInteract)
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Divider(height: 1, thickness: 1, color: Color(0xFFEAF1F9)),
+            ),
+          if (canInteract)
             Row(
               children: [
                 _PostAction(
@@ -473,7 +491,7 @@ class PostCard extends StatelessWidget {
                   color: post.liked
                       ? AppColors.encounterPink
                       : const Color(0xFF334766),
-                  tooltip: 'Beğen',
+                  tooltip: tr('Beğen'),
                   onTap: () => post.remote
                       ? socialAction(context, () => store.react(post, 'like'))
                       : store.like(post),
@@ -482,13 +500,13 @@ class PostCard extends StatelessWidget {
                   icon: Icons.chat_bubble_outline_rounded,
                   label: '${post.displayedCommentCount}',
                   color: const Color(0xFF334766),
-                  tooltip: 'Yorumlar',
+                  tooltip: tr('Yorumlar'),
                   onTap: () => showCommentsSheet(context, post),
                 ),
                 _PostAction(
                   icon: Icons.near_me_outlined,
                   color: const Color(0xFF334766),
-                  tooltip: 'Paylaş',
+                  tooltip: tr('Paylaş'),
                   onTap: () => sharePost(context, post),
                 ),
                 const Spacer(),
@@ -543,12 +561,13 @@ class _PostAction extends StatelessWidget {
             minHeight: AppDimensions.touch,
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 6),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, color: color, size: 21),
+                Icon(icon, color: color, size: 22),
                 if (label != null) ...[
-                  const SizedBox(width: 5),
+                  const SizedBox(width: 6),
                   Text(
                     label!,
                     style: TextStyle(

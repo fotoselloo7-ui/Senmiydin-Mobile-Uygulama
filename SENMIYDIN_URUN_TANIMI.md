@@ -931,3 +931,51 @@ Referansların dışında yeni bir görsel kimlik oluşturulmamalıdır.
 - **Sayaç:** yorum gönderilince arkadaki PostCard sayacı hemen güncellenir (0 → 1); sayaç ortak `Post` nesnesi üzerinden gelir.
 - **Bildirimler ve rota:** `comment`, `comment_reply`, `comment_like` bildirimleri yazıyı açar ve paneli otomatik yükseltir (soğuk başlangıç dahil). Eski `/comments` rotası **uyumluluk köprüsü** olarak kalır: yazı + panel açar, kalıcı bir Yorumlar sayfası oluşturmaz.
 - **Dayanıklılık:** panel kapanırken süren istek `mounted` ile korunur (dispose sonrası `setState` yok); sürüm 1,5× yazı ve 320 dp'de taşma yok.
+
+
+## 41. Home kontrolleri ve dengeli seçenek ızgarası
+
+- **Akış kontrolleri:** `Akış | Takip | Yakın | Popüler` telefonlarda (≤ 430 dp) kendi satırında, dört eşit genişlikte; aktif şehir seçici **altında, sağa hizalı**, ayrı kompakt bir satırdadır. 320 dp veya büyük yazıda simgeler gizlenir, çok büyük yazıda iki satır × iki sekme olur; hiçbir kelime yarım görünmez, yatay taşma yoktur. Geniş ekranlarda (≥ 560 dp) eski tek satır korunur.
+- **`BalancedChoiceGrid`:** çift sayıda seçenek **2 × 2** (altı seçenek 2 × 3) eşit genişlik ve yükseklikte gösterilir; son satırda yalnız başına düğme kalmaz. Profil Düzenle → "Aradığın bağlantılar" kullanır. `ChoicePills` genel bileşeni değişmedi; tek sayıda seçenek ortalanmış sarmalamaya düşer.
+
+## 42. PostCard cilası
+
+Başlıkta kullanıcı / ikili adlar tek başına bir satır (en çok 2); **"Karşılaşıldı ✓" rozeti ve meta satırı aynı sarmalayan satırda** birlikte akar (çakışmaz). Başlık 17 pt / 800, gövde 15,5 pt / 1,5 satır yüksekliği, kısa yalnız metin 17 pt. İnce kenarlık + hafif gölge + ince ayırıcı çizgi; eylem çubuğunda beğeni, yorum, paylaş ve kaydet 44 dp, sayaçlar ikona 6 dp bitişik.
+
+## 43. Bildirimler: hızlı panel ve tam sayfa
+
+- **Bell → `showNotificationsSheet`:** yorum paneli gibi alttan açılır (~%70, %95'e kadar, tutamaç, yuvarlak köşe, yapışık başlık). Başlıkta "Bildirimler", okunmamış sayısı ve **Tümünü okundu**; en son 10 bildirim **Bugün / Dün / Daha Önce** gruplarıyla; en altta **Tümünü Gör** tam sayfaya götürür.
+- **Satır tasarımı:** büyük kart kutuları yerine temiz liste: avatar (veya kategori ikonu + rozet), ana metin, isteğe bağlı ikinci satır, zaman, okunmamış nokta; okunmamış satır çok hafif mavi-lila yüzey, okunmuş beyaz. Tam sayfa aynı satır / grup / ikon dilini ve sayfalamayı kullanır.
+- **Yönlendirme:** like, comment, comment_reply, comment_like (yazı + yorum paneli), follow, message / message_request (sohbet), encounter türleri, location_match, nearby_activity, **nearby_post**, map_note_nearby / map_note_reply (mektup), system (duyuru; konumluysa **Haritada Gör** → uygulama haritası yaklaşık noktaya gider). Silinmiş / erişilemeyen hedef: güvenli "Bu içerik artık kullanılamıyor".
+
+## 44. Anlık bildirim zinciri ve "yakınında yeni paylaşım"
+
+- **Zincir:** olay → `app_notifications` → bildirim tercihi (`Inbox::permitted`, engelleme, yaş bandı, kendi eylemi yok) → `DeliverPush` → FCM HTTP v1 → cihaz (ön plan SnackBar / arka plan) → dokununca yönlendirme. Push gövdesi **alıcının dilindedir**; mesaj içeriği asla yazılmaz ("Yeni bir mesajın var."). FCM kimlik bilgisi yoksa uygulama içi bildirim çalışır; gerçek teslimat **EXTERNAL CREDENTIAL**.
+- **Kapsam (testli):** post beğenisi, yorum, yanıt, yorum beğenisi, takip, mesaj, mesaj isteği, karşılaşma isteği / onayı, Harita Notu yanıtı.
+- **`nearby_post` — "Yakınında yeni bir paylaşım var.":** şehir görünür ve yaklaşık konumlu yeni paylaşımda, **son 30 dakikada güncel konum örneği** olan ve paylaşıma **1000 m** içinde bulunan uygun kullanıcılara tek bildirim. Merkezi ayar `config/location.php → current_nearby` (`radius_meters`, `freshness_minutes`, `max_recipients`). Aynı gönderi için daha güçlü `location_match` veya geçmiş eşleşmesi varsa ikinci bildirim yok; yazar, engelli ilişki, farklı yaş bandı, tercih kapalı (`nearby_activity` varsayılan kapalı) elenir. **Geçtiğim Yerler geçmiş motoru (`location_match` / `nearby_activity`) ayrı ve değişmeden** çalışır.
+
+## 45. Admin konum hedefli duyuru
+
+Admin → Duyurular: hedef **Tüm kullanıcılar / Şehir / Yaklaşık konum** (Leaflet haritasına dokunarak nokta + 500 m / 1 km / 5 km yarıçap), Türkçe ve İngilizce başlık / metin (İngilizce boşsa Türkçe), yayın zamanı, bitiş, uygulama içi ve push anahtarları. Hedef nokta sunucuda **~55 m ızgaraya** yuvarlanır; alıcılar yayın anında **güncel** konum örneğine göre seçilir (geçmiş değil). Panelde yalnız "Hedeflenen / Bildirim oluşturulan" sayıları görünür; kişisel konum listelenmez. Pasifleştirilen duyuru bildirimde "kullanılamıyor" olur; konumlu duyuru genel banner'da gösterilmez.
+
+## 46. Mesajlar
+
+- **Liste:** başlık + arama + eşit iki sekmeli "Sohbetler | İstekler"; satırda avatar, ad, son mesaj (fotoğraf / konum için "Fotoğraf" / "Konum" + simge), zaman, okunmamış rozeti ve hafif vurgulu okunmamış satır. Sahte çevrimiçi durumu yoktur (yalnız gerçek "yakın zamanda aktif").
+- **Composer:** `[ + ] [ emoji ] [ mesaj ] [ gönder ]`. **+** → Fotoğraf (galeri) / Kamera / Konum. Fotoğraf göndermeden önce küçük önizleme; balonda gerçek görsel ve Medya Görüntüleyici. **Emoji** sık kullanılanlardan imleç konumuna eklenir (sistem klavyesi bozulmaz).
+- **Konum mesajı:** `type = location`; cihaz konumu (izinle) veya haritadan seçilen nokta **sunucuda ~55 m ızgaraya yuvarlanır** (`approx_latitude/longitude`, isteğe bağlı `place_label`); canlı paylaşım yoktur. Balon: pin, "Konum", "Yaklaşık bölge", **Haritada Aç** (harita o noktaya gider). Metin, fotoğraf ve konum mesajları karşı tarafa `message` bildirimi üretir.
+
+## 47. Yaş güvenliği (16–17 / 18+)
+
+Minimum kayıt yaşı **16**. `AgeSafety`: `TEEN` 16–17, `ADULT` 18+, doğum tarihinden sunucuda türetilir, değiştirilemez, 18. doğum gününde otomatik geçiş. Bandı farklı iki hesap `Blocks` üzerinden **engellenmiş çift gibi** davranır: arama, profil, takip listeleri, yakındaki kişiler, karşılaşma etiketi / isteği, mesaj ve istekler, Harita Notu görünürlüğü / yanıtları, konum bildirimleri, akış ve yorumlar. Teen hesapta Yakındaki İnsanlar varsayılan kapalı, reklam yaş kısıtlı. Mevcut cross-band sohbet gizlenir ve kilitlenir. Ayrıntı: [docs/AGE_AND_STORE_READINESS.md](docs/AGE_AND_STORE_READINESS.md).
+
+## 48. Reklam (AdMob native)
+
+Akışta (Akış, Popüler, Yakın, Takip) **7. organik gönderiden sonra bir, sonra her `feed_ad_interval` (varsayılan 11, en az 8) gönderide bir** native reklam; liste hiçbir zaman reklamla bitmez ve sayfalama önceki konumları değiştirmez. Reklam kartı "Reklam" / "Ad" etiketlidir. Yüklenmeyen / reddedilen / onaysız reklam için **boş alan bırakılmaz**. Debug'da Google test birimleri; release'te gerçek ad unit tanımı (`--dart-define=ADMOB_NATIVE_AD_UNIT_ANDROID/IOS`) yoksa reklam hiç çizilmez; App ID gradle / xcconfig'ten. Admin ayarı **Reklamlar aktif** (`ads_enabled`) ve aralık `/app-config`'ten gelir; kapalıyken SDK bile başlatılmaz. **UMP onayı** olmadan reklam isteği yok (`canRequestAds`); gerekirse Ayarlar → **Reklam Gizlilik Tercihleri**. 16–17 hesapta `tagForUnderAge` + yaş kısıtlı muamele + kişiselleştirilmemiş istek. SenMiydin? konumu, geçmişi veya profil verisini reklama **göndermez** (`AdsPlatform.createNative` yalnız ad unit + yaş bayrağı alır).
+
+## 49. Dil (Türkçe / English)
+
+`gen_l10n` (ARB `tr`, `en`) yeni / yeniden yazılan ekranlar için; yerleşik ekranlar için Türkçe kaynak metinden İngilizceye `lib/l10n/en_catalog.dart` sözlüğü (uygulamanın `Text` bileşeni ve `tr()` kullanır; sözlükte olmayan metin Türkçe kalır, ekran bozulmaz). İlk açılış: cihaz dili Türkçe ise Türkçe, aksi halde English; Ayarlar → **Dil / Language** seçimi cihazda saklanır ve hesaba `preferred_locale` olarak yazılır. API `Accept-Language` gönderir; sunucu kullanıcı tercihini, yoksa başlığı kullanır. Bildirim metinleri, push gövdeleri, duyurular (TR/EN içerik), kayıt / giriş doğrulama mesajları ve yasal metin API'si alıcının dilindedir. Android `values` / `values-tr`, iOS `en.lproj` / `tr.lproj` hazırdır.
+
+## 50. Public web (TR / EN) ve yasal sayfalar
+
+Türkçe kök, **English `/en`** (`/en/how-it-works`, `/features`, `/safety`, `/privacy`, `/kvkk`, `/terms`, `/community-guidelines`, `/contact`, `/delete-account`); başlıkta TR / EN anahtarı, `hreflang` alternatifleri, çift dilli sitemap. Ana sayfa mevcut hikâye akışını korur; Takip akışı, yorum sohbetleri ve beğeniler, koleksiyonlar, Mektuplarım / arşiv / yakın mektup bildirimi, mesajlaşma (kamera, emoji, yaklaşık konum) ve yaş grupları doğal olarak mevcut bölümlere eklendi. **KVKK, Gizlilik, Kullanım Koşulları, Topluluk Kuralları, Hesap Silme ve İletişim** ana sitenin tasarım sisteminde: üst bilgi, içindekiler, bölümler, TR / EN, alt bilgi. İçerik gerçek veri akışına göre yazıldı (hesap, doğum tarihi / yaş, profil, UGC, fotoğraf, mesaj, yaklaşık konum, Geçtiğim Yerler, cihaz / push belirteci, denetim kayıtları, AdMob; amaçlar, hukuki sebepler, alıcılar, yurt dışı aktarım, saklama, hesap silme, haklar, başvuru). **Operatör kimliği uydurulmaz:** unvan / adres / sicil / KVKK e-postası Yönetim → Ayarlar'dan gelir; eksikse sayfa bunu açıkça söyler ve production-check **MISSING** verir. Yönetici düzenlediği Türkçe metin (legal CMS) önceliklidir ve kaçışlıdır. Mağaza metinleri: `docs/store/localization/`.

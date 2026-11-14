@@ -2,17 +2,26 @@ import '../core/polling.dart';
 
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import '../widgets/translated_text.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
+
+import 'package:geolocator/geolocator.dart' show LocationPermission;
+import 'package:latlong2/latlong.dart';
+
+import '../core/app_locale.dart';
 import '../core/navigation.dart';
 import '../core/theme.dart';
 import '../data/account_api.dart';
 import '../data/app_store.dart';
 import '../data/communication_api.dart';
 import '../data/social_api.dart';
+import '../data/location_service.dart';
+import '../data/models.dart';
 import '../widgets/account_action.dart';
+import '../widgets/chat_composer.dart';
 import '../widgets/common.dart';
 import '../widgets/media_viewer.dart';
 import '../widgets/social_page.dart';
@@ -25,6 +34,7 @@ class DirectConversationList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final store = StoreScope.of(context);
+    final text = context.l10n;
     return PagedContent<DirectConversation>(
       key: ValueKey((requests, query, store.communicationVersion)),
       fetch: (page) =>
@@ -34,67 +44,168 @@ class DirectConversationList extends StatelessWidget {
         onRefresh: refresh,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.only(bottom: Space.xl),
           children: [
             if (items.isEmpty && footer == null)
-              const EmptyState(
-                'Bir merhaba ile başlar.',
-                'Yeni sohbetler ve mesaj istekleri burada görünecek.',
+              EmptyState(
+                text.messagesEmptyTitle,
+                text.messagesEmptyBody,
                 icon: Icons.chat_bubble_outline,
               ),
-            for (final chat in items) ...[
-              ListTile(
-                contentPadding: const EdgeInsets.symmetric(vertical: Space.sm),
-                leading: Avatar(
-                  chat.peer,
-                  size: 53,
-                  online: chat.recentlyActive,
-                ),
-                title: Text(
-                  chat.peer.name,
-                  style: TextStyle(
-                    fontWeight: chat.unread > 0
-                        ? FontWeight.w700
-                        : FontWeight.w600,
-                  ),
-                ),
-                subtitle: Text(
-                  [
-                    if (requests)
-                      chat.outgoing ? 'Onay bekliyor' : 'Gelen istek',
-                    chat.last?.preview ?? 'Bir merhaba gönder.',
-                  ].join(' · '),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                trailing: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    if (chat.last case final last?)
-                      Text(
-                        socialTime(last.date.toIso8601String()),
-                        style: const TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 12,
-                        ),
-                      ),
-                    if (chat.unread > 0) ...[
-                      const SizedBox(height: 4),
-                      Badge(
-                        label: Text('${chat.unread}'),
-                        backgroundColor: AppColors.action,
-                      ),
-                    ],
-                  ],
-                ),
+            for (final chat in items)
+              ConversationTile(
+                key: ValueKey(('conversation', chat.id)),
+                peer: chat.peer,
+                online: chat.recentlyActive,
+                unread: chat.unread,
+                last: chat.last,
+                note: requests
+                    ? (chat.outgoing
+                          ? text.messagesRequestPending
+                          : text.messagesRequestIncoming)
+                    : null,
                 onTap: () =>
                     openPage(context, '/conversation', chat.id.toString()),
               ),
-              const Divider(height: 1),
-            ],
             ?footer,
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One conversation row: avatar, name, last message (with a photo / location glyph), time and unread badge.
+/// Online dots are only ever shown from real recent activity; there is no invented presence.
+class ConversationTile extends StatelessWidget {
+  const ConversationTile({
+    super.key,
+    required this.peer,
+    required this.unread,
+    required this.last,
+    required this.onTap,
+    this.online = false,
+    this.note,
+  });
+  final Person peer;
+  final int unread;
+  final DirectMessage? last;
+  final VoidCallback onTap;
+  final bool online;
+  final String? note;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = context.l10n;
+    final unreadRow = unread > 0;
+    final line = last == null ? text.messagesSayHi : last!.preview;
+    // A request row says so in the same line ("Gelen istek · mesaj"), as one readable string.
+    final preview = note == null ? line : '$note · $line';
+    final glyph = switch (last?.type) {
+      'image' => Icons.image_outlined,
+      'location' => Icons.location_on_outlined,
+      _ => null,
+    };
+    return Material(
+      color: unreadRow ? const Color(0xFFF3F6FF) : Colors.white,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 76),
+          padding: const EdgeInsets.symmetric(
+            horizontal: Space.lg,
+            vertical: 11,
+          ),
+          decoration: const BoxDecoration(
+            border: Border(bottom: BorderSide(color: Color(0xFFEEF3F9))),
+          ),
+          child: Row(
+            children: [
+              Avatar(peer, size: 54, online: online),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            peer.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontWeight: unreadRow
+                                  ? FontWeight.w800
+                                  : FontWeight.w700,
+                              fontSize: 15.5,
+                              color: AppColors.navy,
+                            ),
+                          ),
+                        ),
+                        if (last case final message?)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: Text(
+                              socialTime(message.date.toIso8601String()),
+                              style: TextStyle(
+                                color: unreadRow
+                                    ? AppColors.blue
+                                    : AppColors.muted,
+                                fontSize: 12,
+                                fontWeight: unreadRow
+                                    ? FontWeight.w700
+                                    : FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        if (glyph != null)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 4),
+                            child: Icon(
+                              glyph,
+                              size: 16,
+                              color: unreadRow
+                                  ? AppColors.navy
+                                  : AppColors.muted,
+                            ),
+                          ),
+                        Expanded(
+                          child: Text(
+                            preview,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: unreadRow
+                                  ? AppColors.navy
+                                  : AppColors.muted,
+                              fontWeight: unreadRow
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              fontSize: 13.5,
+                            ),
+                          ),
+                        ),
+                        if (unreadRow)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: Badge(
+                              label: Text('$unread'),
+                              backgroundColor: AppColors.action,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -258,10 +369,10 @@ class _DirectChatPageState extends State<DirectChatPage>
     if (scroll.position.extentAfter < 150) unawaited(sync(older: true));
   }
 
-  Future<void> chooseImage() async {
+  Future<void> chooseImage([ImageSource source = ImageSource.gallery]) async {
     try {
       final chosen = await picker.pickImage(
-        source: ImageSource.gallery,
+        source: source,
         maxWidth: 2048,
         maxHeight: 2048,
         imageQuality: 88,
@@ -275,6 +386,100 @@ class _DirectChatPageState extends State<DirectChatPage>
     } catch (_) {
       if (mounted) toast(context, 'Fotoğraf seçilemedi. Tekrar dene.');
     }
+  }
+
+  Future<void> attach() async {
+    final choice = await showChatAttachmentSheet(context);
+    if (!mounted || choice == null) return;
+    switch (choice) {
+      case ChatAttachment.photo:
+        await chooseImage();
+      case ChatAttachment.camera:
+        await chooseImage(ImageSource.camera);
+      case ChatAttachment.location:
+        await chooseLocation();
+    }
+  }
+
+  Future<void> insertEmoji() async {
+    final emoji = await showChatEmojiSheet(context);
+    if (!mounted || emoji == null) return;
+    insertAtCursor(text, emoji);
+    setState(() {
+      attempt = null;
+      sendError = null;
+    });
+  }
+
+  /// A private, approximate location message: the device point (or a picked one) goes to the server, which snaps it.
+  Future<void> chooseLocation() async {
+    final source = await showChatLocationSourceSheet(context);
+    if (!mounted || source == null) return;
+    LatLng? point;
+    if (source == ChatLocationSource.map) {
+      point = await Navigator.of(context).push<LatLng>(
+        MaterialPageRoute(builder: (_) => const PickLocationPage()),
+      );
+    } else {
+      point = await deviceLocation();
+    }
+    if (!mounted || point == null) return;
+    sendLocation(point);
+  }
+
+  Future<LatLng?> deviceLocation() async {
+    const device = LocationDevice();
+    try {
+      if (!await device.enabled()) {
+        if (mounted) toast(context, DeviceLocationState.disabled.message);
+        return null;
+      }
+      var permission = await device.permission();
+      if (permission == LocationPermission.denied) {
+        permission = await device.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        if (mounted) toast(context, DeviceLocationState.denied.message);
+        return null;
+      }
+      final position = await device.current();
+      return LatLng(position.latitude, position.longitude);
+    } catch (_) {
+      if (mounted) toast(context, DeviceLocationState.unavailable.message);
+      return null;
+    }
+  }
+
+  void sendLocation(LatLng point) {
+    final current = chat;
+    if (current == null || !current.canSend || busy) return;
+    final key = const Uuid().v4();
+    runAccountAction(() async {
+      try {
+        final (next, message) = await api.send(
+          current.peer,
+          '',
+          key,
+          null,
+          location: (
+            latitude: point.latitude,
+            longitude: point.longitude,
+            label: null,
+          ),
+        );
+        if (!mounted) return;
+        setState(() {
+          chat = next;
+          messages[message.id] = message;
+          sendError = null;
+        });
+        store!.communicationChanged();
+        if (scroll.hasClients) scroll.jumpTo(0);
+      } on ApiFailure catch (failure) {
+        if (mounted) setState(() => sendError = failure.detail);
+      }
+    });
   }
 
   void send() {
@@ -329,8 +534,8 @@ class _DirectChatPageState extends State<DirectChatPage>
     } else if (value == 'block') {
       if (!await confirmAction(
             context,
-            title: 'Kullanıcı engellensin mi?',
-            message: 'Bu kişiyle mesajlaşma durdurulacak.',
+            title: tr('Kullanıcı engellensin mi?'),
+            message: tr('Bu kişiyle mesajlaşma durdurulacak.'),
             action: 'Engelle',
           ) ||
           !mounted) {
@@ -395,7 +600,7 @@ class _DirectChatPageState extends State<DirectChatPage>
         actions: [
           if (current != null && error == null)
             PopupMenuButton<String>(
-              tooltip: 'Sohbet seçenekleri',
+              tooltip: tr('Sohbet seçenekleri'),
               onSelected: (value) => option(value, current),
               itemBuilder: (_) => [
                 const PopupMenuItem(value: 'report', child: Text('Şikâyet Et')),
@@ -539,67 +744,28 @@ class _DirectChatPageState extends State<DirectChatPage>
                       child: Column(
                         children: [
                           if (image != null)
-                            ListTile(
-                              dense: true,
-                              leading: const Icon(Icons.image_outlined),
-                              title: const Text('Fotoğraf eklendi'),
-                              trailing: IconButton(
-                                tooltip: 'Fotoğrafı kaldır',
-                                onPressed: busy
-                                    ? null
-                                    : () => setState(() {
-                                        image = null;
-                                        attempt = null;
-                                      }),
-                                icon: const Icon(Icons.close),
-                              ),
+                            PendingPhoto(
+                              file: image!,
+                              label: tr('Fotoğraf eklendi'),
+                              removeTooltip: 'Fotoğrafı kaldır',
+                              onRemove: busy
+                                  ? null
+                                  : () => setState(() {
+                                      image = null;
+                                      attempt = null;
+                                    }),
                             ),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              IconButton(
-                                tooltip: 'Fotoğraf ekle',
-                                icon: const Icon(Icons.image_outlined),
-                                onPressed: busy ? null : chooseImage,
-                              ),
-                              Expanded(
-                                child: TextField(
-                                  key: const Key('chat-input'),
-                                  controller: text,
-                                  enabled: !busy,
-                                  minLines: 1,
-                                  maxLines: 5,
-                                  maxLength: 2000,
-                                  onChanged: (_) => setState(() {
-                                    attempt = null;
-                                    sendError = null;
-                                  }),
-                                  decoration: const InputDecoration(
-                                    hintText: 'Bir mesaj yaz…',
-                                    counterText: '',
-                                  ),
-                                  onSubmitted: (_) => send(),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              IconButton.filled(
-                                tooltip: 'Mesajı gönder',
-                                onPressed:
-                                    busy ||
-                                        (text.text.trim().isEmpty &&
-                                            image == null)
-                                    ? null
-                                    : send,
-                                icon: busy
-                                    ? const SizedBox.square(
-                                        dimension: 17,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : const Icon(Icons.send_rounded),
-                              ),
-                            ],
+                          ChatComposerBar(
+                            controller: text,
+                            busy: busy,
+                            canSend: text.text.trim().isNotEmpty || image != null,
+                            onAttach: attach,
+                            onEmoji: insertEmoji,
+                            onSend: send,
+                            onChanged: () => setState(() {
+                              attempt = null;
+                              sendError = null;
+                            }),
                           ),
                         ],
                       ),
@@ -709,6 +875,7 @@ class _DirectBubble extends StatelessWidget {
                     ),
                   ),
                 ),
+              if (m.isLocation) _LocationCard(m, color: color),
               if (m.body.isNotEmpty)
                 Text(
                   m.body,
@@ -742,6 +909,72 @@ class _DirectBubble extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Location message bubble: pin, "Konum", approximate area and "Haritada Aç" (opens the app map on that point).
+class _LocationCard extends StatelessWidget {
+  const _LocationCard(this.message, {required this.color});
+  final DirectMessage message;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = context.l10n;
+    final label = (message.placeLabel ?? '').trim();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.location_on_rounded, color: color, size: 22),
+              const SizedBox(width: 6),
+              Text(
+                text.chatLocationTitle,
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                ),
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 2, left: 28),
+            child: Text(
+              label.isEmpty
+                  ? text.chatLocationApprox
+                  : '${text.chatLocationApprox} · $label',
+              style: TextStyle(color: color.withValues(alpha: .85), fontSize: 12.5),
+            ),
+          ),
+          const SizedBox(height: 6),
+          TextButton.icon(
+            key: const Key('open-location-on-map'),
+            style: TextButton.styleFrom(
+              foregroundColor: color,
+              backgroundColor: color.withValues(alpha: .14),
+              minimumSize: const Size(0, 36),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            onPressed: () {
+              StoreScope.of(context).mapFocus = LatLng(
+                message.latitude!,
+                message.longitude!,
+              );
+              openPage(context, '/map');
+            },
+            icon: const Icon(Icons.map_outlined, size: 18),
+            label: Text(text.chatOpenOnMap),
+          ),
+        ],
       ),
     );
   }

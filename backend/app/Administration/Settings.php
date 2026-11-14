@@ -20,14 +20,17 @@ final class Settings
         'registrations_enabled' => 'Yeni kayıtlar', 'anonymous_posts_enabled' => 'Anonim paylaşımlar',
         'encounters_enabled' => 'Karşılaşmalar', 'nearby_enabled' => 'Yakınındaki İnsanlar modülü',
         'featured_enabled' => 'Öne Çıkan Karşılaşmalar modülü', 'nearby_notes_enabled' => 'Yakınında yeni mektuplar (küçük ana sayfa kartı)', 'messaging_enabled' => 'Mesajlaşma',
-        'announcements_enabled' => 'Ana sayfa duyuru alanı',
+        'announcements_enabled' => 'Ana sayfa duyuru alanı', 'ads_enabled' => 'Reklamlar aktif',
+        'operator_name' => 'Operatör unvanı (yasal metinlerde)', 'operator_address' => 'Operatör adresi',
+        'operator_registration' => 'Sicil / MERSIS numarası', 'operator_contact_email' => 'KVKK / yasal iletişim e-postası',
+        'feed_ad_interval' => 'Akışta reklam aralığı (organik içerik sayısı)',
         'android_min_version' => 'Android minimum sürüm', 'android_latest_version' => 'Android güncel sürüm',
         'ios_min_version' => 'iOS minimum sürüm', 'ios_latest_version' => 'iOS güncel sürüm',
     ];
 
     public const SWITCHES = [
         'maintenance_mode', 'registrations_enabled', 'anonymous_posts_enabled', 'encounters_enabled',
-        'nearby_enabled', 'featured_enabled', 'nearby_notes_enabled', 'messaging_enabled', 'announcements_enabled',
+        'nearby_enabled', 'featured_enabled', 'nearby_notes_enabled', 'messaging_enabled', 'announcements_enabled', 'ads_enabled',
     ];
 
     private ?array $values = null;
@@ -47,6 +50,10 @@ final class Settings
                 'maintenance_message' => 'Kısa bir bakım çalışması yürütüyoruz. Biraz sonra tekrar dene.',
                 'registrations_enabled' => true, 'anonymous_posts_enabled' => true, 'encounters_enabled' => true,
                 'nearby_enabled' => true, 'featured_enabled' => true, 'nearby_notes_enabled' => true, 'messaging_enabled' => true, 'announcements_enabled' => true,
+                // Native feed ads are on by default; the app still renders none without real ad unit ids in release builds.
+                'ads_enabled' => true, 'feed_ad_interval' => 11,
+                // Operator identity for the legal pages. Never pre-filled: the operator supplies the real values.
+                'operator_name' => '', 'operator_address' => '', 'operator_registration' => '', 'operator_contact_email' => '',
             ];
     }
 

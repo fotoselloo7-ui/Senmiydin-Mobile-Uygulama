@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Default (English): every device language except Turkish. Turkish lives in values-tr/strings.xml. -->
+<resources>
+    <string name="app_name">SenMiydin?</string>
+</resources>

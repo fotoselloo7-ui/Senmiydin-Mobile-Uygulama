@@ -1,5 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import '../widgets/translated_text.dart';
 
+import '../core/app_locale.dart';
 import '../core/theme.dart';
 import '../core/release_info.dart';
 import '../core/navigation.dart';
@@ -10,6 +12,37 @@ import '../widgets/account_action.dart';
 import '../widgets/common.dart';
 import '../widgets/location_ui.dart';
 import '../widgets/social_page.dart';
+
+/// Language picker: "Türkçe" / "English". The choice is saved on the device (and on the account when signed in).
+Future<void> _chooseLanguage(BuildContext context, AppStore store) async {
+  final text = context.l10n;
+  final chosen = await showModalBottomSheet<String>(
+    context: context,
+    showDragHandle: true,
+    builder: (sheet) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final (code, label) in [
+            ('tr', text.languageTurkish),
+            ('en', text.languageEnglish),
+          ])
+            ListTile(
+              key: ValueKey('language-$code'),
+              title: Text(label),
+              trailing: AppLocale.code == code
+                  ? const Icon(Icons.check_rounded, color: AppColors.blue)
+                  : null,
+              onTap: () => Navigator.pop(sheet, code),
+            ),
+        ],
+      ),
+    ),
+  );
+  if (chosen != null && chosen != AppLocale.code) {
+    await store.setLanguage(chosen);
+  }
+}
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -23,7 +56,7 @@ class _SettingsPageState extends State<SettingsPage>
   Widget build(BuildContext context) {
     final store = StoreScope.of(context);
     return AppPage(
-      title: 'Ayarlar',
+      title: tr('Ayarlar'),
       child: ListView(
         padding: Space.page,
         children: [
@@ -47,6 +80,19 @@ class _SettingsPageState extends State<SettingsPage>
               onTap: () => openPage(context, '/change-password'),
             ),
           const SectionLabel('GİZLİLİK VE TERCİHLER'),
+          SettingsRow(
+            context.l10n.settingsLanguage,
+            Icons.language_rounded,
+            subtitle: AppLocale.english ? 'English' : 'Türkçe',
+            onTap: () => _chooseLanguage(context, store),
+          ),
+          if (store.ads.privacyOptionsRequired)
+            SettingsRow(
+              context.l10n.settingsAdPrivacy,
+              Icons.ads_click_rounded,
+              subtitle: context.l10n.settingsAdPrivacySubtitle,
+              onTap: () => store.ads.showPrivacyOptions(),
+            ),
           SettingsRow(
             'Gizlilik ve Konum',
             Icons.shield_outlined,
@@ -249,7 +295,7 @@ class _PreferencesPageState extends State<PreferencesPage>
                         store.refresh();
                       }
                     }),
-              subtitle: 'Kapattığında yakın profiller arasında görünmezsin.',
+              subtitle: tr('Kapattığında yakın profiller arasında görünmezsin.'),
             ),
             if (store.connected)
               PreferenceRow(
@@ -435,7 +481,7 @@ class _BlockedPageState extends State<BlockedPage>
       ],
     );
     return AppPage(
-      title: 'Engellenen Kullanıcılar',
+      title: tr('Engellenen Kullanıcılar'),
       child: store.connected
           ? PagedContent<Person>(
               key: ValueKey(store.communicationVersion),
@@ -486,7 +532,7 @@ class _ReportPageState extends State<ReportPage>
 
   @override
   Widget build(BuildContext context) => AppPage(
-    title: 'Şikâyet',
+    title: tr('Şikâyet'),
     child: sent
         ? ListView(
             padding: Space.page,
@@ -595,7 +641,7 @@ class _DeleteAccountPageState extends State<DeleteAccountPage>
 
   @override
   Widget build(BuildContext context) => AppPage(
-    title: 'Hesabımı Sil',
+    title: tr('Hesabımı Sil'),
     child: ListView(
       padding: Space.page,
       children: [

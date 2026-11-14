@@ -1,3 +1,5 @@
 #include "Generated.xcconfig"
 GOOGLE_REVERSED_CLIENT_ID = com.senmiydin.app
 #include? "OAuth.xcconfig"
+// AdMob application id. The production id replaces this Google sample id at build time.
+ADMOB_APP_ID_IOS=ca-app-pub-3940256099942544~1458002511

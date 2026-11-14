@@ -1,10 +1,12 @@
 import 'dart:io';
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import 'translated_text.dart';
 
 import '../core/theme.dart';
 import '../data/app_store.dart';
+import '../core/app_locale.dart';
 
 /// Resolves a post/encounter/message photo path to an [ImageProvider].
 ///
@@ -373,7 +375,7 @@ class _CloseButton extends StatelessWidget {
   final VoidCallback onPressed;
   @override
   Widget build(BuildContext context) => IconButton(
-    tooltip: 'Kapat',
+    tooltip: tr('Kapat'),
     onPressed: onPressed,
     padding: const EdgeInsets.all(6),
     constraints: const BoxConstraints.tightFor(

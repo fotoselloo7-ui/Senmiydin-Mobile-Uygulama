@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import '../widgets/translated_text.dart';
 
 import '../core/theme.dart';
 import '../core/navigation.dart';
@@ -11,6 +12,7 @@ import '../widgets/common.dart';
 import '../widgets/social.dart';
 import '../widgets/social_page.dart';
 import 'encounters.dart';
+import '../core/app_locale.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage(this.id, {super.key});
@@ -27,13 +29,13 @@ class ProfilePage extends StatelessWidget {
       actions: [
         if (own)
           IconButton(
-            tooltip: 'Ayarlar',
+            tooltip: tr('Ayarlar'),
             onPressed: () => openPage(context, '/settings'),
             icon: const Icon(Icons.settings_outlined),
           )
         else
           PopupMenuButton<String>(
-            tooltip: 'Profil seçenekleri',
+            tooltip: tr('Profil seçenekleri'),
             onSelected: (v) async {
               if (v == 'report') {
                 openPage(
@@ -50,7 +52,7 @@ class ProfilePage extends StatelessWidget {
               } else if (v == 'block') {
                 if (await confirmAction(
                   context,
-                  title: 'Kullanıcı engellensin mi?',
+                  title: tr('Kullanıcı engellensin mi?'),
                   message:
                       'Bu kişi sana mesaj gönderemez; paylaşımlarını akışında görmezsin.',
                   action: 'Engelle',
@@ -215,7 +217,7 @@ class _ProfileContentState extends State<ProfileContent> {
             children: [
               InlineState(
                 icon: Icons.wifi_off_outlined,
-                title: 'Profil yüklenemedi',
+                title: tr('Profil yüklenemedi'),
                 description: error.detail,
                 actionLabel: 'Tekrar Dene',
                 onAction: () => setState(() => profileKey = null),
@@ -403,7 +405,7 @@ class _ProfileContentState extends State<ProfileContent> {
                   count: p.remote && loading
                       ? '…'
                       : '${p.remote ? p.encounterCount : encounters.length}',
-                  label: 'Karşılaşma',
+                  label: tr('Karşılaşma'),
                   onTap: () => own
                       ? openPage(context, '/encounters')
                       : setState(() => tab = 'Karşılaşmalar'),
@@ -415,7 +417,7 @@ class _ProfileContentState extends State<ProfileContent> {
                       : store.connected
                           ? '0'
                           : '${1264 + (following ? 1 : 0)}',
-                  label: 'Takipçi',
+                  label: tr('Takipçi'),
                   onTap: () => openPage(
                     context,
                     '/people',
@@ -431,7 +433,7 @@ class _ProfileContentState extends State<ProfileContent> {
                           : own
                               ? '${store.following.length}'
                               : '287',
-                  label: 'Takip',
+                  label: tr('Takip'),
                   onTap: () => openPage(
                     context,
                     '/people',

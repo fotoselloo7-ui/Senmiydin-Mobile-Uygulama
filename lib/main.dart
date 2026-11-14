@@ -1,8 +1,10 @@
+import 'core/app_locale.dart';
 import 'core/polling.dart';
 
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import 'widgets/translated_text.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:latlong2/latlong.dart';
@@ -29,8 +31,9 @@ import 'screens/live_notifications.dart';
 import 'screens/notifications.dart';
 import 'screens/settings.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AppLocale.init();
   if (kReleaseMode) {
     ErrorWidget.builder = (_) => const ColoredBox(
       color: Colors.white,
@@ -101,7 +104,7 @@ class _SenMiydinAppState extends State<SenMiydinApp> {
         SnackBar(
           content: const Text('Yeni bir SenMiydin? bildirimin var.'),
           action: SnackBarAction(
-            label: 'Gör',
+            label: tr('Gör'),
             onPressed: () => unawaited(openPush(id)),
           ),
         ),
@@ -138,7 +141,9 @@ class _SenMiydinAppState extends State<SenMiydinApp> {
   @override
   Widget build(BuildContext context) => StoreScope(
     store: store,
-    child: MaterialApp(
+    child: ValueListenableBuilder<Locale>(
+      valueListenable: AppLocale.notifier,
+      builder: (context, locale, _) => MaterialApp(
       key: ValueKey(_sessionVersion),
       navigatorKey: _navigator,
       navigatorObservers: [pollingRoutes],
@@ -150,9 +155,12 @@ class _SenMiydinAppState extends State<SenMiydinApp> {
       title: 'SenMiydin?',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
-      locale: const Locale('tr', 'TR'),
-      supportedLocales: const [Locale('tr', 'TR')],
-      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      locale: locale,
+      supportedLocales: AppLocale.supported,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        ...GlobalMaterialLocalizations.delegates,
+      ],
       initialRoute: _sessionVersion > 0
           ? '/login'
           : store.connected
@@ -162,6 +170,7 @@ class _SenMiydinAppState extends State<SenMiydinApp> {
         buildRoute(RouteSettings(name: route)),
       ],
       onGenerateRoute: buildRoute,
+      ),
     ),
   );
 
@@ -214,7 +223,7 @@ class _SenMiydinAppState extends State<SenMiydinApp> {
       ),
       '/permissions' => const PermissionsPage(),
       '/home' => const HomeShell(),
-      '/map' => const AppPage(title: 'Harita', child: MapContent()),
+      '/map' => AppPage(title: tr('Harita'), child: MapContent()),
       '/nearby' => const NearbyPage(),
       '/search' => const SearchPage(),
       '/tag' => const SearchPage(tag: true),
@@ -267,8 +276,8 @@ class _SenMiydinAppState extends State<SenMiydinApp> {
         store.connected
             ? const LiveNotificationsPage()
             : const NotificationsPage(),
-      '/messages' => const AppPage(
-        title: 'Mesajlar',
+      '/messages' => AppPage(
+        title: tr('Mesajlar'),
         compactHeader: true,
         child: MessagesContent(),
       ),
@@ -302,8 +311,8 @@ class _SenMiydinAppState extends State<SenMiydinApp> {
               ),
       '/delete-account' => const DeleteAccountPage(),
       '/legal' => LegalPage(arg as String? ?? 'Bilgilendirme'),
-      _ => const AppPage(
-        title: 'Sayfa Bulunamadı',
+      _ => AppPage(
+        title: tr('Sayfa Bulunamadı'),
         child: EmptyState(
           'Bu yol henüz bir hikâyeye çıkmıyor.',
           'Geri dönerek keşfetmeye devam edebilirsin.',

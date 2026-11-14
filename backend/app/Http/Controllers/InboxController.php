@@ -21,7 +21,7 @@ class InboxController extends Controller
         $actors = User::with('city')->whereKey(collect($page->items())->pluck('actor_id')->filter()->all())
             ->where('account_status', 'active')->get()->keyBy('id');
         $announcements = DB::table('announcements')->whereIn('id', collect($page->items())->pluck('announcement_id')->filter()->all())
-            ->get(['id', 'title', 'body'])->keyBy('id');
+            ->get(['id', 'title', 'body', 'title_en', 'body_en', 'target_type', 'target_latitude', 'target_longitude'])->keyBy('id');
         $available = \App\Notifications\Targets::available($request->user(), $page->items());
         $replyPosts = \App\Notifications\Targets::replyPosts($request->user(), $page->items());
         return ApiResponse::ok(['items' => collect($page->items())->map(fn ($item) =>
@@ -40,17 +40,23 @@ class InboxController extends Controller
 
     private function resource(object $item, ?User $actor, ?object $announcement, bool $available, array $replyPosts = []): array
     {
-        [$route, $message] = Inbox::TYPES[$item->type];
+        [$route] = Inbox::TYPES[$item->type];
+        $message = Inbox::message($item->type);
         if (!$available) $announcement = null;
+        $english = app()->getLocale() === 'en';
+        // Location announcements carry an approximate map target ("Haritada Gör"); never a user position.
+        $mapTarget = $announcement && ($announcement->target_type ?? 'all') === 'location' && $announcement->target_latitude !== null
+            ? ['latitude' => (float) $announcement->target_latitude, 'longitude' => (float) $announcement->target_longitude] : null;
         return ['id' => $item->id, 'type' => $item->type, 'route' => $route,
             // comment_reply stores the reply id internally; the app always opens the post.
             'entity_id' => in_array($item->type, ['comment_reply', 'comment_like'], true) ? ($replyPosts[$item->entity_id] ?? $item->entity_id) : $item->entity_id,
             'available' => $available,
             // Location-derived and map-note notifications never carry another account's identity (replies may be anonymous).
-            'actor' => $actor && ! in_array($item->type, ['nearby_activity', 'map_note_nearby', 'map_note_reply'], true) ? new PublicUserResource($actor) : null,
-            'text' => $announcement?->title ?? $message,
-            ...(isset(Inbox::SUBTITLES[$item->type]) ? ['subtitle' => Inbox::SUBTITLES[$item->type]] : []),
-            ...($announcement ? ['announcement_body' => $announcement->body] : []),
+            'actor' => $actor && ! in_array($item->type, ['nearby_activity', 'nearby_post', 'map_note_nearby', 'map_note_reply'], true) ? new PublicUserResource($actor) : null,
+            'text' => $announcement ? ($english && filled($announcement->title_en ?? null) ? $announcement->title_en : $announcement->title) : $message,
+            ...(Inbox::subtitle($item->type) !== null ? ['subtitle' => Inbox::subtitle($item->type)] : []),
+            ...($announcement ? ['announcement_body' => $english && filled($announcement->body_en ?? null) ? $announcement->body_en : $announcement->body] : []),
+            ...($mapTarget ? ['map_target' => $mapTarget] : []),
             'read' => $item->read_at !== null, 'created_at' => Carbon::parse($item->created_at)->toISOString()];
     }
 
