@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:senmiydin/data/account_api.dart';
+import 'support/comments_host.dart';
 import 'package:senmiydin/data/app_store.dart';
 import 'package:senmiydin/data/communication_api.dart';
 import 'package:senmiydin/data/compose_draft.dart';
@@ -167,7 +168,7 @@ void main() {
       size(tester, 320);
       final store = await commentsStore(null);
       addTearDown(store.dispose);
-      await tester.pumpWidget(host(store, const CommentsPage('5')));
+      await tester.pumpWidget(host(store, const OpenComments('5')));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       expect(find.byKey(const ValueKey('like-comment-10')), findsOneWidget);
@@ -191,7 +192,7 @@ void main() {
             : Future.value(ok(commentJson(10, 'Ana yorum', likes: 4, liked: false)));
       });
       addTearDown(store.dispose);
-      await tester.pumpWidget(host(store, const CommentsPage('5')));
+      await tester.pumpWidget(host(store, const OpenComments('5')));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const ValueKey('like-comment-10')));
@@ -222,7 +223,7 @@ void main() {
         return ok(commentJson(11, 'Bir cevap', username: 'kaan', parent: 10, likes: 0, liked: false));
       });
       addTearDown(store.dispose);
-      await tester.pumpWidget(host(store, const CommentsPage('5')));
+      await tester.pumpWidget(host(store, const OpenComments('5')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('like-comment-10')));
       await tester.pumpAndSettle();
@@ -243,7 +244,7 @@ void main() {
       size(tester, 320);
       final store = await commentsStore(null);
       addTearDown(store.dispose);
-      await tester.pumpWidget(host(store, const CommentsPage('5'), scale: 1.5));
+      await tester.pumpWidget(host(store, const OpenComments('5'), scale: 1.5));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());

@@ -206,7 +206,7 @@ void main() {
     const photoText = 'Kıyının iki rengi, günün iki güzel anı.';
     await tap(compose);
     await enter(postText, photoText);
-    await tap(find.text('Fotoğraf Ekle'));
+    await tap(find.byTooltip('Fotoğraf Ekle'));
     await waitFor(find.text('1/2'));
     await tap(publish);
     await waitFor(find.text('Ana Sayfa'));
@@ -258,7 +258,8 @@ void main() {
     await enter(find.widgetWithText(TextField, 'Bir yorum yaz…'), comment);
     await tap(find.byTooltip('Yorumu gönder'));
     await waitFor(find.text(comment));
-    await tap(find.byTooltip('Geri'));
+    // The comments panel is a bottom sheet over the feed now: close it, the feed stays where it was.
+    await tap(find.byKey(const Key('comments-close')));
     await tap(action(otherText, 'Kaydet'));
     await waitFor(action(otherText, 'Kaydı kaldır'));
     expect(store.cachedPost(otherId)?.saved, true);

@@ -251,7 +251,8 @@ class _SenMiydinAppState extends State<SenMiydinApp> {
         ),
         _ => const MapNoteComposePage(),
       },
-      '/comments' => CommentsPage(arg as String),
+      // Legacy / notification route: no separate Yorumlar page any more, the post opens with its comments sheet.
+      '/comments' => PostDetailPage(arg as String, openComments: true),
       '/profile' => ProfilePage(arg as String? ?? store.me.id),
       '/edit-profile' => const CompleteProfilePage(edit: true),
       '/people' => switch (arg) {

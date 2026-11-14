@@ -9,11 +9,7 @@ import '../data/app_store.dart';
 import '../data/models.dart';
 
 class Brand extends StatelessWidget {
-  const Brand({
-    super.key,
-    this.size = 27,
-    this.alignment = Alignment.center,
-  });
+  const Brand({super.key, this.size = 27, this.alignment = Alignment.center});
   final double size;
   final Alignment alignment;
   @override
@@ -150,9 +146,7 @@ class SecondaryButton extends StatelessWidget {
     final style = OutlinedButton.styleFrom(
       backgroundColor: tonal ? AppColors.pale : Colors.white,
       foregroundColor: tonal ? AppColors.action : AppColors.navy,
-      side: BorderSide(
-        color: tonal ? const Color(0xFFD5E3F7) : AppColors.line,
-      ),
+      side: BorderSide(color: tonal ? const Color(0xFFD5E3F7) : AppColors.line),
     );
     return SizedBox(
       width: double.infinity,
@@ -283,7 +277,8 @@ class Avatar extends StatelessWidget {
                   boxShadow: size >= 50
                       ? [
                           BoxShadow(
-                            color: const Color(0xFF1877F2).withValues(alpha: .10),
+                            color: const Color(0xFF1877F2)
+                                .withValues(alpha: .10),
                             blurRadius: 8,
                             offset: const Offset(0, 3),
                           ),
@@ -787,11 +782,7 @@ class AppIconBox extends StatelessWidget {
         borderRadius: BorderRadius.circular(radius),
       ),
       child: Center(
-        child: Icon(
-          icon,
-          size: size,
-          color: color,
-        ),
+        child: Icon(icon, size: size, color: color),
       ),
     );
   }
@@ -823,7 +814,10 @@ class SettingsRow extends StatelessWidget {
         borderRadius: AppShape.rounded,
         child: ListTile(
           minTileHeight: 56,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 4,
+          ),
           onTap: onTap,
           leading: AppIconBox(
             icon: icon,
@@ -893,36 +887,52 @@ class ChoicePills extends StatelessWidget {
     required this.options,
     required this.value,
     required this.onChanged,
+    this.singleRow = false,
   });
   final List<String> options;
   final String value;
   final ValueChanged<String> onChanged;
+
+  /// Keep every option on ONE line: compact paddings, and a horizontal scroll (never a second row) on very narrow screens.
+  final bool singleRow;
   @override
-  Widget build(BuildContext context) => Wrap(
-    spacing: Space.sm,
-    runSpacing: 4,
-    children: options
-        .map(
-          (v) => ChoiceChip(
-            label: Text(v),
-            selectedColor: AppColors.action,
-            backgroundColor: AppColors.surface,
-            side: BorderSide(
-              color: value == v ? AppColors.action : AppColors.line,
-            ),
-            selected: value == v,
-            showCheckmark: false,
-            labelStyle: TextStyle(
-              fontFamily: 'NunitoSans',
-              fontSize: 12.5,
-              fontWeight: value == v ? FontWeight.w700 : FontWeight.w600,
-              color: value == v ? Colors.white : AppColors.navy,
-            ),
-            onSelected: (_) => onChanged(v),
-          ),
-        )
-        .toList(),
-  );
+  Widget build(BuildContext context) {
+    final chips = options.map(
+      (v) => ChoiceChip(
+        label: Text(v),
+        labelPadding: singleRow
+            ? const EdgeInsets.symmetric(horizontal: 1)
+            : null,
+        padding: singleRow ? const EdgeInsets.symmetric(horizontal: 6) : null,
+        selectedColor: AppColors.action,
+        backgroundColor: AppColors.surface,
+        side: BorderSide(color: value == v ? AppColors.action : AppColors.line),
+        selected: value == v,
+        showCheckmark: false,
+        labelStyle: TextStyle(
+          fontFamily: 'NunitoSans',
+          fontSize: 12.5,
+          fontWeight: value == v ? FontWeight.w700 : FontWeight.w600,
+          color: value == v ? Colors.white : AppColors.navy,
+        ),
+        onSelected: (_) => onChanged(v),
+      ),
+    );
+    if (singleRow) {
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (final (i, chip) in chips.indexed) ...[
+              if (i > 0) const SizedBox(width: 6),
+              chip,
+            ],
+          ],
+        ),
+      );
+    }
+    return Wrap(spacing: Space.sm, runSpacing: 4, children: chips.toList());
+  }
 }
 
 IconData interestIcon(String interest) => switch (interest) {

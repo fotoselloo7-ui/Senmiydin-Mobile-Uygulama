@@ -180,7 +180,7 @@ void main() {
     await tap(find.text('Karşılaşmayı Paylaş'));
     await enter(find.byKey(const Key('encounter-story-title')), storyTitle);
     await enter(postText, storyBody);
-    await tap(find.text('Fotoğraf Ekle'));
+    await tap(find.byTooltip('Fotoğraf Ekle'));
     await waitFor(find.text('1/2'));
     debugPrint('Two images were selected.');
     await tap(publish);

@@ -14,6 +14,7 @@ import '../data/communication_api.dart';
 import '../data/models.dart';
 import '../data/location_api.dart';
 import 'collections.dart';
+import 'comments_sheet.dart';
 import 'common.dart';
 import 'media_viewer.dart';
 import 'social_page.dart';
@@ -482,7 +483,7 @@ class PostCard extends StatelessWidget {
                   label: '${post.displayedCommentCount}',
                   color: const Color(0xFF334766),
                   tooltip: 'Yorumlar',
-                  onTap: () => openPage(context, '/comments', post.id),
+                  onTap: () => showCommentsSheet(context, post),
                 ),
                 _PostAction(
                   icon: Icons.near_me_outlined,

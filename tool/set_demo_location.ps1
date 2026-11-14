@@ -35,8 +35,13 @@ $lng = $Longitude.ToString($culture)
 Invoke-Device emu geo fix $lng $lat
 Invoke-Device shell appops set com.android.shell android:mock_location allow
 foreach ($provider in @('gps', 'fused')) {
+    # A fresh emulator has no test provider yet: adb then writes to stderr, which Windows PowerShell 5.1 turns into a
+    # terminating error under 'Stop'. Probe with 'Continue' and decide by the exit code only.
+    $ErrorActionPreference = 'Continue'
     & $adb -s $serial shell cmd location providers set-test-provider-enabled $provider true 2>&1 | Out-Null
-    if ($LASTEXITCODE) {
+    $probe = $LASTEXITCODE
+    $ErrorActionPreference = 'Stop'
+    if ($probe) {
         Invoke-Device shell cmd location providers add-test-provider $provider
         Invoke-Device shell cmd location providers set-test-provider-enabled $provider true
     }

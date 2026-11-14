@@ -7,13 +7,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:senmiydin/data/account_api.dart';
+import 'support/comments_host.dart';
 import 'package:senmiydin/data/app_store.dart';
 import 'package:senmiydin/data/location_service.dart';
 import 'package:senmiydin/data/map_notes_api.dart';
 import 'package:senmiydin/screens/auth.dart';
 import 'package:senmiydin/screens/home.dart';
 import 'package:senmiydin/screens/map_notes.dart';
-import 'package:senmiydin/screens/post.dart';
 import 'package:senmiydin/widgets/app_drawer.dart';
 import 'package:senmiydin/widgets/common.dart';
 import 'package:senmiydin/widgets/map_note_widgets.dart';
@@ -405,7 +405,7 @@ void main() {
           return ok({'items': [], 'next_page': null});
         });
         addTearDown(store.dispose);
-        await tester.pumpWidget(host(store, const CommentsPage('5')));
+        await tester.pumpWidget(host(store, const OpenComments('5')));
         await tester.pumpAndSettle();
 
         expect(find.text('Ben de dün oradaydım.'), findsOneWidget);
@@ -492,7 +492,7 @@ void main() {
           return ok({'items': [], 'next_page': null});
         });
         addTearDown(store.dispose);
-        await tester.pumpWidget(host(store, const CommentsPage('5')));
+        await tester.pumpWidget(host(store, const OpenComments('5')));
         await tester.pumpAndSettle();
         await tester.tap(find.byKey(const ValueKey('reply-10')));
         await tester.pumpAndSettle();

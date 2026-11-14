@@ -1,8 +1,39 @@
 # Doğrulama
 
-> **Güncel kaynak bu dosyanın ilk bölümüdür (14 Kasım 2026, yorum beğenileri, koleksiyonlar ve taslak).** Altındaki bölümler önceki turların tarihsel kayıtlarıdır; oradaki sayılar güncel durum değildir.
+> **Güncel kaynak bu dosyanın ilk bölümüdür (14 Kasım 2026, Compose sadeleştirme ve yorum paneli).** Altındaki bölümler önceki turların tarihsel kayıtlarıdır; oradaki sayılar güncel durum değildir.
 
-## Yorum beğenileri, kaydedilen koleksiyonları ve dayanıklı taslak — 14 Kasım 2026 (en güncel)
+## Compose sadeleştirme ve yorumları alt panele taşıma — 14 Kasım 2026 (en güncel)
+
+Başlangıç `631123e` (gerçekten çalıştırıldı): Laravel 170 test / 2844 assertion, Flutter 165, analyze temiz, Pixel 9/9, location-time 3/3. Backend bu turda değişmedi.
+
+| Kontrol | Final |
+|---|---|
+| Laravel `php artisan test` | **170 test / 2844 assertion geçti** (değişmedi) |
+| `flutter analyze` | **No issues found** |
+| Flutter `flutter test` | **189 test geçti** (+24: `test/compose_comments_sheet_test.dart`; mevcut testler silinmedi / atlanmadı, yalnız yeni UX'e uyarlandı) |
+| Pixel 6a entegrasyon | **9/9 geçti**, `clean=true` |
+| Pixel 6a location-time | **3/3 geçti**, `clean=true` |
+
+**Yeni Flutter testleri:** Compose 320 / 360 / 390 / 430 dp (iki ikon düğmesi 44×44, beş tür aynı satırda ve sarmıyor, "Konum Ekle" yok, yeni konum adları, harita noktası ↔ cihaz konumu dışlaması, Home konum kısayolu). Yorum paneli 320 / 360 / 390 / 430 dp × 1,0 ve 1,5× yazı; yapı / kapat / yapışık composer, aşağı sürükleyerek kapatma, klavye (viewInsets), boş ve kapalı durum, beğeni kalıcılığı (kapat-aç), uçuştaki istekle kapatma güvenliği, **Home akışında kaydırma konumu korunur + sayaç 0 → 1**, Paylaşım Detayı "Yorum Yaz", `comment` / `comment_reply` / `comment_like` bildirim rotası (köprü), Kaydedilenler'den açılış.
+
+**Mevcut testlerin yeni UX'e uyarlanması (silme / gevşetme yok):** `CommentsPage` → `test/support/comments_host.dart` (`OpenComments`); `widget_test.dart` rota döngülerinde `/comments` köprüsü (yazı + panel) için ek `pop`; entegrasyonda Fotoğraf düğmesi `find.byTooltip('Fotoğraf Ekle')` (`encounter_test`, `social_test`, `media_test`), yorum paneli `comments-close` ile kapanır (`social_test`), `app_test` köprü rotası için ek `pop`, `location_time_test` `Haritada yer seç`.
+
+**Araç düzeltmesi:** `tool/set_demo_location.ps1`, emülatör yeniden başlayınca (test sağlayıcısı henüz yokken) `adb` stderr çıktısını Windows PowerShell 5.1'de sonlandırıcı hataya çeviriyordu; yoklama `Continue` ile yapılıp yalnız çıkış koduna bakılıyor.
+
+**Gerçek Pixel 6a E2E (Demo; arayüz üzerinden, ASCII metin):**
+
+- *Compose:* üstte Konum Ekle yok; iki kompakt ikon düğmesi; beş tür tek satırda (`compose-clean-actions.png`, `compose-types-one-row.png`); `Şehir`, `Haritada yer seç`, `Mevcut konumumu ekle`.
+- *Panel:* Home'da yorum ikonu → alt panel arkada Home'u koyulaşmış bırakarak açıldı (`comments-bottom-sheet.png`) → yorum yazıldı, "Yorumlar (2)" ve Home kartı sayacı 2 oldu → kapatınca Home aynı yerde → tekrar açınca yeni yorum duruyor.
+- *Yanıt:* Yanıtla → "Yanıtlanıyor: @elifdemo" + `@elifdemo ` ile başlayan composer, klavye açıkken gönder düğmesi görünür (`comments-bottom-sheet-keyboard.png`, `comments-bottom-sheet-reply.png`).
+- *Beğeni:* ana yorum ve yanıt kalbi dolu / 1; panel kapatılıp açılınca korundu.
+- *Bildirim:* "Paylaşımına yorum yapıldı." bildirimine dokununca Paylaşım sayfası + yorum paneli açıldı.
+- Test verisi (yazı, yorumlar, beğeni, bildirim) sonunda temizlendi.
+
+**Sınırlar:** Panelin soğuk başlangıçta bildirimden açılışı widget testinde (köprü rotasıyla) kanıtlıdır; cihazda uygulama canlıyken bildirim denendi. `docs/UI_AUDIT.md` tarihsel rapordur, eski "CommentsPage" satırını olduğu gibi korur; güncel davranış `SENMIYDIN_URUN_TANIMI.md` bölüm 39–40'tadır.
+
+---
+
+## Yorum beğenileri, kaydedilen koleksiyonları ve dayanıklı taslak — 14 Kasım 2026 (önceki tur)
 
 Başlangıç `11721d2` (gerçekten çalıştırıldı): Laravel 162 test / 2627 assertion, Flutter 142, analyze temiz.
 

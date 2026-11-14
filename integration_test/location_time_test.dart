@@ -150,7 +150,7 @@ void main() {
       )).items.map((p) => p.id).toSet();
       await enterField(tester, find.byKey(const Key('post-text')), message);
       await tapVisible(tester, find.text('Karşılaşma').first);
-      await tapVisible(tester, find.text('Paylaşım yeri'));
+      await tapVisible(tester, find.text('Haritada yer seç'));
       await tapVisible(tester, find.text('Geçtiğim yerlerden seç'));
       await waitFor(
         tester,

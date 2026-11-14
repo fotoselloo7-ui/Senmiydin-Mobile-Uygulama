@@ -3,18 +3,20 @@ import 'package:flutter/material.dart';
 import '../core/theme.dart';
 import '../core/navigation.dart';
 import '../data/app_store.dart';
-import '../data/communication_api.dart';
 import '../data/account_api.dart';
 import '../data/models.dart';
-import '../widgets/account_action.dart';
 import '../widgets/collections.dart';
+import '../widgets/comments_sheet.dart';
 import '../widgets/common.dart';
 import '../widgets/social.dart';
 import '../widgets/social_page.dart';
 
 class PostDetailPage extends StatelessWidget {
-  const PostDetailPage(this.id, {super.key});
+  const PostDetailPage(this.id, {super.key, this.openComments = false});
   final String id;
+
+  /// Opened from a comment notification / the legacy `/comments` route: show the post and raise the comments sheet.
+  final bool openComments;
   @override
   Widget build(BuildContext context) => PostRequest(id, builder: content);
 
@@ -26,6 +28,7 @@ class PostDetailPage extends StatelessWidget {
       child: ListView(
         padding: Space.page,
         children: [
+          if (openComments) _OpenCommentsOnce(post),
           PostCard(post, detail: true),
           if (encounters.isNotEmpty) ...[
             const SectionHeader(
@@ -38,7 +41,7 @@ class PostDetailPage extends StatelessWidget {
             SectionHeader(
               'Yorumlar (${post.displayedCommentCount})',
               action: 'Tümünü Gör',
-              onTap: () => openPage(context, '/comments', id),
+              onTap: () => showCommentsSheet(context, post),
             ),
             if (post.remote)
               PagedContent<Comment>(
@@ -57,7 +60,7 @@ class PostDetailPage extends StatelessWidget {
             SecondaryButton(
               post.commentsEnabled ? 'Yorum Yaz' : 'Yorumları Gör',
               icon: Icons.chat_bubble_outline,
-              onPressed: () => openPage(context, '/comments', id),
+              onPressed: () => showCommentsSheet(context, post),
             ),
           ],
         ],
@@ -106,455 +109,25 @@ class PostDetailPage extends StatelessWidget {
   }
 }
 
-class CommentsPage extends StatefulWidget {
-  const CommentsPage(this.id, {super.key});
-  final String id;
+/// Raises the comments sheet exactly once, right after the post is on screen.
+class _OpenCommentsOnce extends StatefulWidget {
+  const _OpenCommentsOnce(this.post);
+  final Post post;
   @override
-  State<CommentsPage> createState() => _CommentsPageState();
+  State<_OpenCommentsOnce> createState() => _OpenCommentsOnceState();
 }
 
-class _CommentsPageState extends State<CommentsPage>
-    with AccountAction<CommentsPage> {
-  final text = TextEditingController(), scroll = ScrollController();
-  final focus = FocusNode();
-
-  /// The top-level comment being answered (replies never answer replies).
-  Comment? replyingTo;
-
-  /// Fully loaded reply lists, by top-level comment id (the list itself only embeds the first few).
-  final expanded = <String, List<Comment>>{};
-
+class _OpenCommentsOnceState extends State<_OpenCommentsOnce> {
   @override
-  void dispose() {
-    text.dispose();
-    scroll.dispose();
-    focus.dispose();
-    super.dispose();
-  }
-
-  void startReply(Comment comment) {
-    final store = StoreScope.of(context);
-    final person = comment.authorId.isEmpty
-        ? null
-        : store.person(comment.authorId);
-    setState(() => replyingTo = comment);
-    // The composer starts with @username, only to give the conversation its context.
-    text.text = person == null ? '' : '@${person.handle} ';
-    text.selection = TextSelection.collapsed(offset: text.text.length);
-    focus.requestFocus();
-  }
-
-  void cancelReply() {
-    setState(() => replyingTo = null);
-    text.clear();
-  }
-
-  Future<void> loadAllReplies(Post post, String commentId) async {
-    final store = StoreScope.of(context);
-    final all = <Comment>[];
-    int? page = 1;
-    while (page != null) {
-      final result = await store.loadReplies(post.id, commentId, page);
-      all.addAll(result.items);
-      page = result.nextPage;
-    }
-    if (mounted) setState(() => expanded[commentId] = all);
-  }
-
-  void send(Post post) {
-    final store = StoreScope.of(context);
-    if (text.text.trim().isEmpty) {
-      return;
-    }
-    if (post.remote) {
-      final parent = replyingTo;
-      runAccountAction(() async {
-        await store.writeComment(post, text.text, parent: parent);
-        if (!mounted) return;
-        text.clear();
-        setState(() => replyingTo = null);
-        // Show the whole conversation, including the new reply, in order.
-        if (parent?.id != null) await loadAllReplies(post, parent!.id!);
-      });
-      return;
-    }
-    store.comment(post, text.text);
-    text.clear();
-    setState(() {});
+  void initState() {
+    super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (scroll.hasClients) {
-        scroll.animateTo(
-          scroll.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-        );
-      }
+      if (mounted) showCommentsSheet(context, widget.post);
     });
   }
 
   @override
-  Widget build(BuildContext context) =>
-      PostRequest(widget.id, builder: content, title: 'Yorumlar');
-
-  Widget content(BuildContext context, Post post) {
-    if (!post.interactionsEnabled) {
-      return const AppPage(
-        title: 'Yorumlar',
-        child: EmptyState('Yorumlar yayın sonrası açılır.', ''),
-      );
-    }
-    final store = StoreScope.of(context);
-    return AppPage(
-      title: 'Yorumlar (${post.displayedCommentCount})',
-      child: Column(
-        children: [
-          Expanded(
-            child: post.remote
-                ? PagedContent<Comment>(
-                    key: ValueKey(store.commentsVersion),
-                    fetch: (page) => store.loadComments(post.id, page),
-                    id: (comment) => comment.id!,
-                    visible: (comment) =>
-                        !store.blocked.contains(comment.authorId),
-                    builder: (context, comments, footer, refresh) =>
-                        RefreshIndicator(
-                          onRefresh: refresh,
-                          child: ListView(
-                            padding: Space.page,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(Space.md),
-                                decoration: AppShape.card(
-                                  color: AppColors.pale,
-                                ),
-                                child: Text(post.text),
-                              ),
-                              const SizedBox(height: Space.xl),
-                              if (comments.isEmpty && footer == null)
-                                const EmptyState(
-                                  'İlk merhaba senden gelsin.',
-                                  'Henüz yorum yapılmamış.',
-                                ),
-                              for (final comment in comments)
-                                commentThread(context, store, post, comment),
-                              ?footer,
-                            ],
-                          ),
-                        ),
-                  )
-                : ListView(
-                    controller: scroll,
-                    padding: Space.page,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(Space.md),
-                        decoration: AppShape.card(color: AppColors.pale),
-                        child: Text(post.text),
-                      ),
-                      const SizedBox(height: Space.xl),
-                      if (post.comments.isEmpty)
-                        const EmptyState(
-                          'İlk merhaba senden gelsin.',
-                          'Henüz yorum yapılmamış.',
-                        ),
-                      for (final comment in post.comments)
-                        commentRow(context, store, post, comment),
-                    ],
-                  ),
-          ),
-          if (!post.commentsEnabled)
-            const InfoNote('Bu paylaşım yorumlara kapalı.')
-          else
-            Container(
-              padding: const EdgeInsets.all(Space.md),
-              decoration: const BoxDecoration(
-                border: Border(top: BorderSide(color: AppColors.line)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (replyingTo != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Row(
-                        key: const Key('replying-banner'),
-                        children: [
-                          const Icon(
-                            Icons.subdirectory_arrow_right_rounded,
-                            size: 16,
-                            color: AppColors.brandPurple,
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              'Yanıtlanıyor: ${replyTargetName(store, replyingTo!)}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTypography.metadata.copyWith(
-                                color: AppColors.brandPurple,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            key: const Key('cancel-reply'),
-                            tooltip: 'Yanıtı iptal et',
-                            visualDensity: VisualDensity.compact,
-                            icon: const Icon(Icons.close_rounded, size: 18),
-                            onPressed: busy ? null : cancelReply,
-                          ),
-                        ],
-                      ),
-                    ),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Avatar(store.me, size: 38),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          key: const Key('comment-field'),
-                          controller: text,
-                          focusNode: focus,
-                          enabled: !busy,
-                          minLines: 1,
-                          maxLines: 4,
-                          maxLength: 500,
-                          onChanged: (_) => setState(() {}),
-                          decoration: InputDecoration(
-                            hintText: replyingTo == null
-                                ? 'Bir yorum yaz…'
-                                : 'Yanıtını yaz…',
-                            counterText: '',
-                          ),
-                          onSubmitted: (_) => send(post),
-                        ),
-                      ),
-                      IconButton(
-                        key: const Key('send-comment'),
-                        tooltip: replyingTo == null
-                            ? 'Yorumu gönder'
-                            : 'Yanıtı gönder',
-                        onPressed: busy || text.text.trim().isEmpty
-                            ? null
-                            : () => send(post),
-                        icon: const Icon(
-                          Icons.send_rounded,
-                          color: AppColors.blue,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  String replyTargetName(AppStore store, Comment comment) {
-    final person = comment.authorId.isEmpty
-        ? null
-        : store.person(comment.authorId);
-    return person == null ? 'Anonim yorum' : '@${person.handle}';
-  }
-
-  /// A top-level comment with its replies (oldest first, one level only).
-  Widget commentThread(
-    BuildContext context,
-    AppStore store,
-    Post post,
-    Comment comment,
-  ) {
-    final replies = expanded[comment.id] ?? comment.replies;
-    final hidden = comment.replyCount - replies.length;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        commentRow(context, store, post, comment, padBottom: replies.isEmpty),
-        if (replies.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(left: 44, bottom: Space.lg),
-            child: Column(
-              key: ValueKey('replies-${comment.id}'),
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (final reply in replies)
-                  commentRow(context, store, post, reply, reply: true),
-                if (hidden > 0 && expanded[comment.id] == null)
-                  TextButton(
-                    key: ValueKey('more-replies-${comment.id}'),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      minimumSize: const Size(0, 36),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    onPressed: busy
-                        ? null
-                        : () => runAccountAction(
-                            () => loadAllReplies(post, comment.id!),
-                          ),
-                    child: Text('$hidden yanıt daha'),
-                  ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget commentRow(
-    BuildContext context,
-    AppStore store,
-    Post post,
-    Comment comment, {
-    bool reply = false,
-    bool padBottom = true,
-  }) {
-    final person = comment.authorId.isEmpty
-        ? null
-        : store.person(comment.authorId);
-    return Padding(
-      key: ValueKey('comment-${comment.id}'),
-      padding: EdgeInsets.only(bottom: padBottom || reply ? Space.lg : 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (reply)
-            const Padding(
-              padding: EdgeInsets.only(top: 6, right: 4),
-              child: Icon(
-                Icons.subdirectory_arrow_right_rounded,
-                size: 16,
-                color: AppColors.textMuted,
-              ),
-            ),
-          Avatar(
-            person,
-            size: reply ? 30 : 36,
-            onTap: person == null
-                ? null
-                : () => openPage(context, '/profile', person.id),
-          ),
-          SizedBox(width: reply ? Space.sm : Space.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        person?.name ?? 'Anonim',
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                    Text(
-                      comment.time,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    if (comment.mine)
-                      IconButton(
-                        tooltip: reply ? 'Yanıtı sil' : 'Yorumu sil',
-                        icon: const Icon(Icons.delete_outline, size: 18),
-                        onPressed: busy
-                            ? null
-                            : () => runAccountAction(() async {
-                                await store.removeComment(post, comment);
-                                if (comment.parentId != null) {
-                                  expanded.remove(comment.parentId);
-                                }
-                              }),
-                      )
-                    else if (comment.id != null && post.remote)
-                      IconButton(
-                        tooltip: reply
-                            ? 'Yanıtı şikâyet et'
-                            : 'Yorumu şikâyet et',
-                        icon: const Icon(Icons.flag_outlined, size: 18),
-                        onPressed: () => openPage(
-                          context,
-                          '/report',
-                          ReportTarget(
-                            'comment',
-                            int.parse(comment.id!),
-                            reply ? 'Yanıt' : 'Yorum',
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(comment.text),
-                if (post.remote && comment.id != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Outline heart + count; the same icon and colours as the post like.
-                        TextButton.icon(
-                          key: ValueKey('like-comment-${comment.id}'),
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 2),
-                            minimumSize: const Size(0, 34),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            foregroundColor: comment.liked
-                                ? AppColors.encounterPink
-                                : const Color(0xFF334766),
-                            textStyle: AppTypography.metadata.copyWith(
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          onPressed: () => socialAction(
-                            context,
-                            () => store.toggleCommentLike(post, comment),
-                          ),
-                          icon: Icon(
-                            comment.liked
-                                ? Icons.favorite_rounded
-                                : Icons.favorite_border_rounded,
-                            size: 17,
-                            semanticLabel: comment.liked
-                                ? 'Beğeniyi geri al'
-                                : 'Beğen',
-                          ),
-                          label: Text('${comment.likes}'),
-                        ),
-                        if (!reply && post.commentsEnabled) ...[
-                          const SizedBox(width: 10),
-                          TextButton.icon(
-                            key: ValueKey('reply-${comment.id}'),
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 2,
-                              ),
-                              minimumSize: const Size(0, 34),
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              textStyle: AppTypography.metadata.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            onPressed: busy ? null : () => startReply(comment),
-                            icon: const Icon(
-                              Icons.subdirectory_arrow_right_rounded,
-                              size: 16,
-                            ),
-                            label: const Text('Yanıtla'),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }
 
 class SavedPage extends StatefulWidget {
@@ -612,7 +185,10 @@ class _SavedPageState extends State<SavedPage> {
       initial: collection.name,
     );
     if (name == null || !mounted) return;
-    await collectionAction(context, () => store.renameCollection(collection, name));
+    await collectionAction(
+      context,
+      () => store.renameCollection(collection, name),
+    );
   }
 
   Future<void> remove(AppStore store, SavedCollection collection) async {

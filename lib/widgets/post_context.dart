@@ -109,9 +109,9 @@ class PostPlaceField extends StatelessWidget {
   Widget build(BuildContext context) {
     final store = StoreScope.of(context);
     return SettingsRow(
-      'Paylaşım yeri',
+      'Haritada yer seç',
       Icons.add_location_alt_outlined,
-      subtitle: value?.label ?? 'Yaklaşık yer ekle (isteğe bağlı)',
+      subtitle: value?.label ?? 'İsteğe bağlı yaklaşık bir nokta seç',
       onTap: () => showModalBottomSheet<void>(
         context: context,
         builder: (ctx) => SafeArea(

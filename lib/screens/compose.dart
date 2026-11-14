@@ -655,50 +655,22 @@ class _ComposePageState extends State<ComposePage>
                   widget.storyFor!.story!.images.isNotEmpty)
                 ImageCarousel(widget.storyFor!.story!.images),
               if (!widget.reviseStory)
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
+                // Photo and camera only: compact icon buttons (the location choices live further down, once).
+                Row(
                   children: [
-                    ActionChip(
-                      avatar: const Icon(
-                        Icons.image_outlined,
-                        color: AppColors.blue,
-                        size: 19,
-                      ),
-                      label: const Text('Fotoğraf Ekle'),
+                    _QuickAction(
+                      key: const Key('compose-photo'),
+                      icon: Icons.image_outlined,
+                      tooltip: 'Fotoğraf Ekle',
                       onPressed: busy ? null : pickPhotos,
                     ),
-                    ActionChip(
-                      avatar: const Icon(
-                        Icons.camera_alt_outlined,
-                        color: AppColors.blue,
-                        size: 19,
-                      ),
-                      label: const Text('Kamera'),
+                    const SizedBox(width: 8),
+                    _QuickAction(
+                      key: const Key('compose-camera'),
+                      icon: Icons.camera_alt_outlined,
+                      tooltip: 'Kamerayı Aç',
                       onPressed: busy ? null : camera,
                     ),
-                    if (!composingStory)
-                      ActionChip(
-                        avatar: const Icon(
-                          Icons.location_on_outlined,
-                          color: AppColors.blue,
-                          size: 19,
-                        ),
-                        label: const Text('Konum Ekle'),
-                        onPressed: () async {
-                          final c = await chooseCity(
-                            context,
-                            city ?? store.city,
-                          );
-                          if (c != null) {
-                            setState(() {
-                              city = c;
-                              place = null;
-                              attachLocation = false;
-                            });
-                          }
-                        },
-                      ),
                   ],
                 ),
               const SizedBox(height: Space.md),
@@ -708,6 +680,7 @@ class _ComposePageState extends State<ComposePage>
                   icon: Icons.layers_outlined,
                 ),
                 ChoicePills(
+                  singleRow: true,
                   options: PostKind.values.map((k) => k.label).toList(),
                   value: kind.label,
                   onChanged: (v) => setState(() {
@@ -761,8 +734,8 @@ class _ComposePageState extends State<ComposePage>
                     ),
                 ],
                 SettingsRow(
-                  'Konum',
-                  Icons.location_on_outlined,
+                  'Şehir',
+                  Icons.location_city_outlined,
                   subtitle: city ?? store.city,
                   onTap: () async {
                     final c = await chooseCity(context, city ?? store.city);
@@ -813,9 +786,9 @@ class _ComposePageState extends State<ComposePage>
                       ? 'Paylaşımını yalnızca kendi profilinde görürsün.'
                       : 'Paylaşımın yakın çevredeki keşifte yer alır.',
                 ),
-                if (store.connected && cityWide && place == null)
+                if (store.connected && cityWide)
                   PreferenceRow(
-                    'Yaklaşık konumu ekle',
+                    'Mevcut konumumu ekle',
                     attachLocation && store.location?.synced == true,
                     busy
                         ? null
@@ -824,13 +797,15 @@ class _ComposePageState extends State<ComposePage>
                               await store.location?.activateFromUi();
                             }
                             if (mounted) {
-                              setState(
-                                () => attachLocation =
-                                    value && store.location?.synced == true,
-                              );
+                              setState(() {
+                                attachLocation =
+                                    value && store.location?.synced == true;
+                                // A device position and a hand-picked place never both look selected.
+                                if (attachLocation) place = null;
+                              });
                             }
                           },
-                    subtitle: 'Haritada yakın bir bölge işaretlenir.',
+                    subtitle: 'Cihaz konumundan yaklaşık bir bölge eklenir.',
                   ),
                 PreferenceRow(
                   'Anonim paylaş',
@@ -1261,4 +1236,33 @@ class _EncountersPageState extends State<EncountersPage> {
       ),
     );
   }
+}
+
+/// Compact 44x44 outline icon button for the composer's photo / camera quick actions.
+class _QuickAction extends StatelessWidget {
+  const _QuickAction({
+    super.key,
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    tooltip: tooltip,
+    onPressed: onPressed,
+    icon: Icon(icon, size: 22),
+    color: AppColors.blue,
+    style: IconButton.styleFrom(
+      minimumSize: const Size(44, 44),
+      fixedSize: const Size(44, 44),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      padding: EdgeInsets.zero,
+      side: const BorderSide(color: AppColors.line),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ),
+  );
 }

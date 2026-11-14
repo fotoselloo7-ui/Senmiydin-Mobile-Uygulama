@@ -66,6 +66,11 @@ void main() {
       await shot(entry.value.$2);
       nav.pop();
       await t.pumpAndSettle();
+      if (entry.key == '/comments') {
+        // The legacy route is a bridge: it opens the post and raises the comments sheet on top of it.
+        nav.pop();
+        await t.pumpAndSettle();
+      }
     }
     await t.tap(find.byKey(const Key('compose-button')));
     await t.pumpAndSettle();

@@ -912,3 +912,22 @@ Referansların dışında yeni bir görsel kimlik oluşturulmamalıdır.
 - **Otomatik kaydetme:** 800 ms debounce (her tuşta disk yazılmaz); uygulama arka plana gidince ve Compose kapanırken bekleyen değişiklik hemen yazılır. Yazma "yaz-sonra-yeniden adlandır" ile yapılır; süreç ortada ölse bile önceki taslak bozulmaz. Yazmalar sıraya alınır.
 - **Çıkış ve devam:** yayınlamadan çıkışta taslak korunur ("taslağın silinecek" uyarısı yoktur). Sonraki **Paylaşım Oluştur** açılışında "Kaydedilmiş bir taslağın var." — **Devam Et** (tüm desteklenen alanlar, fotoğraflar, Yolculuk, anonim seçimi, metin) / **Sil** (JSON ve fotoğraf kopyaları silinir, temiz açılır). Soru açıkken boş Compose saklı taslağı asla ezmez / silmez. Başarılı yayın taslağı tamamen siler.
 - **Hesap ayrımı:** klasör hesap kimliğiyle ayrılır; Demo taslağı Elif girişinde görünmez. Bozuk, kesik, sürümü uyumsuz veya boş taslak sessizce yok sayılır ve temizlenir; uygulama çökmez.
+
+
+## 39. Paylaşım Oluştur — Sadeleştirilmiş Eylemler ve Konum Adları
+
+- **Eylemler:** üstteki "Konum Ekle" çipi kaldırıldı (konum zaten aşağıda var). **Fotoğraf** ve **Kamera** artık kompakt 44×44 outline ikon düğmeleridir (tooltip: "Fotoğraf Ekle", "Kamerayı Aç"); yazı alanının hemen altında, sola hizalı, dokunma hedefi 44 dp.
+- **Paylaşım türleri:** `Anı | Karşılaşma | İtiraf | Düşünce | Yolculuk` **tek satırda** durur, asla alt satıra sarmaz. Çok dar ekranlarda aynı satır yatay kayar; seçili çip mavi durumunu korur. (Varsayılan `ChoicePills` davranışı diğer ekranlarda değişmedi; tek satır `singleRow` ile açılır.)
+- **Konum satırları (tekrar kaldırıldı):** `Şehir` (profilde / paylaşımda gösterilecek şehir), `Haritada yer seç` + "İsteğe bağlı yaklaşık bir nokta seç" (elle harita noktası; seçenekler: Şu an bulunduğum yer / Geçtiğim yerlerden seç / Haritadan yaklaşık yer seç / Yer ekleme) ve `Mevcut konumumu ekle` + "Cihaz konumundan yaklaşık bir bölge eklenir." (cihaz konumu anahtarı). Eski adlar: "Konum", "Paylaşım yeri", "Yaklaşık konumu ekle".
+- **Karşılıklı dışlama:** elle seçilen harita noktası ile cihaz konumu birlikte kullanılmaz; birini seçmek diğerini kapatır. Backend `location_source` mantığı ve yaklaşık konum kuralları değişmedi.
+- **Home kısayolu:** Home paylaşım kutusundaki konum ikonu hâlâ Compose'u açar ve doğrudan `Haritada yer seç` satırına kaydırır (galeri açılmaz).
+
+## 40. Yorumlar — Alttan Açılan Panel
+
+- **Ayrı sayfa yok.** Yorum ikonu (PostCard her yerde: Home, profil, arama, Kaydedilenler, Takip / Yakın / Popüler akışları) ve Paylaşım Detayı'ndaki "Yorum Yaz" / "Yorumları Gör" / "Tümünü Gör", mevcut ekranın üstünde `showCommentsSheet` ile **alt panel** açar. Arkadaki akış yerinde kalır (aynı kaydırma konumu); panel kapanınca kullanıcı kaldığı yere döner.
+- **Boyut ve hareket:** ~%70 yükseklikte başlar, sürüklenerek ~%95'e çıkar, aşağı sürüklenince kapanır; üstte sürükleme tutamacı, başlık **"Yorumlar (N)"** ve kapat (X) düğmesi. Büyük gönderi kutusu yerine bir-iki satırlık bağlam özeti.
+- **İçerik:** tüm mevcut yorum özellikleri korunur — ana yorumlar, tek seviye yanıtlar, "N yanıt daha", yorum ve yanıt beğenisi (iyimser + geri alma; panel kapatılıp açılınca doğru), **Yanıtla** ("Yanıtlanıyor: @kullanıcıadı" + iptal), kendi yorumunu silme, rapor / engel kuralları, sayfalama.
+- **Composer:** panelin altında yapışık (avatar, "Bir yorum yaz…", gönder); klavye açılınca `viewInsets` ile klavyenin üstünde kalır. Yorumlar kapalıysa composer yerine "Bu paylaşım yorumlara kapalı." Boş durum kompakt: "İlk merhaba senden gelsin." / "Henüz yorum yapılmamış."
+- **Sayaç:** yorum gönderilince arkadaki PostCard sayacı hemen güncellenir (0 → 1); sayaç ortak `Post` nesnesi üzerinden gelir.
+- **Bildirimler ve rota:** `comment`, `comment_reply`, `comment_like` bildirimleri yazıyı açar ve paneli otomatik yükseltir (soğuk başlangıç dahil). Eski `/comments` rotası **uyumluluk köprüsü** olarak kalır: yazı + panel açar, kalıcı bir Yorumlar sayfası oluşturmaz.
+- **Dayanıklılık:** panel kapanırken süren istek `mounted` ile korunur (dispose sonrası `setState` yok); sürüm 1,5× yazı ve 320 dp'de taşma yok.

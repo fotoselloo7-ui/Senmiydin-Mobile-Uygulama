@@ -125,6 +125,11 @@ void main() {
           }
           nav.pop();
           await t.pumpAndSettle();
+          // /comments is a bridge: the post opens and raises the comments sheet over it, so there are two routes to close.
+          if (route.key == '/comments') {
+            nav.pop();
+            await t.pumpAndSettle();
+          }
           expect(t.takeException(), isNull, reason: '${route.key} back');
         }
         for (final id in [1, 3, 4, 0]) {
@@ -225,6 +230,10 @@ void main() {
         await t.pumpAndSettle();
         nav.pop();
         await t.pumpAndSettle();
+        if (route == '/comments') {
+          nav.pop();
+          await t.pumpAndSettle();
+        }
       }
     },
   );

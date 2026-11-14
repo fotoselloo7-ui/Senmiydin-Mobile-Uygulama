@@ -27,10 +27,10 @@ void main() {
     await t.pumpAndSettle();
     await t.pump(const Duration(milliseconds: 600));
     await t.pumpAndSettle();
-    await t.ensureVisible(find.text('Fotoğraf Ekle'));
+    await t.ensureVisible(find.byTooltip('Fotoğraf Ekle'));
     await t.pumpAndSettle();
     await binding.takeScreenshot('31-compose-media-actions');
-    await t.tap(find.text('Fotoğraf Ekle'));
+    await t.tap(find.byTooltip('Fotoğraf Ekle'));
     await t.pumpAndSettle();
     await t.tap(find.image(AssetImage(demoPhotos[0])).last);
     await t.pumpAndSettle();
