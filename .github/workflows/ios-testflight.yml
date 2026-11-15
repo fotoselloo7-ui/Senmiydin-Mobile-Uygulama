@@ -69,10 +69,10 @@ jobs:
         run: |
           flutter build ios --release --no-codesign             --build-number=$((GITHUB_RUN_NUMBER + 10))             --dart-define-from-file=config/production.local.json
 
-      - name: Create unsigned archive (signing happens at export, which needs no registered devices)
+      - name: Create ad-hoc signed archive (the distribution signature is applied at export; no devices needed)
         run: |
           set -euo pipefail
-          xcodebuild             -workspace ios/Runner.xcworkspace             -scheme Runner             -configuration Release             -sdk iphoneos             -destination 'generic/platform=iOS'             -archivePath "$RUNNER_TEMP/Runner.xcarchive"             CODE_SIGNING_ALLOWED=NO             CODE_SIGNING_REQUIRED=NO             CODE_SIGN_IDENTITY=""             DEVELOPMENT_TEAM=7YH3522U6V             archive
+          xcodebuild             -workspace ios/Runner.xcworkspace             -scheme Runner             -configuration Release             -sdk iphoneos             -destination 'generic/platform=iOS'             -archivePath "$RUNNER_TEMP/Runner.xcarchive"             CODE_SIGN_STYLE=Manual             CODE_SIGN_IDENTITY="-"             DEVELOPMENT_TEAM=""             PROVISIONING_PROFILE_SPECIFIER=""             archive
 
       - name: Export and upload to TestFlight
         env:
