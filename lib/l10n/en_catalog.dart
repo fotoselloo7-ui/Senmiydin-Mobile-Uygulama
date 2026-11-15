@@ -364,6 +364,7 @@ const enCatalog = <String, String>{
   'Giriş Yap': 'Sign In',
   'Kayıt Ol': 'Sign Up',
   'Hesap Oluştur': 'Create Account',
+  'E-posta': 'Email',
   'E-posta veya kullanıcı adı': 'Email or username',
   'Şifre': 'Password',
   'Şifremi unuttum': 'Forgot password',
@@ -533,38 +534,47 @@ const enCatalog = <String, String>{
   'Yorum': 'Comment',
   'Beğeniyi geri al': 'Remove like',
   // Parameterised sentences ({0}, {1}) and the long tail found by tool/l10n_audit.py
-  '@{0} engellendi. İletişim kurmak için profil menüsünden engeli kaldırabilirsin.': '@{0} is blocked. To get in touch, unblock them from the profile menu.',
-  'Bu paylaşımı seninle paylaşmak istedim:\n\n{0}': 'I wanted to share this post with you:\n\n{0}',
+  '@{0} engellendi. İletişim kurmak için profil menüsünden engeli kaldırabilirsin.':
+      '@{0} is blocked. To get in touch, unblock them from the profile menu.',
+  'Bu paylaşımı seninle paylaşmak istedim:\n\n{0}':
+      'I wanted to share this post with you:\n\n{0}',
   'Fotoğraf {0} / {1}': 'Photo {0} / {1}',
   'Kullanıcı @{0}': 'User @{0}',
   'Olay zamanı · {0}': 'Event time · {0}',
   'Paylaşım {0}': 'Post {0}',
   'Yanıtlanıyor: {0}': 'Replying to: {0}',
   '{0} Fotoğrafı Kullan': 'Use {0} Photo(s)',
-  '{0} Yazdığın metin korunur; tekrar deneyebilirsin.': '{0} Your text is kept; you can try again.',
+  '{0} Yazdığın metin korunur; tekrar deneyebilirsin.':
+      '{0} Your text is kept; you can try again.',
   '{0} gün kaldı': '{0} days left',
   '{0} saat kaldı': '{0} hours left',
   '{0} ile giriş': 'Sign in with {0}',
   '{0} ile giriş şu anda kullanılamıyor. E-posta ve şifrenle devam edebilirsin.': 'Sign in with {0} is not available right now. You can continue with your email and password.',
-  '{0} ilgi alanı seçtin. En az 5 seçim yap.': 'You selected {0} interests. Pick at least 5.',
-  '{0} karşılaşmanı onayladı. Birbirinizi buldunuz!': '{0} approved your encounter. You found each other!',
+  '{0} ilgi alanı seçtin. En az 5 seçim yap.':
+      'You selected {0} interests. Pick at least 5.',
+  '{0} karşılaşmanı onayladı. Birbirinizi buldunuz!':
+      '{0} approved your encounter. You found each other!',
   '{0} seni bir karşılaşmada etiketledi!': '{0} tagged you in an encounter!',
   '{0} seni bir karşılaşmada etiketledi.': '{0} tagged you in an encounter.',
   '{0} seni bir\nkarşılaşmada etiketledi!': '{0} tagged you in\nan encounter!',
   '{0} yanıt': '{0} replies',
   '{0} yanıt daha': '{0} more replies',
-  '{0} yaşını doldurdum ve aşağıdaki koşulları kabul ediyorum.': 'I am at least {0} years old and I accept the terms below.',
+  '{0} yaşını doldurdum ve aşağıdaki koşulları kabul ediyorum.':
+      'I am at least {0} years old and I accept the terms below.',
   '{0} · Haritadan yaklaşık bölge': '{0} · Approximate area from the map',
   '{0} · {1} gönderi': '{0} · {1} posts',
   '{0} · Şu anki yaklaşık bölge': '{0} · Current approximate area',
   '{0}. görsel': 'Image {0}',
   'Bugün · {0}': 'Today · {0}',
   'Dün · {0}': 'Yesterday · {0}',
-  'Devam etmek için {0} yaşını doldurmalısın': 'You must be at least {0} to continue',
+  'Devam etmek için {0} yaşını doldurmalısın':
+      'You must be at least {0} to continue',
   'Yakınında {0} yeni mektup var': '{0} new letters near you',
-  'Yakınında {0} yeni mektup var. Haritada keşfet.': '{0} new letters near you. Explore on the map.',
+  'Yakınında {0} yeni mektup var. Haritada keşfet.':
+      '{0} new letters near you. Explore on the map.',
   'Örnek karşılaşma · {0} olarak gelen karşılaşma isteğini görüyorsun. Onay verdikten sonra kendi hesabına dönersin.': 'Sample encounter · You are viewing the encounter request as {0}. After you approve, you return to your own account.',
-  '“{0}” silinir; içindeki gönderiler Kaydedilenler’de kalır.': '“{0}” will be deleted; its posts stay in Saved.',
+  '“{0}” silinir; içindeki gönderiler Kaydedilenler’de kalır.':
+      '“{0}” will be deleted; its posts stay in Saved.',
   'Geçerli bir e-posta adresi gir.': 'Enter a valid email address.',
   'Sıfırlama Kodum Var': 'I Have a Reset Code',
   'Şifreyi Sıfırla': 'Reset Password',
@@ -618,26 +628,34 @@ const enCatalog = <String, String>{
   // Found by the real-device language walkthrough and the corrected tool/l10n_audit.py
   'Kapak fotoğrafın kaldırıldı.': 'Your cover photo was removed.',
   'Kontrol Sende': 'You’re in Control',
-  'Yaşadığın şehirle ilgili keşif önerileri al.': 'Get discovery suggestions about your city.',
-  'Mesajlardan ve yeni karşılaşmalardan haberdar ol.': 'Stay up to date on messages and new encounters.',
+  'Yaşadığın şehirle ilgili keşif önerileri al.':
+      'Get discovery suggestions about your city.',
+  'Mesajlardan ve yeni karşılaşmalardan haberdar ol.':
+      'Stay up to date on messages and new encounters.',
   'Şifren güncellendi.': 'Your password was updated.',
   'Doğum tarihini seçmelisin.': 'Please choose your date of birth.',
-  'Devam etmek için koşulları kabul etmelisin.': 'Accept the terms to continue.',
-  'Adını ve geçerli bir kullanıcı adını gir.': 'Enter your name and a valid username.',
+  'Devam etmek için koşulları kabul etmelisin.':
+      'Accept the terms to continue.',
+  'Adını ve geçerli bir kullanıcı adını gir.':
+      'Enter your name and a valid username.',
   'Kapak fotoğrafın güncellendi.': 'Your cover photo was updated.',
   'Karşılaşmanız': 'Your Encounter',
   'Bugün kiminle karşılaştın?': 'Who did you meet today?',
-  'İlgi alanları yüklenemedi. Tekrar dene.': 'Couldn’t load interests. Try again.',
+  'İlgi alanları yüklenemedi. Tekrar dene.':
+      'Couldn’t load interests. Try again.',
   '@kullanıcıadı ara…': 'Search @username…',
-  'İnsan, @kullanıcıadı veya paylaşım ara…': 'Search people, @username or posts…',
+  'İnsan, @kullanıcıadı veya paylaşım ara…':
+      'Search people, @username or posts…',
   'Yakınlaştır': 'Zoom in',
   'Paylaşımı görüntüle →': 'View post →',
   'Harita yükleniyor': 'Loading map',
   'Yaklaşık konumun': 'Your approximate location',
   'Yanıtlar yüklenemedi. Tekrar dene.': 'Couldn’t load replies. Try again.',
   'Mektup herkese kapanır ve Mektuplarım → Arşiv’e taşınır. İstediğin zaman tekrar paylaşabilirsin.': 'The letter closes to everyone and moves to My Letters → Archive. You can share it again any time.',
-  'Mektup haritadan kaldırıldı. Mektuplarım → Arşiv’de.': 'The letter was removed from the map. It’s in My Letters → Archive.',
-  'Mektubun yeniden haritada. Yeni 7 günü başladı.': 'Your letter is back on the map. Its new 7 days have started.',
+  'Mektup haritadan kaldırıldı. Mektuplarım → Arşiv’de.':
+      'The letter was removed from the map. It’s in My Letters → Archive.',
+  'Mektubun yeniden haritada. Yeni 7 günü başladı.':
+      'Your letter is back on the map. Its new 7 days have started.',
   'Mektup kalıcı olarak silinsin mi?': 'Delete this letter permanently?',
   'Mektup, yanıtları ve arşivdeki kaydı tamamen silinir. Bu işlem geri alınamaz.': 'The letter, its replies and its archive record are deleted completely. This can’t be undone.',
   'Yanıtın kaldırıldı.': 'Your reply was removed.',
@@ -646,11 +664,14 @@ const enCatalog = <String, String>{
   'Bu noktaya bırakılan notlar': 'Notes left at this spot',
   'Seçilen yaklaşık yer': 'Selected approximate place',
   'Yeniden adlandır': 'Rename',
-  'Bu kişi sana mesaj gönderemez; paylaşımlarını akışında görmezsin.': 'This person can’t message you; you won’t see their posts in your feed.',
+  'Bu kişi sana mesaj gönderemez; paylaşımlarını akışında görmezsin.':
+      'This person can’t message you; you won’t see their posts in your feed.',
   'Geçtiğim Yerler açılsın mı?': 'Turn on Places I Passed?',
   'Ziyaret ettiğin yaklaşık bölgeleri geçici kaydet. Bu ayar bildirim izninden ayrıdır.': 'Temporarily save the approximate areas you visit. This setting is separate from notification permission.',
-  'Geçmişinle ilgili hikâye bildirimlerini yönet.': 'Manage notifications about stories from your past.',
-  'Şikâyet nedenini kısaca yaz.': 'Briefly describe the reason for your report.',
+  'Geçmişinle ilgili hikâye bildirimlerini yönet.':
+      'Manage notifications about stories from your past.',
+  'Şikâyet nedenini kısaca yaz.':
+      'Briefly describe the reason for your report.',
   'İşleniyor…': 'Processing…',
   'Koleksiyonlar yüklenemedi': 'Couldn’t load collections',
   'Örn. Alanya': 'e.g. Alanya',
@@ -660,7 +681,8 @@ const enCatalog = <String, String>{
   'Yanıtı Sil': 'Delete Reply',
   'Fotoğraf görüntüleyici': 'Photo viewer',
   'Henüz kayıtlı bir bölgen yok.': 'You don’t have any saved areas yet.',
-  'İsteğe bağlı · Ek bir gruba katılman gerekmez.': 'Optional · You don’t need to join any extra group.',
+  'İsteğe bağlı · Ek bir gruba katılman gerekmez.':
+      'Optional · You don’t need to join any extra group.',
   'Açarsan firma, sefer ve araç bilgisi gönderini görenlere açık olur. Canlı araç takibi yapılmaz.': 'If you turn it on, company, trip and vehicle details are visible to people who see your post. There is no live vehicle tracking.',
   'Önceki fotoğraf': 'Previous photo',
   'Sonraki fotoğraf': 'Next photo',
@@ -671,36 +693,74 @@ const enCatalog = <String, String>{
   'Birini bulamadıysan, geçtiğiniz yere bir not bırak. Not 7 gün boyunca haritada herkese açık kalır.': 'If you couldn’t find someone, leave a note where you crossed paths. The note stays public on the map for 7 days.',
   'Haritayı kaydırarak mor noktayı notun yerine getir. Not, seçtiğin noktaya yakın yaklaşık bir bölgeye bırakılır; kesin adres paylaşılmaz.': 'Drag the map to bring the purple dot to the place of your note. The note is left in an approximate area near the spot you chose; the exact address is never shared.',
   'veya': 'or',
+  '{0} yaşını doldurdum; {1} ve {2}\'nı okudum, kabul ediyorum.':
+      "I am {0} or older and have read and accept the {1} and the {2}.",
+  'SenMiydin? yalnızca bu yaş ve üzeri içindir; yaş grupları ayrı tutulur.':
+      'SenMiydin? is only for this age and older; age groups are kept apart.',
+  'Devam ederek {0} ve {1}\'nı kabul etmiş sayılırsın.':
+      "By continuing you accept the {0} and the {1}.",
+  'Hesabın yok mu?': "Don't have an account?",
+  'Tekrar karşılaşmaya hazır mısın?': 'Ready to cross paths again?',
+  'Hesabına giriş yap ve yarım kalan karşılaşmalarına devam et.':
+      'Sign in and pick up your unfinished encounters.',
+  'Şifremi unuttum?': 'Forgot password?',
+  'SenMiydin?’e katıl': 'Join SenMiydin?',
+  'Yeni insanlarla, anılarla ve yarım kalan karşılaşmalarla yeniden bağ kur.':
+      'Reconnect with new people, memories and unfinished encounters.',
+  'Google ile kayıt ol': 'Sign up with Google',
+  'Apple ile kayıt ol': 'Sign up with Apple',
+  'veya e-posta ile kayıt ol': 'or sign up with email',
+  'Şifre Tekrar': 'Confirm password',
+  'Şifreler eşleşmiyor.': 'Passwords do not match.',
   '{0} not': '{0} notes',
   // Real-device walkthrough, second pass (corrected tool/l10n_audit.py)
-  'Güvenli oturum bilgisine erişilemedi.': 'Couldn’t access the secure session data.',
-  'Oturum bu cihazda güvenli şekilde kaydedilemedi.': 'The session couldn’t be saved securely on this device.',
+  'Güvenli oturum bilgisine erişilemedi.':
+      'Couldn’t access the secure session data.',
+  'Oturum bu cihazda güvenli şekilde kaydedilemedi.':
+      'The session couldn’t be saved securely on this device.',
   'Bağlantı kapatıldı.': 'Connection closed.',
-  'Oturumun sona erdi. Tekrar giriş yap.': 'Your session has ended. Please sign in again.',
-  'Sunucu adresi yapılandırılamadı.': 'The server address couldn’t be configured.',
+  'Oturumun sona erdi. Tekrar giriş yap.':
+      'Your session has ended. Please sign in again.',
+  'Sunucu adresi yapılandırılamadı.':
+      'The server address couldn’t be configured.',
   'Her fotoğraf en fazla 5 MB olabilir.': 'Each photo can be up to 5 MB.',
-  'Fotoğraf dosyası okunamadı. Yeniden seç.': 'The photo file couldn’t be read. Choose it again.',
-  'Sunucu zamanında yanıt vermedi. Tekrar dene.': 'The server didn’t respond in time. Try again.',
-  'Güvenli bağlantı kurulamadı. Daha sonra tekrar dene.': 'A secure connection couldn’t be made. Try again later.',
-  'İnternet bağlantını kontrol edip tekrar dene.': 'Check your internet connection and try again.',
-  'Sunucuya bağlanılamadı. Bağlantını kontrol et.': 'Couldn’t reach the server. Check your connection.',
-  'Sunucuya bağlanılamadı. Daha sonra tekrar dene.': 'Couldn’t reach the server. Try again later.',
-  'Sunucuda bir sorun oluştu. Daha sonra tekrar dene.': 'Something went wrong on the server. Try again later.',
-  'Sunucudan geçerli bir yanıt alınamadı.': 'No valid response was received from the server.',
+  'Fotoğraf dosyası okunamadı. Yeniden seç.':
+      'The photo file couldn’t be read. Choose it again.',
+  'Sunucu zamanında yanıt vermedi. Tekrar dene.':
+      'The server didn’t respond in time. Try again.',
+  'Güvenli bağlantı kurulamadı. Daha sonra tekrar dene.':
+      'A secure connection couldn’t be made. Try again later.',
+  'İnternet bağlantını kontrol edip tekrar dene.':
+      'Check your internet connection and try again.',
+  'Sunucuya bağlanılamadı. Bağlantını kontrol et.':
+      'Couldn’t reach the server. Check your connection.',
+  'Sunucuya bağlanılamadı. Daha sonra tekrar dene.':
+      'Couldn’t reach the server. Try again later.',
+  'Sunucuda bir sorun oluştu. Daha sonra tekrar dene.':
+      'Something went wrong on the server. Try again later.',
+  'Sunucudan geçerli bir yanıt alınamadı.':
+      'No valid response was received from the server.',
   'İşlem tamamlanamadı.': 'The action couldn’t be completed.',
   'Listeden bir şehir seç.': 'Choose a city from the list.',
   'Beğeni / yorum bildirimleri': 'Like / comment notifications',
-  'Yaklaşık bölgeler konum geçmişine ekleniyor.': 'Approximate areas are being added to your location history.',
+  'Yaklaşık bölgeler konum geçmişine ekleniyor.':
+      'Approximate areas are being added to your location history.',
   'Bu not artık kullanılamıyor.': 'This note is no longer available.',
   'Yolculuğun varış şehrini seç.': 'Choose the destination city of the trip.',
-  'Bu giriş yöntemi şu anda kullanılamıyor.': 'This sign-in method isn’t available right now.',
-  'Giriş doğrulanamadı. Tekrar dene.': 'Sign-in couldn’t be verified. Try again.',
-  'Giriş tamamlanamadı. Tekrar deneyebilir veya e-posta ile giriş yapabilirsin.': 'Sign-in couldn’t be completed. You can try again or sign in with email.',
-  'Bir sorun oluştu. Uygulamayı yeniden açabilirsin.': 'Something went wrong. You can reopen the app.',
-  'Bu yol henüz bir hikâyeye çıkmıyor.': 'This path doesn’t lead to a story yet.',
+  'Bu giriş yöntemi şu anda kullanılamıyor.':
+      'This sign-in method isn’t available right now.',
+  'Giriş doğrulanamadı. Tekrar dene.':
+      'Sign-in couldn’t be verified. Try again.',
+  'Giriş tamamlanamadı. Tekrar deneyebilir veya e-posta ile giriş yapabilirsin.':
+      'Sign-in couldn’t be completed. You can try again or sign in with email.',
+  'Bir sorun oluştu. Uygulamayı yeniden açabilirsin.':
+      'Something went wrong. You can reopen the app.',
+  'Bu yol henüz bir hikâyeye çıkmıyor.':
+      'This path doesn’t lead to a story yet.',
   'Geri dönerek keşfetmeye devam edebilirsin.': 'Go back and keep exploring.',
   'İlgi alanlarını paylaş, yeni bağlar kur. Konumunun görünürlüğü her zaman senin kontrolünde.': 'Share your interests and build new connections. Your location visibility is always in your control.',
-  '3–24 harf, rakam, nokta veya alt çizgi kullan.': 'Use 3–24 letters, digits, dots or underscores.',
+  '3–24 harf, rakam, nokta veya alt çizgi kullan.':
+      'Use 3–24 letters, digits, dots or underscores.',
   'Bu alanı doldurmalısın.': 'This field is required.',
   'Galeriden fotoğraf seçilemedi.': 'Couldn’t pick a photo from the gallery.',
   'Yeni fotoğraf seç': 'Choose a new photo',
@@ -710,7 +770,8 @@ const enCatalog = <String, String>{
   'Şehir içinde keşif': 'Discovery in your city',
   'Cihaz konumun şehir keşfi ve yakınlık için sunucuya gönderilir. Geçtiğim Yerler başlangıçta kapalıdır. Ayarlardan açarsan konumun uygulama arka plandayken de yaklaşık geçmiş bölgeleri kaydetmek ve ilgili hikâyeleri önermek için kullanılır. Bildirim tercihi ayrıdır; kesin konumun diğer kullanıcılara gösterilmez.': 'Your device location is sent to the server for city discovery and proximity. Places I Passed is off at first. If you turn it on in Settings, your location is also used while the app is in the background to save approximate past areas and suggest related stories. The notification preference is separate; your exact location is never shown to other users.',
   'Cihaz konumun şehir keşfi ve yakınlık için sunucuya gönderilir. Geçtiğim Yerler başlangıçta kapalıdır. Ayarlardan açarsan uygulama açıkken yaklaşık geçmiş bölgeler kaydedilir ve ilgili hikâyeler önerilebilir. iOS’ta arka planda konum kaydı yapılmaz; kesin konumun diğer kullanıcılara gösterilmez.': 'Your device location is sent to the server for city discovery and proximity. Places I Passed is off at first. If you turn it on in Settings, approximate past areas are saved while the app is open and related stories can be suggested. On iOS no location is recorded in the background; your exact location is never shown to other users.',
-  'Cihaz konumu isteğe bağlıdır. Şehir akışını izinsiz de kullanabilirsin.': 'Device location is optional. You can use the city feed without it.',
+  'Cihaz konumu isteğe bağlıdır. Şehir akışını izinsiz de kullanabilirsin.':
+      'Device location is optional. You can use the city feed without it.',
   'Giriş şu anda kullanılamıyor': 'Sign-in isn’t available right now',
   'Kimliğini güvenli şekilde doğrula. Yeni hesap için kayıt bilgilerini tamamlaman istenir.': 'Verify your identity securely. For a new account you’ll be asked to complete your sign-up details.',
   'İsteğin alındı': 'Request received',
@@ -720,54 +781,71 @@ const enCatalog = <String, String>{
   'Yeni Şifre': 'New Password',
   'Yeni Şifre Tekrar': 'Repeat New Password',
   'Yeni şifreler eşleşmiyor.': 'The new passwords don’t match.',
-  'Hikâye yayın onayına gönderildi.': 'The story was sent for publishing approval.',
+  'Hikâye yayın onayına gönderildi.':
+      'The story was sent for publishing approval.',
   'Hikâyen, diğer katılımcı yayınlamayı onayladığında akışta görünür.': 'Your story appears in the feed once the other participant approves publishing it.',
   '@kullanıcıadı ile ara': 'Search by @username',
   'Düzenlemeye Dön': 'Back to Editing',
   'Fotoğraflar yükleniyor…': 'Uploading photos…',
   'Yayın Onayına Gönder': 'Send for Publishing Approval',
-  'Örnek albüm · Birden fazla fotoğraf seçebilirsin.': 'Sample album · You can pick several photos.',
-  'Örnek fotoğraflarla paylaşımını hazırlayabilirsin.': 'You can prepare your post with sample photos.',
+  'Örnek albüm · Birden fazla fotoğraf seçebilirsin.':
+      'Sample album · You can pick several photos.',
+  'Örnek fotoğraflarla paylaşımını hazırlayabilirsin.':
+      'You can prepare your post with sample photos.',
   'Birbirinizi buldunuz! 💙': 'You found each other! 💙',
   'Ana Sayfaya Dön': 'Back to Home',
   'Birbirini doğrulayan insanların ortak hikâyeleri. Güzel tesadüfler burada hayat buluyor.': 'Joint stories of people who confirmed each other. Lovely coincidences come to life here.',
   'Hikâyen henüz başlamadı.': 'Your story hasn’t started yet.',
-  'Karşılaşmalarını paylaş ve yarım kalan bir merhabayı tamamla.': 'Share your encounters and finish an unfinished hello.',
+  'Karşılaşmalarını paylaş ve yarım kalan bir merhabayı tamamla.':
+      'Share your encounters and finish an unfinished hello.',
   'Paylaşımları dilediğin gibi filtrele!': 'Filter posts the way you like!',
-  'Sana en uygun içerikleri keşfet.': 'Discover the content that suits you best.',
+  'Sana en uygun içerikleri keşfet.':
+      'Discover the content that suits you best.',
   'Sadece yakınımdakileri göster': 'Show only nearby',
   'Fotoğraflı paylaşımlar öncelikli': 'Prioritize posts with photos',
   'Karşılaşma hikâyelerini öne çıkar': 'Highlight encounter stories',
   'Etiketlediğin kişi karşılaşmayı onaylayarak bu anıyı seninle birlikte doğrulayabilir. Onaylanana kadar karşılaşma beklemede kalır.': 'The person you tag can confirm this memory with you by approving the encounter. Until approved, the encounter stays pending.',
   'O kişiyi kullanıcı adıyla bul.': 'Find that person by username.',
   'Bir merhaba kadar yakın.': 'As close as a hello.',
-  'Aramaya başladığında eşleşen profiller burada görünecek.': 'Matching profiles will appear here once you start searching.',
-  'Bir isim, kullanıcı adı veya hikâyede aklında kalan bir kelime yaz.': 'Type a name, a username or a word you remember from a story.',
-  'Kullanıcı adını kontrol edip yeniden dene.': 'Check the username and try again.',
+  'Aramaya başladığında eşleşen profiller burada görünecek.':
+      'Matching profiles will appear here once you start searching.',
+  'Bir isim, kullanıcı adı veya hikâyede aklında kalan bir kelime yaz.':
+      'Type a name, a username or a word you remember from a story.',
+  'Kullanıcı adını kontrol edip yeniden dene.':
+      'Check the username and try again.',
   'Başka bir kelimeyle aramayı dene.': 'Try searching with another word.',
-  'Ad, kullanıcı adı veya bir kelimeyle ara.': 'Search by name, username or a word.',
+  'Ad, kullanıcı adı veya bir kelimeyle ara.':
+      'Search by name, username or a word.',
   'Yalnızca konum görünürlüğünü açan profiller burada listelenir. Mesafeler yaklaşık gösterilir.': 'Only profiles that turned location visibility on are listed here. Distances are shown approximately.',
-  'Şehir akışına her zaman dönebilirsin.': 'You can always return to the city feed.',
+  'Şehir akışına her zaman dönebilirsin.':
+      'You can always return to the city feed.',
   'Burada yalnızca konum görünürlüğüne izin veren profiller yer alır. Mesafeler yaklaşık olarak gösterilir.': 'Only profiles that allow location visibility are shown here. Distances are approximate.',
   'Yeni karşılaşmalara yer var.': 'There’s room for new encounters.',
-  'Bu şehirde henüz görünür bir profil bulunmuyor.': 'There’s no visible profile in this city yet.',
+  'Bu şehirde henüz görünür bir profil bulunmuyor.':
+      'There’s no visible profile in this city yet.',
   'Örnek harita': 'Sample map',
   'Bu bölgede henüz bir iz yok.': 'There’s no trace in this area yet.',
   'Daha geniş bir mesafe seçebilirsin.': 'You can choose a wider distance.',
-  'Kesin konumlar paylaşılmaz. Pinler yaklaşık bölgeleri temsil eder.': 'Exact locations are never shared. Pins represent approximate areas.',
-  'Henüz yayınlanmış bir karşılaşma yok.': 'There’s no published encounter yet.',
+  'Kesin konumlar paylaşılmaz. Pinler yaklaşık bölgeleri temsil eder.':
+      'Exact locations are never shared. Pins represent approximate areas.',
+  'Henüz yayınlanmış bir karşılaşma yok.':
+      'There’s no published encounter yet.',
   'Ortak hikâyeler burada görünecek.': 'Joint stories will appear here.',
-  'Ortak hikâye yayın onayı bekliyor': 'The joint story is waiting for publishing approval',
+  'Ortak hikâye yayın onayı bekliyor':
+      'The joint story is waiting for publishing approval',
   'Ortak hikâye yayınlandı': 'The joint story was published',
-  'Ortak hikâyenin yayın onayı reddedildi': 'Publishing approval of the joint story was declined',
+  'Ortak hikâyenin yayın onayı reddedildi':
+      'Publishing approval of the joint story was declined',
   'Karşılaşma yüklenemedi.': 'Couldn’t load the encounter.',
   'Biraz sonra tekrar deneyebilirsin.': 'You can try again in a moment.',
   'Mesaj Gönder': 'Send Message',
   'Yayınlanan Hikâyeyi Gör': 'View Published Story',
-  'Bu karşılaşma hikâyesini yayınlamayı onaylıyor musun?': 'Do you approve publishing this encounter story?',
+  'Bu karşılaşma hikâyesini yayınlamayı onaylıyor musun?':
+      'Do you approve publishing this encounter story?',
   'Yayınlamayı Onayla': 'Approve Publishing',
   'Yayın onayı reddedildi.': 'Publishing approval was declined.',
-  'Yayın için karşı tarafın onayı bekleniyor.': 'Waiting for the other person’s approval to publish.',
+  'Yayın için karşı tarafın onayı bekleniyor.':
+      'Waiting for the other person’s approval to publish.',
   'Hikâyeyi Düzenle': 'Edit Story',
   'yükleniyor': 'loading',
   'alınıyor': 'being retrieved',
@@ -778,21 +856,28 @@ const enCatalog = <String, String>{
   'Bu noktada artık not yok.': 'There are no more notes at this spot.',
   'Notların süresi 7 gün sonra dolar.': 'Notes expire after 7 days.',
   'Yanıt gönderilemedi. Tekrar dene.': 'The reply couldn’t be sent. Try again.',
-  'Süresi dolmuş, silinmiş veya artık görüntülenemiyor olabilir.': 'It may have expired, been deleted or can no longer be viewed.',
+  'Süresi dolmuş, silinmiş veya artık görüntülenemiyor olabilir.':
+      'It may have expired, been deleted or can no longer be viewed.',
   'Harita notu': 'Map note',
-  'Bu nota ilk yanıtı sen yazabilirsin. Yanıtlar herkese açıktır.': 'You can write the first reply to this note. Replies are public.',
+  'Bu nota ilk yanıtı sen yazabilirsin. Yanıtlar herkese açıktır.':
+      'You can write the first reply to this note. Replies are public.',
   'Bu mektuba henüz yanıt gelmemiş.': 'This letter has no replies yet.',
   'Not yanıtı': 'Note reply',
-  'Not sahibi olarak yanıtlarsın; kimliğin görünmez.': 'You reply as the note’s owner; your identity stays hidden.',
+  'Not sahibi olarak yanıtlarsın; kimliğin görünmez.':
+      'You reply as the note’s owner; your identity stays hidden.',
   'Not gönderilemedi. Tekrar dene.': 'The note couldn’t be sent. Try again.',
   'Süresi dolan veya haritadan kaldırdığın mektuplar burada yalnızca sana görünür.': 'Letters that expired or that you removed from the map are visible only to you here.',
   'Haritada herkese açık olan mektupların. Her biri bırakıldıktan 7 gün sonra haritadan kalkar.': 'Your letters that are public on the map. Each one comes off the map 7 days after it’s left.',
   'Süresi dolan mektupların burada saklanır; istediğinde tekrar paylaşabilirsin.': 'Your expired letters are kept here; you can share them again whenever you like.',
-  'Bu kullanıcı engellendi. Mesaj göndermek için engeli kaldır.': 'This user is blocked. Unblock them to send a message.',
-  'Paylaşımı göndermek istediğin kişiyi seç.': 'Choose the person you want to send the post to.',
+  'Bu kullanıcı engellendi. Mesaj göndermek için engeli kaldır.':
+      'This user is blocked. Unblock them to send a message.',
+  'Paylaşımı göndermek istediğin kişiyi seç.':
+      'Choose the person you want to send the post to.',
   'Bu anının karşılaşması': 'The encounter of this memory',
-  'Kaydet simgesine dokunduğun paylaşımlar burada görünecek.': 'Posts you save with the save icon will appear here.',
-  'Kaydettiğin bir paylaşımın ⋮ menüsünden “Koleksiyona Ekle” de.': 'From the ⋮ menu of a saved post, choose “Add to Collection”.',
+  'Kaydet simgesine dokunduğun paylaşımlar burada görünecek.':
+      'Posts you save with the save icon will appear here.',
+  'Kaydettiğin bir paylaşımın ⋮ menüsünden “Koleksiyona Ekle” de.':
+      'From the ⋮ menu of a saved post, choose “Add to Collection”.',
   'Paylaşımlar gizlendi.': 'Posts are hidden.',
   'Geçtiğim Yerler için konumun uygulama arka plandayken de sunucuya gönderilir. Yaklaşık geçmiş bölgeler, sonradan bu bölgelerde paylaşılan hikâyeleri önermek ve bildirim tercihin açıksa haber vermek için saklanır. Kesin konumun diğer kullanıcılara gösterilmez. Android devam eden konum servisini gösterir. Kapattığında kayıt durur, geçmiş ve eşleşmelerin silinir.': 'For Places I Passed, your location is sent to the server even while the app is in the background. Approximate past areas are kept to suggest stories later shared in those areas and to notify you if your notification preference is on. Your exact location is never shown to other users. Android shows an ongoing location service. When you turn it off, recording stops and your history and matches are deleted.',
   'Uygulama açıkken konumun sunucuya gönderilir. Yaklaşık geçmiş bölgeler, sonradan bu bölgelerde paylaşılan hikâyeleri önermek ve bildirim tercihin açıksa haber vermek için saklanır. Kesin konumun diğer kullanıcılara gösterilmez. Bu iOS sürümünde arka planda konum kaydı yapılmaz. Kapattığında kayıt durur, geçmiş ve eşleşmelerin silinir.': 'Your location is sent to the server while the app is open. Approximate past areas are kept to suggest stories later shared in those areas and to notify you if your notification preference is on. Your exact location is never shown to other users. This iOS version doesn’t record location in the background. When you turn it off, recording stops and your history and matches are deleted.',
@@ -802,24 +887,34 @@ const enCatalog = <String, String>{
   'Kesin koordinatın, açık adresin ve canlı rotan diğer kullanıcılara gösterilmez.': 'Your exact coordinates, street address and live route are never shown to other users.',
   'Keşfettiğin şehir': 'City you’re exploring',
   'Haritada paylaşım noktaları yaklaşık gösterilir. Konum geçmişini yalnızca sen yönetebilirsin.': 'Post spots on the map are shown approximately. Only you can manage your location history.',
-  'Bu cihazda uygulama içi bildirimler kullanılabilir.': 'In-app notifications are available on this device.',
+  'Bu cihazda uygulama içi bildirimler kullanılabilir.':
+      'In-app notifications are available on this device.',
   'Bu seçenekler yeni bildirimlerin oluşturulmasını ve cihaz bildirimlerini yönetir.': 'These options control whether new notifications are created and device notifications.',
   'Engellediğin kişilerle mesajlaşamazsın. Bu kişilerin paylaşımları ve bildirimleri gizlenir.': 'You can’t message people you block. Their posts and notifications are hidden.',
-  'Gizlilik tercihlerinin kontrolü sende.': 'You’re in control of your privacy preferences.',
-  'Güvenli bir topluluğa katkı sağladığın için teşekkürler.': 'Thank you for helping keep the community safe.',
+  'Gizlilik tercihlerinin kontrolü sende.':
+      'You’re in control of your privacy preferences.',
+  'Güvenli bir topluluğa katkı sağladığın için teşekkürler.':
+      'Thank you for helping keep the community safe.',
   'Güvenli bir topluluk, birlikte.': 'A safe community, together.',
-  'Şikâyetinin nedeni karşı tarafa gösterilmez.': 'The reason for your report isn’t shown to the other person.',
+  'Şikâyetinin nedeni karşı tarafa gösterilmez.':
+      'The reason for your report isn’t shown to the other person.',
   'Gitmene üzüldük.': 'We’re sorry to see you go.',
   'Hesabın kalıcı olarak kapatılır. Profilin ve içeriklerin görünmez olur; oturumların, kayıtlı cihazların ve konum verilerin temizlenir. Bu işlem geri alınamaz. İlişkilerin bütünlüğü için kimlik bilgisi içermeyen kayıtlar kalabilir.': 'Your account is closed permanently. Your profile and content become invisible; your sessions, saved devices and location data are erased. This can’t be undone. Records that contain no identity details may remain to keep relationships consistent.',
-  'Bilgilere ulaşılamadı. Bağlantını kontrol edip tekrar dene.': 'Couldn’t load the information. Check your connection and try again.',
+  'Bilgilere ulaşılamadı. Bağlantını kontrol edip tekrar dene.':
+      'Couldn’t load the information. Check your connection and try again.',
   'SenMiydin? topluluğunda saygı ve güven esastır. Kesin konum ve kişisel bilgileri izinsiz paylaşma. Gizlilik tercihlerini ayarlardan yönetebilirsin.': 'Respect and trust are the foundation of the SenMiydin? community. Don’t share exact locations or personal information without permission. You can manage your privacy preferences in Settings.',
   'Şifren en fazla 72 bayt olabilir.': 'Your password can be at most 72 bytes.',
-  'Şifren geçersiz bir karakter içeriyor.': 'Your password contains an invalid character.',
-  'En az 10 karakter, bir harf ve bir rakam kullan.': 'Use at least 10 characters, one letter and one digit.',
-  'SenMiydin? uygulamasını mağazadan güncelleyebilirsin.': 'You can update SenMiydin? from the store.',
-  'Mağaza açılamadı. Daha sonra tekrar dene.': 'The store couldn’t be opened. Try again later.',
+  'Şifren geçersiz bir karakter içeriyor.':
+      'Your password contains an invalid character.',
+  'En az 10 karakter, bir harf ve bir rakam kullan.':
+      'Use at least 10 characters, one letter and one digit.',
+  'SenMiydin? uygulamasını mağazadan güncelleyebilirsin.':
+      'You can update SenMiydin? from the store.',
+  'Mağaza açılamadı. Daha sonra tekrar dene.':
+      'The store couldn’t be opened. Try again later.',
   'Koleksiyonlar yüklenemedi.': 'Couldn’t load collections.',
-  'Koleksiyonlar yalnızca sana görünür. Gönderi Kaydedilenler’de kalır.': 'Collections are visible only to you. The post stays in Saved.',
+  'Koleksiyonlar yalnızca sana görünür. Gönderi Kaydedilenler’de kalır.':
+      'Collections are visible only to you. The post stays in Saved.',
   'Anonim yorum': 'Anonymous comment',
   'Cihaz konumu': 'Device location',
   'Bölge belirlenemedi. Keşfettiğin şehri manuel seçebilirsin.': 'The area couldn’t be determined. You can choose the city you’re exploring manually.',
@@ -830,12 +925,15 @@ const enCatalog = <String, String>{
   'Haritadan kaldırıldı': 'Removed from the map',
   'Görsel yüklenemedi': 'Couldn’t load the image',
   'Konum hazır değil. Manuel şehir veya haritadan yer seçebilirsin.': 'Location isn’t ready. You can choose a city manually or pick a place on the map.',
-  'Son 7 gün · yaklaşık bölge ve saat': 'Last 7 days · approximate area and time',
-  'Önce ayarlardan Geçtiğim Yerler özelliğini aç.': 'First turn on Places I Passed in Settings.',
+  'Son 7 gün · yaklaşık bölge ve saat':
+      'Last 7 days · approximate area and time',
+  'Önce ayarlardan Geçtiğim Yerler özelliğini aç.':
+      'First turn on Places I Passed in Settings.',
   'Yalnızca kendi yaklaşık bölgelerin gösterilir. Başkalarının geçmişi paylaşılmaz.': 'Only your own approximate areas are shown. Other people’s history is never shared.',
   'Haritaya dokun. Seçtiğin nokta yaklaşıklaştırılır; açık adres paylaşılmaz. Yer başka şehirdeyse paylaşım şehrini de değiştir.': 'Tap the map. The spot you choose is approximated; no street address is shared. If the place is in another city, change the post’s city too.',
   'Yaklaşık kalkış zamanı': 'Approximate departure time',
-  'Plaka / araç tanımlayıcısı (isteğe bağlı)': 'Plate / vehicle identifier (optional)',
+  'Plaka / araç tanımlayıcısı (isteğe bağlı)':
+      'Plate / vehicle identifier (optional)',
   '{0}, telif bilgisi': '{0}, attribution',
   'Not sahibi': 'Note owner',
   'Uygulama': 'App',
@@ -851,11 +949,14 @@ const enCatalog = <String, String>{
   'Ses kaydı en fazla 3 MB olabilir.': 'The voice recording can be up to 3 MB.',
   'Sesli mesaj': 'Voice message',
   'Hediye gönderdi': 'Sent a gift',
-  'Bu mesaj türü bu sürümde gösterilemiyor.': 'This message type can’t be shown in this version.',
+  'Bu mesaj türü bu sürümde gösterilemiyor.':
+      'This message type can’t be shown in this version.',
   'Mikrofon izni kapalı. Sesli mesaj için Ayarlar\'dan mikrofona izin verebilirsin.': 'Microphone access is off. You can allow it in Settings to send voice messages.',
   'Mikrofon izni verilmedi. Sesli mesaj için Ayarlar\'dan izin verebilirsin.': 'Microphone access wasn’t granted. You can allow it in Settings to send voice messages.',
-  'Kayıt başlatılamadı. Tekrar dene.': 'The recording couldn’t be started. Try again.',
-  'Kayıt çok kısaydı, gönderilmedi.': 'The recording was too short and wasn’t sent.',
+  'Kayıt başlatılamadı. Tekrar dene.':
+      'The recording couldn’t be started. Try again.',
+  'Kayıt çok kısaydı, gönderilmedi.':
+      'The recording was too short and wasn’t sent.',
   'Galeriden Seç': 'Choose from Gallery',
   'Sesli mesaj kaydet': 'Record a voice message',
   'Henüz son kullanılan emoji yok': 'No recent emoji yet',
@@ -886,15 +987,18 @@ const enCatalog = <String, String>{
   'Pasta': 'Cake',
   'Hediye kutusu': 'Gift box',
   'SenMiydin?\'i değerlendir': 'Rate SenMiydin?',
-  'Uygulamayı kullanmaktan memnunsan görüşün bize çok yardımcı olur.': 'If you\'re enjoying SenMiydin?, your rating would really help us.',
+  'Uygulamayı kullanmaktan memnunsan görüşün bize çok yardımcı olur.':
+      'If you\'re enjoying SenMiydin?, your rating would really help us.',
   'Değerlendir': 'Rate App',
   'Şimdi Değil': 'Not Now',
   'Karşılaşıldı': 'Encountered',
   'SenMiydin?\'de gör': 'View on SenMiydin?',
   'Devamını SenMiydin?\'de gör': 'Continue on SenMiydin?',
   'Bağlantı kopyalandı.': 'Link copied.',
-  'Paylaşım hazırlanamadı. Tekrar dene.': 'The share card couldn’t be prepared. Try again.',
-  'Bu içerik uygulama dışında paylaşılamaz.': 'This content can’t be shared outside the app.',
+  'Paylaşım hazırlanamadı. Tekrar dene.':
+      'The share card couldn’t be prepared. Try again.',
+  'Bu içerik uygulama dışında paylaşılamaz.':
+      'This content can’t be shared outside the app.',
   'Hikâyede Paylaş': 'Share to Story',
   'Görsel Kart Olarak Paylaş': 'Share as Image Card',
   'Bağlantıyı Kopyala': 'Copy Link',

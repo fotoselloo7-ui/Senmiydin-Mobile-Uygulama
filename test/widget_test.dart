@@ -45,7 +45,16 @@ void main() {
     (t) async {
       await t.pumpWidget(SenMiydinApp(store: AppStore()));
       expect(find.byType(SplashPage), findsOneWidget);
-      await t.pump(const Duration(milliseconds: 1200));
+      // The gaze starts when the artwork is on screen (about 1.8 s): decode it first, then let the splash play out.
+      await t.runAsync(() async {
+        await precacheImage(
+          const AssetImage('assets/brand/splash_eyeless.png'),
+          t.element(find.byType(SplashPage)),
+        );
+      });
+      await t.pump();
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 2000));
       await t.pumpAndSettle();
       expect(find.byType(WelcomePage), findsOneWidget);
       await t.tap(find.text('Uygulamayı keşfet'));

@@ -15,6 +15,7 @@ import '../core/navigation.dart';
 import '../data/account_api.dart';
 import '../data/app_store.dart';
 import '../widgets/account_action.dart';
+import '../widgets/auth_ui.dart';
 import '../widgets/common.dart';
 import '../widgets/location_ui.dart';
 import '../core/app_locale.dart';
@@ -36,19 +37,24 @@ class _SplashPageState extends State<SplashPage>
   /// The big eyeless artwork has been decoded. Nothing of the branded splash is shown before that, so the pupils
   /// never float alone on the surface while the artwork is still loading.
   bool _artReady = false;
+
+  /// Completes when the artwork is on screen: the gaze starts then, so all of it is seen (a slow first frame never
+  /// eats the animation) and the splash stays about two seconds in front of the person.
+  final Completer<void> _artShown = Completer<void>();
+  Timer? _artTimer;
   late final AnimationController _controller;
   late final Animation<double> _gazeAnimation;
 
   @override
   void initState() {
     super.initState();
-    // About 1.4 s: centre -> a little right -> a little left -> centre. Short, soft and never a delay of its own:
-    // the account restore runs in parallel and the app opens as soon as both are done.
+    // About 1.8 s from the moment the artwork is visible: centre -> a little right -> a little left -> centre. Soft
+    // and short; the account restore runs in parallel and the app opens as soon as both are done.
     // AnimationBehavior.preserve: with the system animation scale at 0 (a developer option, or battery saver) Flutter
     // would otherwise shrink this 1.4 s gaze to a few milliseconds and the eyes would never visibly move.
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1400),
+      duration: const Duration(milliseconds: 1800),
       animationBehavior: AnimationBehavior.preserve,
     );
     TweenSequenceItem<double> move(double from, double to, double ms) =>
@@ -60,13 +66,13 @@ class _SplashPageState extends State<SplashPage>
           weight: ms,
         );
     _gazeAnimation = TweenSequence<double>([
-      TweenSequenceItem(tween: ConstantTween<double>(0.0), weight: 150),
-      move(0.0, 1.0, 280),
-      TweenSequenceItem(tween: ConstantTween<double>(1.0), weight: 120),
-      move(1.0, -1.0, 380),
-      TweenSequenceItem(tween: ConstantTween<double>(-1.0), weight: 120),
-      move(-1.0, 0.0, 250),
-      TweenSequenceItem(tween: ConstantTween<double>(0.0), weight: 100),
+      TweenSequenceItem(tween: ConstantTween<double>(0.0), weight: 300),
+      move(0.0, 1.0, 320),
+      TweenSequenceItem(tween: ConstantTween<double>(1.0), weight: 160),
+      move(1.0, -1.0, 440),
+      TweenSequenceItem(tween: ConstantTween<double>(-1.0), weight: 160),
+      move(-1.0, 0.0, 260),
+      TweenSequenceItem(tween: ConstantTween<double>(0.0), weight: 160),
     ]).animate(_controller);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -76,6 +82,7 @@ class _SplashPageState extends State<SplashPage>
 
   @override
   void dispose() {
+    _artTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -84,9 +91,15 @@ class _SplashPageState extends State<SplashPage>
     setState(() => error = null);
     // The gaze is a short, gentle brand moment (pupils only, no flashing): it always plays, whatever the system
     // animation scale is. Only the fixed-offset QA mode skips it.
+    // If the artwork takes unusually long, the gaze starts after three seconds anyway.
+    _artTimer = Timer(const Duration(seconds: 3), () {
+      if (!_artShown.isCompleted) _artShown.complete();
+    });
     final animFuture = widget.initialGazeOffset != null
         ? Future<void>.value()
-        : _controller.forward().orCancel.catchError((_) {});
+        : _artShown.future.then(
+            (_) => _controller.forward().orCancel.catchError((_) {}),
+          );
     try {
       final results = await Future.wait<dynamic>([
         StoreScope.of(context).restoreAccount(),
@@ -214,6 +227,10 @@ class _SplashPageState extends State<SplashPage>
                                                       setState(
                                                         () => _artReady = true,
                                                       );
+                                                      if (!_artShown
+                                                          .isCompleted) {
+                                                        _artShown.complete();
+                                                      }
                                                     }
                                                   });
                                             }
@@ -346,99 +363,119 @@ class _WelcomePageState extends State<WelcomePage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    body: SafeArea(
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
-          child: Column(
-            children: [
-              const Padding(
-                padding: EdgeInsets.all(Space.xl),
-                child: Brand(size: 30),
-              ),
-              Expanded(
-                child: PageView(
-                  onPageChanged: (v) => setState(() => index = v),
-                  controller: controller,
-                  children: const [
-                    _WelcomeSlide(
-                      Icons.favorite_border_rounded,
-                      'Bir an. Bir bakış.\nBelki de sen.',
-                      'Gerçek hayatta yolların kesiştiği insanlarla, yarım kalan hikâyene yeniden merhaba de.',
-                    ),
-                    _WelcomeSlide(
-                      Icons.location_on_outlined,
-                      'Şehrinin hikâyelerine\nyakından bak.',
-                      'Düşünceler, anılar ve güzel tesadüfler. Aynı şehrin insanlarını keşfet.',
-                    ),
-                    _WelcomeSlide(
-                      Icons.people_outline_rounded,
-                      'Güzel karşılaşmalar\nbir merhabayla başlar.',
-                      'İlgi alanlarını paylaş, yeni bağlar kur. Konumunun görünürlüğü her zaman senin kontrolünde.',
-                    ),
-                  ],
+    backgroundColor: Colors.white,
+    body: AuthBackdrop(
+      child: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(24, 12, 24, 0),
+                  child: Brand(size: 30),
                 ),
-              ),
-              Padding(
-                padding: Space.page,
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(
-                        3,
-                        (i) => AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
-                          width: i == index ? 25 : 7,
-                          height: 7,
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          decoration: BoxDecoration(
-                            color: i == index ? AppColors.blue : AppColors.line,
-                            borderRadius: BorderRadius.circular(8),
+                Expanded(
+                  child: PageView(
+                    onPageChanged: (v) => setState(() => index = v),
+                    controller: controller,
+                    children: const [
+                      _WelcomeSlide(
+                        _WelcomeArt.glance,
+                        'Bir an. Bir bakış.\nBelki de sen.',
+                        'Gerçek hayatta yolların kesiştiği insanlarla, yarım kalan hikâyene yeniden merhaba de.',
+                      ),
+                      _WelcomeSlide(
+                        _WelcomeArt.city,
+                        'Şehrinin hikâyelerine\nyakından bak.',
+                        'Düşünceler, anılar ve güzel tesadüfler. Aynı şehrin insanlarını keşfet.',
+                      ),
+                      _WelcomeSlide(
+                        _WelcomeArt.connect,
+                        'Güzel karşılaşmalar\nbir merhabayla başlar.',
+                        'İlgi alanlarını paylaş, yeni bağlar kur. Konumunun görünürlüğü her zaman senin kontrolünde.',
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 4, 24, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(
+                          3,
+                          (i) => AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            width: i == index ? 26 : 8,
+                            height: 8,
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            decoration: BoxDecoration(
+                              color: i == index
+                                  ? AppColors.brandPurple
+                                  : AppColors.borderLilac,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: Space.xl),
-                    PrimaryButton(
-                      index < 2 ? 'Devam Et' : 'Hesap Oluştur',
-                      onPressed: () {
-                        if (index < 2) {
-                          controller.nextPage(
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeOut,
-                          );
-                        } else {
-                          openPage(context, '/register');
-                        }
-                      },
-                    ),
-                    const SizedBox(height: Space.sm),
-                    SecondaryButton(
-                      'Giriş Yap',
-                      onPressed: () => openPage(context, '/login'),
-                      icon: Icons.login_rounded,
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        final store = StoreScope.of(context);
-                        if (store.connected && !store.authenticated) {
-                          openPage(context, '/register');
-                        } else {
-                          if (!store.connected) store.login();
-                          home(context);
-                        }
-                      },
-                      child: const Text('Uygulamayı keşfet'),
-                    ),
-                    const Text(
-                      'Güzel tesadüflere yer aç. 💙',
-                      style: TextStyle(fontSize: 11, color: AppColors.muted),
-                    ),
-                  ],
+                      const SizedBox(height: 18),
+                      AuthPrimaryButton(
+                        index < 2 ? 'Devam Et' : 'Hesap Oluştur',
+                        icon: index < 2
+                            ? Icons.arrow_forward_rounded
+                            : Icons.person_add_alt_1_rounded,
+                        onPressed: () {
+                          if (index < 2) {
+                            controller.nextPage(
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeOut,
+                            );
+                          } else {
+                            openPage(context, '/register');
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      AuthSecondaryButton(
+                        'Giriş Yap',
+                        icon: Icons.login_rounded,
+                        onPressed: () => openPage(context, '/login'),
+                      ),
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.brandPurple,
+                          textStyle: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14.5,
+                          ),
+                        ),
+                        onPressed: () {
+                          final store = StoreScope.of(context);
+                          if (store.connected && !store.authenticated) {
+                            openPage(context, '/register');
+                          } else {
+                            if (!store.connected) store.login();
+                            home(context);
+                          }
+                        },
+                        child: const Text('Uygulamayı keşfet'),
+                      ),
+                      const Text(
+                        'Güzel tesadüflere yer aç. 💙',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -446,90 +483,178 @@ class _WelcomePageState extends State<WelcomePage> {
   );
 }
 
+enum _WelcomeArt { glance, city, connect }
+
 class _WelcomeSlide extends StatelessWidget {
-  const _WelcomeSlide(this.icon, this.title, this.text);
-  final IconData icon;
+  const _WelcomeSlide(this.art, this.title, this.text);
+  final _WelcomeArt art;
   final String title, text;
+
   @override
   Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, box) => SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: Space.xxl),
-        child: Column(
-          children: [
-            const SizedBox(height: Space.lg),
-            SizedBox(
-              height: box.maxHeight > 360 ? 190 : 100,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    width: 170,
-                    height: 170,
-                    decoration: const BoxDecoration(
-                      color: AppColors.pale,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  Icon(
-                    icon,
-                    size: box.maxHeight > 360 ? 82 : 66,
-                    color: AppColors.blue,
-                  ),
-                  if (box.maxHeight > 360) ...[
-                    Positioned(
-                      top: 4,
-                      left: 35,
-                      child: Transform.rotate(
-                        angle: -.15,
-                        child: Container(
-                          padding: const EdgeInsets.all(5),
-                          decoration: AppShape.card(),
-                          child: Avatar(
-                            StoreScope.of(context).people[1],
-                            size: 47,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 3,
-                      right: 32,
-                      child: Container(
-                        padding: const EdgeInsets.all(5),
-                        decoration: AppShape.card(),
-                        child: Avatar(
-                          StoreScope.of(context).people[0],
-                          size: 50,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
+    builder: (context, box) {
+      final tall = box.maxHeight > 400;
+      return SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28),
+          child: Column(
+            children: [
+              SizedBox(height: tall ? 18 : 6),
+              _WelcomeIllustration(art, size: tall ? 250 : 150),
+              SizedBox(height: tall ? 26 : 14),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 27,
+                  height: 1.18,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1B1140),
+                  letterSpacing: -.5,
+                ),
               ),
-            ),
-            const SizedBox(height: Space.xl),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.headlineLarge,
-            ),
-            const SizedBox(height: Space.lg),
-            Text(
-              text,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.muted,
-                fontSize: 15,
-                height: 1.6,
+              const SizedBox(height: 12),
+              Text(
+                text,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 15.5,
+                  height: 1.5,
+                ),
               ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+/// Soft lilac stage with rings and a few floating cards. Shapes and icons only: no people, no demo data.
+class _WelcomeIllustration extends StatelessWidget {
+  const _WelcomeIllustration(this.art, {required this.size});
+  final _WelcomeArt art;
+  final double size;
+
+  Widget _card(
+    IconData icon, {
+    required double left,
+    required double top,
+    double angle = 0,
+  }) => Positioned(
+    left: left * size,
+    top: top * size,
+    child: Transform.rotate(
+      angle: angle,
+      child: Container(
+        width: 46 * size / 250,
+        height: 46 * size / 250,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16 * size / 250),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.brandPurple.withValues(alpha: .16),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
             ),
-            const SizedBox(height: Space.lg),
           ],
         ),
+        child: Icon(icon, color: AppColors.brandPurple, size: 24 * size / 250),
       ),
     ),
   );
+
+  @override
+  Widget build(BuildContext context) {
+    final centre = switch (art) {
+      _WelcomeArt.glance => Icons.favorite_rounded,
+      _WelcomeArt.city => Icons.location_on_rounded,
+      _WelcomeArt.connect => Icons.chat_bubble_rounded,
+    };
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          for (final f in const [1.0, .76, .52])
+            Container(
+              width: size * f,
+              height: size * f,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.surfaceLilac.withValues(
+                  alpha: f == .52 ? .9 : .38,
+                ),
+                border: Border.all(
+                  color: AppColors.borderLilac.withValues(alpha: .7),
+                ),
+              ),
+            ),
+          Container(
+            width: size * .34,
+            height: size * .34,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF8B2FE0), Color(0xFF5E17B8)],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.brandPurple.withValues(alpha: .35),
+                  blurRadius: 22,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Icon(centre, color: Colors.white, size: size * .17),
+          ),
+          ...switch (art) {
+            _WelcomeArt.glance => [
+              _card(Icons.waving_hand_rounded, left: .06, top: .2, angle: -.2),
+              _card(Icons.visibility_rounded, left: .74, top: .1, angle: .15),
+              _card(
+                Icons.auto_awesome_rounded,
+                left: .72,
+                top: .72,
+                angle: -.1,
+              ),
+            ],
+            _WelcomeArt.city => [
+              _card(
+                Icons.mail_outline_rounded,
+                left: .08,
+                top: .12,
+                angle: -.15,
+              ),
+              _card(Icons.map_outlined, left: .76, top: .24, angle: .12),
+              _card(
+                Icons.directions_walk_rounded,
+                left: .14,
+                top: .72,
+                angle: .1,
+              ),
+            ],
+            _WelcomeArt.connect => [
+              _card(Icons.mic_none_rounded, left: .06, top: .24, angle: -.12),
+              _card(Icons.photo_outlined, left: .76, top: .14, angle: .14),
+              _card(
+                Icons.card_giftcard_rounded,
+                left: .7,
+                top: .72,
+                angle: -.1,
+              ),
+            ],
+          },
+        ],
+      ),
+    );
+  }
 }
 
 class AuthPage extends StatefulWidget {
@@ -542,19 +667,28 @@ class AuthPage extends StatefulWidget {
 
 class _AuthPageState extends State<AuthPage> with AccountAction<AuthPage> {
   final form = GlobalKey<FormState>();
-  final name = TextEditingController(),
-      handle = TextEditingController(),
+  final handle = TextEditingController(),
       email = TextEditingController(),
-      password = TextEditingController();
+      password = TextEditingController(),
+      confirm = TextEditingController();
   DateTime? birthday;
+
+  /// The display name starts as the social account's name (or the username) and is completed in the profile step.
+  String? socialName;
   String city = 'Alanya';
-  bool accepted = false, obscure = true;
+  bool accepted = false;
   bool askedAge = false;
+
+  /// Inline messages: a failed attempt (red) or an information note (lilac); inline errors for the two non-text
+  /// requirements of the registration.
+  String? failure, notice, birthdayError, termsError;
+  bool submitted = false;
+
   @override
   void initState() {
     super.initState();
     email.text = widget.social?.email ?? '';
-    name.text = widget.social?.name ?? '';
+    socialName = widget.social?.name;
   }
 
   @override
@@ -569,36 +703,72 @@ class _AuthPageState extends State<AuthPage> with AccountAction<AuthPage> {
 
   @override
   void dispose() {
-    for (final c in [name, handle, email, password]) {
+    for (final c in [handle, email, password, confirm]) {
       c.dispose();
     }
     super.dispose();
   }
 
-  void submit() {
-    if (!form.currentState!.validate()) {
-      return;
+  /// Runs an account action; a failure is shown inline in the form (and never throws into the UI).
+  Future<void> _run(Future<void> Function() action) async {
+    setState(() {
+      failure = null;
+      notice = null;
+    });
+    if (busy) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => busy = true);
+    try {
+      await action();
+    } on ApiFailure catch (error) {
+      if (mounted) setState(() => failure = error.detail);
+    } catch (error) {
+      assert(() {
+        debugPrint('Account action failed: ${error.runtimeType}');
+        return true;
+      }());
+      if (mounted) setState(() => failure = 'Bir sorun oluştu. Tekrar dene.');
+    } finally {
+      if (mounted) setState(() => busy = false);
     }
+  }
+
+  void submit() {
+    setState(() {
+      submitted = true;
+      birthdayError = null;
+      termsError = null;
+    });
+    final valid = form.currentState!.validate();
+    var complete = true;
     if (widget.register && birthday == null) {
-      toast(context, 'Doğum tarihini seçmelisin.');
-      return;
+      setState(() => birthdayError = 'Doğum tarihini seçmelisin.');
+      complete = false;
     }
     if (widget.register && !accepted) {
-      toast(context, 'Devam etmek için koşulları kabul etmelisin.');
-      return;
+      setState(
+        () => termsError = 'Devam etmek için koşulları kabul etmelisin.',
+      );
+      complete = false;
     }
+    if (!valid || !complete) return;
     final store = StoreScope.of(context);
     if (store.connected) {
-      runAccountAction(() async {
+      _run(() async {
         if (widget.register) {
+          final username = handle.text.trim().replaceFirst(RegExp(r'^@'), '');
           await store.signIn(
             widget.social == null
                 ? 'register'
                 : 'social/${widget.social!.provider}',
             {
               ...?widget.social?.fields,
-              'name': name.text.trim(),
-              'username': handle.text.trim().replaceFirst(RegExp(r'^@'), ''),
+              // The sign-up form has no name field: the display name starts as the social name or the username and
+              // is completed in the next (profile) step.
+              'name': (socialName ?? '').trim().isEmpty
+                  ? username
+                  : socialName!.trim(),
+              'username': username,
               'email': email.text.trim(),
               'password': password.text,
               'birth_date': birthday!.toIso8601String().split('T').first,
@@ -623,8 +793,11 @@ class _AuthPageState extends State<AuthPage> with AccountAction<AuthPage> {
       return;
     }
     if (widget.register) {
-      store.me.name = name.text.trim();
-      store.me.handle = handle.text.trim().replaceFirst('@', '');
+      final username = handle.text.trim().replaceFirst('@', '');
+      store.me.name = (socialName ?? '').trim().isEmpty
+          ? username
+          : socialName!.trim();
+      store.me.handle = username;
       store.me.city = city;
       store.city = city;
       store.refresh();
@@ -635,247 +808,371 @@ class _AuthPageState extends State<AuthPage> with AccountAction<AuthPage> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) => PopScope(
-    canPop: !busy,
-    child: AppPage(
-      title: widget.register ? 'Kayıt Ol' : 'Giriş Yap',
-      child: SingleChildScrollView(
-        padding: Space.page,
-        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        child: Form(
-          key: form,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (widget.register)
-                const SetupProgress(step: 0)
-              else ...[
-                Text(
-                  'Yeniden merhaba! 💙',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Yarım kalan hikâyene kaldığın yerden devam et.',
-                  style: TextStyle(color: AppColors.muted),
-                ),
-                const SizedBox(height: Space.xl),
-              ],
-              if (widget.register) ...[
-                Field(
-                  'Ad Soyad',
-                  Icons.person_outline,
-                  controller: name,
-                  validator: requiredText,
-                ),
-                Field(
-                  'Kullanıcı Adı',
-                  Icons.alternate_email,
-                  controller: handle,
-                  validator: (v) =>
-                      RegExp(r'^[a-zA-Z0-9_\.]{3,24}$')
-                          .hasMatch((v ?? '').replaceFirst('@', ''))
-                      ? null
-                      : '3–24 harf, rakam, nokta veya alt çizgi kullan.',
-                ),
-              ],
-              Field(
-                widget.register ? 'E-posta' : 'E-posta veya kullanıcı adı',
-                Icons.mail_outline,
-                controller: email,
-                keyboardType: TextInputType.emailAddress,
-                validator: widget.register
-                    ? (v) => validEmail(v ?? '')
-                          ? null
-                          : 'Geçerli bir e-posta adresi gir.'
-                    : requiredText,
+  /// Google / Apple: the sign-in runs here when the provider is configured; otherwise an honest note is shown and
+  /// the e-mail form stays available. A new social identity continues in the registration form.
+  void social(String provider) {
+    final store = StoreScope.of(context);
+    if (!(store.connected && SocialSignIn.configured(provider))) {
+      setState(() {
+        failure = null;
+        notice = trf(
+          '{0} ile giriş şu anda kullanılamıyor. E-posta ve şifrenle devam edebilirsin.',
+          [provider],
+        );
+      });
+      return;
+    }
+    _run(() async {
+      final credential = await SocialSignIn.authenticate(provider, store.auth!);
+      try {
+        await store.signIn('social/${credential.provider}', credential.fields);
+        if (mounted) {
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            store.accountRoute,
+            (_) => false,
+          );
+        }
+      } on ApiFailure catch (error) {
+        if (error.status != 412) rethrow;
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute<void>(
+              builder: (_) => AuthPage(register: true, social: credential),
+            ),
+          );
+        }
+      }
+    });
+  }
+
+  Future<void> pickBirthday() async {
+    final now = DateTime.now();
+    final age = StoreScope.of(context).minimumAge;
+    final value = await showDatePicker(
+      context: context,
+      initialDate: birthday ?? DateTime(now.year - age - 2, now.month, now.day),
+      firstDate: DateTime(1920),
+      lastDate: DateTime(now.year - age, now.month, now.day),
+      helpText: trf('Devam etmek için {0} yaşını doldurmalısın', [age]),
+    );
+    if (mounted && value != null) {
+      setState(() {
+        birthday = value;
+        birthdayError = null;
+      });
+    }
+  }
+
+  String _date(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
+
+  Widget _banner() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      if (failure != null) AuthNotice(failure!, error: true),
+      if (notice != null) AuthNotice(notice!),
+    ],
+  );
+
+  Widget _legalNote(int age) => Row(
+    crossAxisAlignment: CrossAxisAlignment.center,
+    children: [
+      AgeBadge(age),
+      const SizedBox(width: 10),
+      Expanded(
+        child: AuthRichText(
+          "Devam ederek {0} ve {1}'nı kabul etmiş sayılırsın.",
+          [
+            AuthLink(
+              'Kullanım Koşulları',
+              () => showLegal(context, 'Kullanım Koşulları'),
+            ),
+            AuthLink(
+              'Gizlilik Politikası',
+              () => showLegal(context, 'Gizlilik Politikası'),
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
+
+  Widget _switchRow() => Padding(
+    padding: const EdgeInsets.only(top: 6),
+    child: Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Text(
+          widget.register ? 'Zaten hesabın var mı?' : 'Hesabın yok mu?',
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 14.5,
+          ),
+        ),
+        TextButton(
+          onPressed: busy
+              ? null
+              : () =>
+                    openPage(context, widget.register ? '/login' : '/register'),
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.brandPurple,
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            textStyle: const TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
+            ),
+          ),
+          child: Text(widget.register ? 'Giriş Yap' : 'Kayıt Ol'),
+        ),
+      ],
+    ),
+  );
+
+  List<Widget> _login(BuildContext context) => [
+    const SizedBox(height: 18),
+    const AuthTitle(
+      'Tekrar karşılaşmaya hazır mısın?',
+      'Hesabına giriş yap ve yarım kalan karşılaşmalarına devam et.',
+    ),
+    const SizedBox(height: 26),
+    _banner(),
+    Form(
+      key: form,
+      autovalidateMode: submitted
+          ? AutovalidateMode.onUserInteraction
+          : AutovalidateMode.disabled,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AuthField(
+            'E-posta veya kullanıcı adı',
+            Icons.mail_outline_rounded,
+            controller: email,
+            keyboardType: TextInputType.emailAddress,
+            enabled: !busy,
+            autofillHints: const [AutofillHints.username],
+            validator: requiredText,
+          ),
+          AuthField(
+            'Şifre',
+            Icons.lock_outline_rounded,
+            controller: password,
+            obscure: true,
+            enabled: !busy,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => submit(),
+            autofillHints: const [AutofillHints.password],
+            validator: requiredText,
+          ),
+        ],
+      ),
+    ),
+    Align(
+      alignment: Alignment.centerRight,
+      child: TextButton(
+        onPressed: busy ? null : () => openPage(context, '/forgot'),
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.brandPurple,
+          textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+        ),
+        child: const Text('Şifremi unuttum?'),
+      ),
+    ),
+    const SizedBox(height: 6),
+    AuthPrimaryButton(
+      busy ? 'Lütfen bekle…' : 'Giriş Yap',
+      icon: Icons.person_rounded,
+      busy: busy,
+      onPressed: busy ? null : submit,
+    ),
+    const AuthDivider('veya'),
+    AuthSocialButton(
+      SocialProvider.google,
+      'Google ile devam et',
+      onPressed: busy ? null : () => social('Google'),
+    ),
+    const SizedBox(height: 10),
+    AuthSocialButton(
+      SocialProvider.apple,
+      'Apple ile devam et',
+      onPressed: busy ? null : () => social('Apple'),
+    ),
+    const SizedBox(height: 14),
+    _switchRow(),
+    const SizedBox(height: 10),
+    _legalNote(StoreScope.of(context).minimumAge),
+  ];
+
+  List<Widget> _register(BuildContext context) {
+    final age = StoreScope.of(context).minimumAge;
+    return [
+      const SizedBox(height: 10),
+      const AuthTitle(
+        'SenMiydin?’e katıl',
+        'Yeni insanlarla, anılarla ve yarım kalan karşılaşmalarla yeniden bağ kur.',
+      ),
+      const SizedBox(height: 20),
+      _banner(),
+      AuthSocialButton(
+        SocialProvider.google,
+        'Google ile kayıt ol',
+        onPressed: busy ? null : () => social('Google'),
+      ),
+      const SizedBox(height: 10),
+      AuthSocialButton(
+        SocialProvider.apple,
+        'Apple ile kayıt ol',
+        onPressed: busy ? null : () => social('Apple'),
+      ),
+      const AuthDivider('veya e-posta ile kayıt ol'),
+      Form(
+        key: form,
+        autovalidateMode: submitted
+            ? AutovalidateMode.onUserInteraction
+            : AutovalidateMode.disabled,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AuthField(
+              'E-posta',
+              Icons.mail_outline_rounded,
+              controller: email,
+              keyboardType: TextInputType.emailAddress,
+              enabled: !busy,
+              autofillHints: const [AutofillHints.email],
+              validator: (v) => validEmail(v ?? '')
+                  ? null
+                  : 'Geçerli bir e-posta adresi gir.',
+            ),
+            AuthField(
+              'Şifre',
+              Icons.lock_outline_rounded,
+              controller: password,
+              obscure: true,
+              enabled: !busy,
+              autofillHints: const [AutofillHints.newPassword],
+              validator: newPasswordError,
+            ),
+            AuthField(
+              'Şifre Tekrar',
+              Icons.lock_outline_rounded,
+              controller: confirm,
+              obscure: true,
+              enabled: !busy,
+              validator: (v) =>
+                  v == password.text ? null : 'Şifreler eşleşmiyor.',
+            ),
+            AuthField(
+              'Kullanıcı Adı',
+              Icons.person_outline_rounded,
+              controller: handle,
+              enabled: !busy,
+              autofillHints: const [AutofillHints.newUsername],
+              validator: (v) =>
+                  RegExp(r'^[a-zA-Z0-9_\.]{3,24}$')
+                      .hasMatch((v ?? '').replaceFirst('@', ''))
+                  ? null
+                  : '3–24 harf, rakam, nokta veya alt çizgi kullan.',
+            ),
+            AuthSelectField(
+              label: 'Doğum Tarihi',
+              icon: Icons.calendar_month_outlined,
+              value: birthday == null ? null : _date(birthday!),
+              errorText: birthdayError,
+              onTap: busy ? null : pickBirthday,
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 4),
+      AuthPrimaryButton(
+        busy ? 'Lütfen bekle…' : 'Kayıt Ol',
+        icon: Icons.person_add_alt_1_rounded,
+        busy: busy,
+        onPressed: busy ? null : submit,
+      ),
+      const SizedBox(height: 16),
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 28,
+            height: 28,
+            child: Checkbox(
+              value: accepted,
+              activeColor: AppColors.brandPurple,
+              side: const BorderSide(color: AppColors.borderStrong, width: 1.5),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
               ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: Space.md),
-                child: TextFormField(
-                  controller: password,
-                  textInputAction: widget.register
-                      ? TextInputAction.next
-                      : TextInputAction.done,
-                  onFieldSubmitted: widget.register ? null : (_) => submit(),
-                  obscureText: obscure,
-                  validator: widget.register ? newPasswordError : requiredText,
-                  decoration: InputDecoration(
-                    labelText: tr('Şifre'),
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    suffixIcon: IconButton(
-                      tooltip: tr('Şifreyi göster / gizle'),
-                      onPressed: () => setState(() => obscure = !obscure),
-                      icon: Icon(
-                        obscure
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
-                      ),
-                    ),
+              onChanged: busy
+                  ? null
+                  : (v) => setState(() {
+                      accepted = v ?? false;
+                      if (accepted) termsError = null;
+                    }),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 5),
+              child: AuthRichText(
+                "{0} yaşını doldurdum; {1} ve {2}'nı okudum, kabul ediyorum.",
+                [
+                  '$age',
+                  AuthLink(
+                    'Kullanım Koşulları',
+                    () => showLegal(context, 'Kullanım Koşulları'),
                   ),
-                ),
-              ),
-              if (widget.register) ...[
-                SettingsRow(
-                  birthday == null
-                      ? 'Doğum Tarihi'
-                      : '${birthday!.day}.${birthday!.month}.${birthday!.year}',
-                  Icons.calendar_month_outlined,
-                  onTap: busy
-                      ? null
-                      : () async {
-                          final now = DateTime.now();
-                          final age = StoreScope.of(context).minimumAge;
-                          final value = await showDatePicker(
-                            context: context,
-                            initialDate: DateTime(
-                              now.year - age - 2,
-                              now.month,
-                              now.day,
-                            ),
-                            firstDate: DateTime(1920),
-                            lastDate: DateTime(
-                              now.year - age,
-                              now.month,
-                              now.day,
-                            ),
-                            helpText: trf(
-                              'Devam etmek için {0} yaşını doldurmalısın',
-                              [age],
-                            ),
-                          );
-                          if (mounted && value != null) {
-                            setState(() => birthday = value);
-                          }
-                        },
-                ),
-                SettingsRow(
-                  city,
-                  Icons.location_on_outlined,
-                  onTap: busy
-                      ? null
-                      : () async {
-                          final value = await chooseCity(context, city);
-                          if (mounted && value != null) {
-                            setState(() => city = value);
-                          }
-                        },
-                ),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Checkbox(
-                      value: accepted,
-                      onChanged: busy
-                          ? null
-                          : (v) => setState(() => accepted = v!),
-                    ),
-                    Expanded(
-                      child: Text(
-                        trf(
-                          '{0} yaşını doldurdum ve aşağıdaki koşulları kabul ediyorum.',
-                          [StoreScope.of(context).minimumAge],
-                        ),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.muted,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                Wrap(
-                  children: [
-                    TextButton(
-                      onPressed: () => showLegal(context, 'Kullanım Koşulları'),
-                      child: const Text('Kullanım Koşulları'),
-                    ),
-                    TextButton(
-                      onPressed: () =>
-                          showLegal(context, 'Gizlilik Politikası'),
-                      child: const Text('Gizlilik Politikası'),
-                    ),
-                  ],
-                ),
-              ] else
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: busy ? null : () => openPage(context, '/forgot'),
-                    child: const Text('Şifremi unuttum'),
-                  ),
-                ),
-              const SizedBox(height: Space.sm),
-              PrimaryButton(
-                busy
-                    ? 'Lütfen bekle…'
-                    : widget.register
-                    ? 'Devam Et'
-                    : 'Giriş Yap',
-                onPressed: busy ? null : submit,
-              ),
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: Space.lg),
-                child: Row(
-                  children: [
-                    Expanded(child: Divider()),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: Space.md),
-                      child: Text(
-                        'veya',
-                        style: TextStyle(color: AppColors.muted, fontSize: 12),
-                      ),
-                    ),
-                    Expanded(child: Divider()),
-                  ],
-                ),
-              ),
-              SecondaryButton(
-                'Google ile devam et',
-                icon: Icons.g_mobiledata_rounded,
-                onPressed: busy
-                    ? null
-                    : () => openPage(context, '/social', 'Google'),
-              ),
-              const SizedBox(height: Space.sm),
-              SecondaryButton(
-                'Apple ile devam et',
-                icon: Icons.apple,
-                onPressed: busy
-                    ? null
-                    : () => openPage(context, '/social', 'Apple'),
-              ),
-              const SizedBox(height: Space.lg),
-              Wrap(
-                alignment: WrapAlignment.center,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Text(
-                    widget.register
-                        ? 'Zaten hesabın var mı?'
-                        : 'Henüz hesabın yok mu?',
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      fontSize: 12,
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: busy
-                        ? null
-                        : () => openPage(
-                            context,
-                            widget.register ? '/login' : '/register',
-                          ),
-                    child: Text(widget.register ? 'Giriş Yap' : 'Kayıt Ol'),
+                  AuthLink(
+                    'Gizlilik Politikası',
+                    () => showLegal(context, 'Gizlilik Politikası'),
                   ),
                 ],
               ),
-              const SizedBox(height: Space.sm),
-            ],
+            ),
+          ),
+        ],
+      ),
+      if (termsError != null)
+        Padding(
+          padding: const EdgeInsets.only(top: 6, left: 36),
+          child: Text(
+            termsError!,
+            style: const TextStyle(color: AppColors.red, fontSize: 12.5),
           ),
         ),
+      const SizedBox(height: 10),
+      Row(
+        children: [
+          AgeBadge(age),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              'SenMiydin? yalnızca bu yaş ve üzeri içindir; yaş grupları ayrı tutulur.',
+              style: TextStyle(
+                fontSize: 12.5,
+                height: 1.35,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+        ],
       ),
+      const SizedBox(height: 10),
+      _switchRow(),
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) => PopScope(
+    canPop: !busy,
+    child: AuthScaffold(
+      children: widget.register ? _register(context) : _login(context),
     ),
   );
 }

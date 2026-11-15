@@ -474,72 +474,78 @@ void main() {
     });
   }
 
-  testWidgets(
-    'Animated splash moves only pupils centre, a little right, a little left, then settles at the centre (about 1.4 s)',
-    (t) async {
-      final store = AppStore();
-      addTearDown(store.dispose);
-      await t.pumpWidget(
-        StoreScope(
-          store: store,
-          child: const MaterialApp(
-            home: SplashPage(),
-          ),
-        ),
+  /// Shows the splash with its artwork already decoded (so the gaze, which starts when the artwork is visible, begins
+  /// on the first frames), and returns once it has started.
+  Future<void> showSplash(
+    WidgetTester t, {
+    bool disableAnimations = false,
+  }) async {
+    final store = AppStore();
+    addTearDown(store.dispose);
+    Widget page = const MaterialApp(home: SplashPage());
+    if (disableAnimations) {
+      page = MediaQuery(
+        data: const MediaQueryData(disableAnimations: true),
+        child: page,
       );
+    }
+    await t.pumpWidget(StoreScope(store: store, child: page));
+    await t.runAsync(() async {
+      await precacheImage(
+        const AssetImage('assets/brand/splash_eyeless.png'),
+        t.element(find.byType(SplashPage)),
+      );
+    });
+    await t.pump();
+    await t.pump();
+  }
 
+  double leftPupil(WidgetTester t) =>
+      t.widget<Positioned>(find.byKey(const Key('splash-pupil-left'))).left!;
+  double rightPupil(WidgetTester t) =>
+      t.widget<Positioned>(find.byKey(const Key('splash-pupil-right'))).left!;
+
+  testWidgets(
+    'Animated splash: about 1.8 s from the moment the artwork is visible, pupils only: centre, a little right, a little left, back to the centre',
+    (t) async {
+      await showSplash(t);
       expect(find.byType(ClipOval), findsNWidgets(2));
-      double left() => t
-          .widget<Positioned>(find.byKey(const Key('splash-pupil-left')))
-          .left!;
-      double right() => t
-          .widget<Positioned>(find.byKey(const Key('splash-pupil-right')))
-          .left!;
-      final leftCenter0 = left();
-      final rightCenter0 = right();
+      final leftCenter0 = leftPupil(t);
+      final rightCenter0 = rightPupil(t);
 
-      // Start the ticker scheduled in addPostFrameCallback, then advance to t=500ms (holding the right gaze)
-      await t.pump();
+      // The gaze holds the centre first (0.3 s), then looks right.
+      await t.pump(const Duration(milliseconds: 200));
+      expect((leftPupil(t) - leftCenter0).abs(), lessThan(2.0));
+      await t.pump(
+        const Duration(milliseconds: 500),
+      ); // 0.7 s: holding the right gaze
+      expect(leftPupil(t), greaterThan(leftCenter0 + 25));
+      expect(rightPupil(t), greaterThan(rightCenter0 + 20));
+
+      // 1.3 s: holding the left gaze
+      await t.pump(const Duration(milliseconds: 600));
+      expect(leftPupil(t), lessThan(leftCenter0 - 25));
+      expect(rightPupil(t), lessThan(rightCenter0 - 20));
+
+      // 1.8 s: back at the centre, and the animation is over
       await t.pump(const Duration(milliseconds: 500));
-      expect(left(), greaterThan(leftCenter0 + 25));
-      expect(right(), greaterThan(rightCenter0 + 20));
-
-      // t=1000ms: holding the left gaze
+      expect((leftPupil(t) - leftCenter0).abs(), lessThan(2.0));
+      expect((rightPupil(t) - rightCenter0).abs(), lessThan(2.0));
       await t.pump(const Duration(milliseconds: 500));
-      expect(left(), lessThan(leftCenter0 - 25));
-      expect(right(), lessThan(rightCenter0 - 20));
-
-      // t=1400ms: back at the centre, and the animation is over
-      await t.pump(const Duration(milliseconds: 400));
-      expect((left() - leftCenter0).abs(), lessThan(2.0));
-      expect((right() - rightCenter0).abs(), lessThan(2.0));
     },
   );
 
   testWidgets(
     'The gaze still plays when the system animation scale is off (disableAnimations): the eyes visibly move',
     (t) async {
-      final store = AppStore();
-      addTearDown(store.dispose);
-      await t.pumpWidget(
-        StoreScope(
-          store: store,
-          child: const MediaQuery(
-            data: MediaQueryData(disableAnimations: true),
-            child: MaterialApp(home: SplashPage()),
-          ),
-        ),
-      );
-      double left() => t
-          .widget<Positioned>(find.byKey(const Key('splash-pupil-left')))
-          .left!;
-      final start = left();
-      await t.pump();
-      await t.pump(const Duration(milliseconds: 500));
-      expect(left(), greaterThan(start + 25));
-      await t.pump(const Duration(milliseconds: 500));
-      expect(left(), lessThan(start - 25));
+      await showSplash(t, disableAnimations: true);
+      final start = leftPupil(t);
+      await t.pump(const Duration(milliseconds: 700));
+      expect(leftPupil(t), greaterThan(start + 25));
       await t.pump(const Duration(milliseconds: 600));
+      expect(leftPupil(t), lessThan(start - 25));
+      await t.pump(const Duration(milliseconds: 600));
+      await t.pump(const Duration(milliseconds: 500));
     },
   );
 }

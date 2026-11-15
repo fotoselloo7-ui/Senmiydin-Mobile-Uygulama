@@ -1,8 +1,26 @@
 # Doğrulama
 
-> **Güncel kaynak bu dosyanın ilk bölümüdür (15 Kasım 2026, splash, değerlendirme ve dış paylaşım).** Altındaki bölümler önceki turların tarihsel kayıtlarıdır; oradaki sayılar güncel durum değildir.
+> **Güncel kaynak bu dosyanın ilk bölümüdür (15 Kasım 2026, auth yeniden tasarımı ve release düzeltmeleri).** Altındaki bölümler önceki turların tarihsel kayıtlarıdır; oradaki sayılar güncel durum değildir.
 
-## Splash, haftalık değerlendirme ve dış paylaşım kartları — 15 Kasım 2026 (en güncel)
+## Auth yeniden tasarımı, splash ve release çökmesi — 15 Kasım 2026 (en güncel)
+
+| Kontrol | Sonuç |
+|---|---|
+| `flutter analyze` | **No issues found** |
+| `flutter test` | **414 test** (yeni `auth_screens_test` 20: giriş/kayıt içeriği, doğrulama, satır içi hata, Google/Apple notu, 320×568 / 360×640 / 412×915 × yazı ×1 ve ×2 × klavye açık/kapalı taşma yok; splash testleri 1,8 sn'lik yeni sıraya ve `disableAnimations`'a uyarlandı) |
+| Laravel `php artisan test` | **278 test / 5423 assertion** |
+| `tool/l10n_audit.py --all` | **0 eksik** (catalog 821) |
+| Pixel 6a (emülatör) release APK | Açılıyor; giriş, kayıt, klavye, doğrulama hatası, sunucu hatası, büyük yazı (×1,8), küçük ekran (720×1280) elle doğrulandı; ekran görüntüleri `docs/screenshots/ui-audit/auth-*.png`, `splash-*.png` |
+
+**Bulunan ve düzeltilen blokaj hatası.** Release derlemesi (R8) açılışta çöküyordu: `Failed to create an instance of androidx.work.impl.WorkDatabase` (WorkManager'ın Room veritabanı sınıfı küçültmede siliniyordu). `android/app/proguard-rules.pro` keep kuralları eklendi; bu düzeltme olmadan Play'e yüklenen önceki paketler hiç açılmazdı. Önceki AAB'ler (sürüm 1–3) geçersizdir; güncel sürüm 4.
+
+**Auth.** Giriş ve kayıt ekranları referans tasarıma göre yeniden yazıldı (`lib/widgets/auth_ui.dart`, `lib/screens/auth.dart`): lila gradyan zemin ve hafif dalgalar, logo üstte, yuvarlak çerçeveli alanlar, mor gradyan ana buton, açık Google / koyu Apple butonu, satır içi hata/bilgi kutusu, yaş (16+) rozeti, kullanım koşulları / gizlilik bağlantıları. Kayıt formu: e-posta, şifre, şifre tekrar, kullanıcı adı, doğum tarihi, onay kutusu (görünen ad ve şehir profil adımında tamamlanır; sunucu sözleşmesi aynı). Mevcut giriş/kayıt mantığı korundu. Google/Apple düğmeleri sağlayıcı yapılandırılmışsa doğrudan oturum açar, yapılandırılmamışsa satır içi dürüst bir not gösterir (uydurma kimlik yok). Tanıtım (Welcome) sayfaları aynı dile getirildi (demo yüz yok, yalnız şekil/ikon).
+
+**Splash.** Native splash artık markanın moru + animasyonlu splash'ın ilk karesiyle aynı işaret; animasyonlu splash'ta işaret ekran merkezine getirildi (native ile aynı yer), görsel çözülmeden hiçbir şey gösterilmez, göz hareketi görsel göründüğü anda başlar ve ~1,8 sn sürer (merkez → sağ → sol → merkez), sistem animasyon ölçeği kapalıyken de çalışır (`AnimationBehavior.preserve`). Release APK'da Flutter splash ≈1,6–1,8 sn görünür.
+
+**Profil.** "Profili Düzenle" yan menüye taşındı (Ayarlar zaten menüde), profil sekmeleri yalnız ikon.
+
+## Splash, haftalık değerlendirme ve dış paylaşım kartları — 15 Kasım 2026
 
 Başlangıç `1a3a9ce` (yeniden ölçüldü: Laravel 265 / 5335, Flutter 342, analyze temiz). Bu tur freeze'e **kullanıcının açıkça istediği** üç özellik girdi: Android native splash, göz animasyonu, haftalık değerlendirme daveti, dış paylaşım kartları. Dördü de yayın hazırlığının parçasıdır; başka özellik eklenmedi.
 
