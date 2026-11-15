@@ -506,31 +506,33 @@ void main() {
       t.widget<Positioned>(find.byKey(const Key('splash-pupil-right'))).left!;
 
   testWidgets(
-    'Animated splash: about 1.8 s from the moment the artwork is visible, pupils only: centre, a little right, a little left, back to the centre',
+    'Animated splash: about 1.8 s from the moment the artwork is visible, pupils only: right (0.35 s), near centre (0.75 s), left (1.05 s), centre (1.45 s)',
     (t) async {
       await showSplash(t);
       expect(find.byType(ClipOval), findsNWidgets(2));
       final leftCenter0 = leftPupil(t);
       final rightCenter0 = rightPupil(t);
 
-      // The gaze holds the centre first (0.3 s), then looks right.
-      await t.pump(const Duration(milliseconds: 200));
-      expect((leftPupil(t) - leftCenter0).abs(), lessThan(2.0));
-      await t.pump(
-        const Duration(milliseconds: 500),
-      ); // 0.7 s: holding the right gaze
+      // 0.35 s: looking right.
+      await t.pump(const Duration(milliseconds: 350));
       expect(leftPupil(t), greaterThan(leftCenter0 + 25));
       expect(rightPupil(t), greaterThan(rightCenter0 + 20));
 
-      // 1.3 s: holding the left gaze
-      await t.pump(const Duration(milliseconds: 600));
+      // 0.75 s: back near the centre.
+      await t.pump(const Duration(milliseconds: 400));
+      expect((leftPupil(t) - leftCenter0).abs(), lessThan(12.0));
+
+      // 1.05 s: looking left.
+      await t.pump(const Duration(milliseconds: 300));
       expect(leftPupil(t), lessThan(leftCenter0 - 25));
       expect(rightPupil(t), lessThan(rightCenter0 - 20));
 
-      // 1.8 s: back at the centre, and the animation is over
-      await t.pump(const Duration(milliseconds: 500));
+      // 1.45 s: back at the centre; it stays there until the transition at 1.8 s.
+      await t.pump(const Duration(milliseconds: 400));
       expect((leftPupil(t) - leftCenter0).abs(), lessThan(2.0));
       expect((rightPupil(t) - rightCenter0).abs(), lessThan(2.0));
+      await t.pump(const Duration(milliseconds: 350));
+      expect((leftPupil(t) - leftCenter0).abs(), lessThan(2.0));
       await t.pump(const Duration(milliseconds: 500));
     },
   );
@@ -540,11 +542,11 @@ void main() {
     (t) async {
       await showSplash(t, disableAnimations: true);
       final start = leftPupil(t);
-      await t.pump(const Duration(milliseconds: 700));
+      await t.pump(const Duration(milliseconds: 350));
       expect(leftPupil(t), greaterThan(start + 25));
-      await t.pump(const Duration(milliseconds: 600));
+      await t.pump(const Duration(milliseconds: 700));
       expect(leftPupil(t), lessThan(start - 25));
-      await t.pump(const Duration(milliseconds: 600));
+      await t.pump(const Duration(milliseconds: 800));
       await t.pump(const Duration(milliseconds: 500));
     },
   );

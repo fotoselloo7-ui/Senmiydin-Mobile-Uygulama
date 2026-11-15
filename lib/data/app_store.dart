@@ -91,7 +91,7 @@ class AppStore extends ChangeNotifier {
   LatLng? mapFocus;
 
   /// Server-side minimum registration age (single config value); null until /app-config answered.
-  int minimumAge = 18;
+  int minimumAge = 16;
   String? maintenanceNotice;
   VersionPolicy? versionPolicy;
   (String, String)? homeAnnouncement;

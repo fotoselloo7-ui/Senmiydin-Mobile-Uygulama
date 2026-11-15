@@ -62,7 +62,7 @@ void main() {
   );
 
   testWidgets(
-    'Login: logo, title, fields, forgot link, call-to-action, Google and Apple, switch link and the 18+ note',
+    'Login: logo, title, fields, forgot link, call-to-action, Google and Apple, switch link and the 16+ note',
     (tester) async {
       screen(tester, 390, 844);
       final store = AppStore();
@@ -96,7 +96,7 @@ void main() {
       );
       expect(find.text('Hesabın yok mu?'), findsOneWidget);
       expect(find.text('Kayıt Ol'), findsOneWidget);
-      expect(find.text('18+'), findsOneWidget);
+      expect(find.text('16+'), findsOneWidget);
       expect(find.textContaining('Kullanım Koşulları'), findsOneWidget);
       expect(find.textContaining('Gizlilik Politikası'), findsOneWidget);
       expect(tester.takeException(), isNull);
@@ -245,7 +245,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.byType(Checkbox), findsOneWidget);
-      expect(find.textContaining('18 yaşını doldurdum'), findsOneWidget);
+      expect(find.textContaining('16 yaşını doldurdum'), findsOneWidget);
       expect(find.textContaining('yalnızca bu yaş'), findsNothing);
       expect(tester.takeException(), isNull);
     },

@@ -62,17 +62,17 @@ class _SplashPageState extends State<SplashPage>
           tween: Tween<double>(
             begin: from,
             end: to,
-          ).chain(CurveTween(curve: Curves.easeInOutCubic)),
+          ).chain(CurveTween(curve: Curves.easeInOutSine)),
           weight: ms,
         );
+    // Keyframes (from the moment the artwork is visible): 0.00 s centre, 0.35 s right, 0.75 s back near the centre,
+    // 1.05 s left, 1.45 s centre, 1.80 s transition. Only the pupils move; the mark and the wordmark stay still.
     _gazeAnimation = TweenSequence<double>([
-      TweenSequenceItem(tween: ConstantTween<double>(0.0), weight: 300),
-      move(0.0, 1.0, 320),
-      TweenSequenceItem(tween: ConstantTween<double>(1.0), weight: 160),
-      move(1.0, -1.0, 440),
-      TweenSequenceItem(tween: ConstantTween<double>(-1.0), weight: 160),
-      move(-1.0, 0.0, 260),
-      TweenSequenceItem(tween: ConstantTween<double>(0.0), weight: 160),
+      move(0.0, 1.0, 350),
+      move(1.0, 0.15, 400),
+      move(0.15, -1.0, 300),
+      move(-1.0, 0.0, 400),
+      TweenSequenceItem(tween: ConstantTween<double>(0.0), weight: 350),
     ]).animate(_controller);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {

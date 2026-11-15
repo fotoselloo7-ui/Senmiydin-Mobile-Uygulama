@@ -1127,7 +1127,7 @@ void main() {
   test('Minimum registration age is 18 by default and the band comes from the server', () {
     final store = AppStore();
     addTearDown(store.dispose);
-    expect(store.minimumAge, 18);
+    expect(store.minimumAge, 16);
   });
 
   test('NativeFeedAd is exported for the feed', () {
