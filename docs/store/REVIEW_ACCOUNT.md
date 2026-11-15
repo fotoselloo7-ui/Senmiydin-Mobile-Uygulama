@@ -22,3 +22,8 @@ Gerçek production hesabı bu çalışmada oluşturulmadı. Kullanıcı adı/par
 | İnceleme için gerçek backend / destek | [GERÇEK BİLGİ GEREKLİ] |
 
 Push veya OAuth gerçek yapılandırılmamışsa çalışıyormuş gibi inceleme notu yazılmaz. Temel parola girişi ve in-app bildirim merkezinin durumu açıkça anlatılır. Hesapların oluşturulduğu/onaya hazır olduğu bu belgeyle iddia edilmez.
+
+
+## 15 Kasım 2026: otomatik yaklaşım
+
+`php artisan app:review-account` (backend/app/Console/Commands/CreateReviewAccount.php) normal rolde, yetişkin bir inceleme hesabı oluşturur; parola `REVIEW_ACCOUNT_PASSWORD` ortam değişkeninden okunur ve depoda tutulmaz. Kullanıcı adı `review`, e-posta `review@senmiydin.tr`. Parola yerel git-ignored `secrets/review/REVIEW_ACCOUNT.txt` içindedir ve Play "Oturum açma bilgileri" / App Store "Sign-In Information" alanlarına girilmiştir. **Sunucuya dağıtımdan sonra komut bir kez çalıştırılmalıdır**; dağıtım olmadan inceleme hesabı çalışmaz.
