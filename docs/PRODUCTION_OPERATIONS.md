@@ -17,16 +17,31 @@ Bu belge gerçek hesaplarda (kullanıcının oturum açık Chrome'u üzerinden) 
 | Upload keystore | Üretildi, **repo dışında** (`C:\Users\pc\SenMiydin-keys\senmiydin-upload.jks`); `android/key.properties` ignored. **Yedeğini al** | — |
 | İmzalı AAB | `flutter build appbundle --release --dart-define-from-file=config/production.local.json`: 81,3 MB, `com.senmiydin.app`, 0.1.0+1, upload sertifikasıyla imzalı (SHA-256 eşleşti), gerçek AdMob kimliği, örnek kimlik / `10.0.2.2` / `localhost` yok, cleartext kapalı, birleşik manifest kontrolü **OK (MISSING yok)** | `tool/platform_manifest_check.py android` |
 
-AAB SHA-256: `c4ceae11a057de43492e3f80baa56e55f7657fbe7f11e8dafcd1ae8f990ea60c` (`build/app/outputs/bundle/release/app-release.aab`, ignored).
+AAB SHA-256: `c4ceae11a057de43492e3f80baa56e55f7657fbe7f11e8dafcd1ae8f990ea60c` (`build/app/outputs/bundle/release/app-release.aab`, ignored). Aynı girdilerle yeniden derlenince aynı özet çıktı.
+
+### Google Play Console (15 Kasım 2026, gerçek hesapta)
+
+| Alan | Durum |
+|---|---|
+| Uygulama kaydı | **Oluşturuldu**: `SenMiydin?`, `com.senmiydin.app`, varsayılan dil en-US, Uygulama, Ücretsiz. İki hukuki beyan (Developer Program Politikaları + ABD ihracat yasaları) kullanıcının sohbette verdiği açık onayla işaretlendi |
+| Paket yükleme | İmzalı AAB **Dahili test** taslağına yüklendi ve Play tarafından kabul edildi: sürüm 1 (0.1.0), API 24+, hedef SDK 36. TR/EN sürüm notları girildi. **Taslak olarak kaydedildi, yayına (rollout) alınmadı** |
+| Play App Signing | Etkin. SHA-256 `23:18:38:73:AB:3E:65:57:7D:C0:B7:AE:65:E5:4F:22:B4:93:16:F4:00:E1:35:D3:8A:2C:C1:B6:DA:A8:78:E8`, SHA-1 `F9:CE:9E:FF:E8:2C:9C:57:C2:F8:2B:B8:14:13:80:97:26:07:64:10`. İkisi de Firebase Android uygulamasına eklendi (Google ile giriş) |
+| Beyanlar | **Kaydedildi:** Reklam (içeriyor), Reklam Kimliği (kullanıyor; amaç reklam), Finans (özellik yok), Sağlık (özellik yok), Resmi kurum (hayır) |
+| Beyan bekleyen | Gizlilik politikası URL'si, Oturum açma bilgileri, İçerik derecelendirme (IARC şartları), Hedef kitle (oturum açma bilgilerine bağlı), Veri güvenliği, Satıcı durumu |
+
+Uygulama imzalama SHA-256 değeri, backend'de `ANDROID_APP_LINK_SHA256` içine **upload** SHA-256 (`2F:19:26:8B:…:BC:C9`) ile birlikte virgülle girilmelidir (assetlinks.json iki sertifikayı da sunar).
 
 ## HUMAN ACTION REQUIRED (yalnızca sen yapabilirsin)
 
 1. **Üretim alan adı.** `senmiydin.com` DNS'te **çözülmüyor** (kayıtlı/yönlendirilmiş değil). Alan adını kaydet/yönlendir, HTTPS kur. Gizlilik, KVKK, hesap silme, `app-ads.txt` ve paylaşım bağlantıları buna bağlı. Release AAB `https://senmiydin.com/api/v1` adresini kullanır; farklı alan için `API_BASE_URL` ve `APP_LINK_HOST` değiştirilip yeniden derlenir.
 2. **Üretim sunucusu.** Sunucu/barındırma erişimi yok: `APP_ENV=production`, `APP_DEBUG=false`, üretim DB, kuyruk işçisi (`queue:work database` — `DeliverPush` `database` bağlantısını kullanır), zamanlayıcı cron'u, özel depolama, sağlık ucu `docs/DEPLOYMENT.md` adımlarıyla kurulacak. `.env` içine: `PUSH_DRIVER=fcm`, `FCM_PROJECT_ID`, `FCM_CREDENTIALS` (sunucudaki servis hesabı dosyası), `GOOGLE_CLIENT_IDS`, `ADMOB_PUBLISHER_ID`, `ANDROID_APP_LINK_SHA256` (Play App Signing + upload SHA-256), `APPLE_TEAM_ID`.
 3. **SMTP.** host, port, kullanıcı adı, parola, gönderen adresi. Şifre sıfırlama e-postası gerçek teslim testi bundan sonra.
-4. **Google Play Console — "Uygulama oluştur" beyanları.** Geliştirici hesabı ("Netvera Teknoloji Yazılım") açık ve oturumun var; uygulama oluşturma formu iki hukuki beyan istiyor (Developer Program Politikaları + ABD ihracat yasaları). Bunları **senin** onaylaman gerekir. Sonra: Uygulama adı `SenMiydin?`, varsayılan dil English (United States), Uygulama, Ücretsiz → Oluştur.
-   Ardından hazır olanlar: imzalı AAB, `docs/store/localization/` TR/EN metinleri, ekran görüntüleri (`docs/screenshots/`), `docs/store/GOOGLE_PLAY_DATA_SAFETY.md` (ses kaydı dahil), `docs/store/PERMISSIONS.md`, `docs/store/REVIEW_ACCOUNT.md`.
-5. **Closed test tester e-postaları** (liste yok) ve Play'in 12 tester / 14 gün şartı durumu (kurumsal hesapta geçerli olmayabilir; Console'dan doğrulanacak).
+4. **Google Play Console — kalan beyanlar (uygulama oluşturuldu, yukarıdaki tablo).** Senin yapman gerekenler:
+   - **Gizlilik politikası URL'si** (alan adı canlı olunca) ve **Oturum açma bilgileri**: gerçek bir inceleme hesabı (kullanıcı adı/parola) gerekir; üretim backend'i olmadan oluşturulamaz, uydurulmadı (`docs/store/REVIEW_ACCOUNT.md`).
+   - **İçerik derecelendirme anketi**: IARC hizmet şartlarının kabulünü içerir; senin kabul etmen gerekir. Cevap taslağı `docs/store/CONTENT_RATING.md`.
+   - **Hedef kitle** (16+; oturum açma bilgileri bitmeden açılmıyor), **Veri güvenliği** (`docs/store/GOOGLE_PLAY_DATA_SAFETY.md`; canlı HTTPS/aktarım şifrelemesi doğrulanmadan gönderilmez), **Satıcı durumu** (tüzel kişilik beyanı).
+   - **Ana mağaza girişi**: metinler `docs/store/localization/`'da hazır; öznitelik görselleri (512 simge, 1024×500 öne çıkan grafik, ekran görüntüleri) ve iletişim/web/gizlilik/hesap silme URL'leri girilecek.
+5. **Closed test.** Console, kurulum görevleri bitmeden Kapalı testi kilitli tutuyor. Tester e-posta listesi yok (**HUMAN ACTION REQUIRED: tester e-postaları**) ve Console bu hesapta üretime başvuru için "en az 12 tester, en az 14 gün" şartını gösteriyor (şart geçerli). Dahili test taslağı hazır; kurulum görevleri bitince aynı AAB Kapalı teste de yüklenir.
 6. **AdMob.** UMP (Gizlilik ve Mesajlaşma → Avrupa tüzükleri) mesajı **yayınlanmadı**: oluşturma sihirbazı Chrome'da askıda kaldı. Uygulama listesinden iki SenMiydin uygulamasını seç, gizlilik politikası URL'sini (gerçek alan adı hazır olunca) ekle, yayınla. Ayrıca uygulamalar mağazada yayınlanınca AdMob'da "Mağaza ekle" ve app-ads.txt doğrulaması.
 7. **Google ile giriş testi** (gerçek Google hesabı parolası/2FA): yapılandırma tamam; emülatörde/cihazda gerçek hesapla `Google ile devam et` denenmeli (release imzalı derlemeyle upload + Play App Signing SHA-1'leri Firebase'e eklenmiş olmalı; Play App Signing parmak izi uygulama Play'e yüklenince Console'dan alınır).
 8. **Apple tarafı.** App Store Connect, Apple Developer üyeliği, Sign in with Apple anahtarı (.p8), APNs anahtarı, Team ID: Apple hesabı oturumu/2FA gerekir. **Mac/Xcode archive** gerekli (`docs/IOS_MAC_HANDOFF.md`). iOS Firebase uygulaması (`GoogleService-Info.plist`) için Bundle ID `com.senmiydin.app` ile kayıt Firebase konsolunda yapılabilir; Mac'te kullanılacak.
@@ -34,7 +49,7 @@ AAB SHA-256: `c4ceae11a057de43492e3f80baa56e55f7657fbe7f11e8dafcd1ae8f990ea60c` 
 
 ## Yapılmadı / iddia edilmiyor
 
-- Play Console'da uygulama kaydı, mağaza girişi, bildirimler (App Access, Data Safety, içerik derecesi), Closed Testing sürümü ve rollout **yapılmadı** (madde 4).
+- Play Console'da ana mağaza girişi, App Access, Data Safety, içerik derecesi, hedef kitle, Closed Testing sürümü ve **rollout yapılmadı** (madde 4–5). Uygulama kaydı ve Dahili test taslağı vardır.
 - App Store Connect kaydı/metadata/gizlilik/yaş derecesi **yapılmadı** (madde 8); iOS archive iddia edilmez.
 - Üretim backend dağıtımı, SMTP teslim testi, canlı HTTPS web doğrulaması (madde 1–3).
 - Release-imzalı derlemede Google giriş turu, resmî In-App Review'in gerçek Play'de görünmesi, AdMob'dan gerçek doluluk (yeni reklam birimleri ~1 saat içinde aktifleşir; reklam gelmezse yerleşim boşluk bırakmaz — test ve kodda doğrulanmıştı).
