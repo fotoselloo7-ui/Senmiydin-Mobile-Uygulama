@@ -261,8 +261,18 @@ def check_android(manifest_path: Path) -> Report:
 
 
 def build_android_manifest() -> None:
+    """Gradle's merged release manifest. When an (ignored) config/production.local.json exists its values are passed the
+    same way `flutter build --dart-define-from-file` does, so the manifest shows the real AdMob id instead of the sample."""
+    import base64
+
     gradle = ROOT / "android" / ("gradlew.bat" if sys.platform == "win32" else "gradlew")
-    subprocess.run([str(gradle), ":app:processReleaseMainManifest", "--console=plain", "-q"], cwd=ROOT / "android", check=True)
+    command = [str(gradle), ":app:processReleaseMainManifest", "--console=plain", "-q"]
+    local = ROOT / "config/production.local.json"
+    if local.is_file():
+        defines = json.loads(local.read_text(encoding="utf-8"))
+        encoded = ",".join(base64.b64encode(f"{key}={value}".encode()).decode() for key, value in defines.items())
+        command.append("-Pdart-defines=" + encoded)
+    subprocess.run(command, cwd=ROOT / "android", check=True)
 
 
 # -------------------------------------------------------------------------------------------------------------- iOS
@@ -332,7 +342,15 @@ def check_ios() -> Report:
     if not ads_id:
         report.fail("AdMob application id", "GADApplicationIdentifier missing")
     elif "$(" in ads_id or ads_id == GOOGLE_SAMPLE_ADMOB_IOS:
-        report.missing("AdMob application id", "supplied at build time via ADMOB_APP_ID_IOS (EXTERNAL CREDENTIAL)")
+        oauth = ios / "Flutter/OAuth.xcconfig"
+        configured = ""
+        if oauth.is_file():
+            match = re.search(r"^\s*ADMOB_APP_ID_IOS\s*=\s*(\S+)", oauth.read_text(encoding="utf-8"), re.M)
+            configured = match.group(1) if match else ""
+        if configured and configured != GOOGLE_SAMPLE_ADMOB_IOS and re.fullmatch(r"ca-app-pub-\d{16}~\d{10}", configured):
+            report.ok("AdMob application id", "real id in the ignored OAuth.xcconfig")
+        else:
+            report.missing("AdMob application id", "supplied at build time via ADMOB_APP_ID_IOS (EXTERNAL CREDENTIAL)")
     else:
         report.ok("AdMob application id", "real id in Info.plist")
 

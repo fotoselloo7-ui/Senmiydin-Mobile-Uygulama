@@ -14,6 +14,13 @@ Route::post('/auth/apple/callback', [App\Http\Controllers\SocialAuthController::
 Route::get('/health', App\Http\Controllers\HealthController::class)->middleware('throttle:60,1');
 
 // Public share links (https://<domain>/p/<id>, /n/<id>) and the deep-link verification files.
+Route::get('/app-ads.txt', function () {
+    $publisher = trim((string) config('website.admob_publisher_id'));
+    abort_unless(preg_match('/^pub-\d{16}$/', $publisher) === 1, 404);
+
+    return response("google.com, {$publisher}, DIRECT, f08c47fec0942fa0
+", 200, ['Content-Type' => 'text/plain; charset=utf-8']);
+});
 Route::get('/p/{publicId}', [App\Http\Controllers\PublicShareController::class, 'post'])->where('publicId', '[a-z0-9]{12}')->middleware('throttle:120,1')->name('share.post');
 Route::get('/n/{publicId}', [App\Http\Controllers\PublicShareController::class, 'note'])->where('publicId', '[a-z0-9]{12}')->middleware('throttle:120,1')->name('share.note');
 Route::get('/.well-known/assetlinks.json', [App\Http\Controllers\PublicShareController::class, 'assetLinks']);

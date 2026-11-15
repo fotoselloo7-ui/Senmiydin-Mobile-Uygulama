@@ -52,7 +52,9 @@ class ReleaseOperationsTest extends TestCase
 
     public function test_readiness_reports_missing_credentials_without_exposing_values(): void
     {
-        config(['app.key' => 'base64:'.base64_encode(str_repeat('s', 32)), 'mail.mailers.smtp.password' => 'never-display-this-value']);
+        // Hermetic: whatever real providers a developer machine's .env has configured, this test is about the unconfigured report.
+        config(['app.key' => 'base64:'.base64_encode(str_repeat('s', 32)), 'mail.mailers.smtp.password' => 'never-display-this-value',
+            'social.google.audiences' => [], 'push.driver' => 'log', 'push.credentials' => null, 'push.project' => null]);
         $this->assertSame(2, Artisan::call('senmiydin:production-check', ['--json' => true]));
         $output = Artisan::output();
         $this->assertStringNotContainsString('never-display-this-value', $output);

@@ -82,7 +82,7 @@ class PushDelivery
 
     protected function accessToken(string $project): string
     {
-        return Crypt::decryptString(Cache::remember('fcm-access-token:v2:'.$project, 3000, function (): string {
+        return Crypt::decryptString(Cache::remember('fcm-access-token:v2:'.$project, 3000, function () use ($project): string {
             $file = config('push.credentials');
             $account = is_string($file) && is_readable($file) ? json_decode(file_get_contents($file), true) : null;
             if (! isset($account['client_email'], $account['private_key']) || ($account['project_id'] ?? null) !== $project) {

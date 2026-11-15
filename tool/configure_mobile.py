@@ -53,6 +53,20 @@ if args.ios:
     if source.get("REVERSED_CLIENT_ID"):
         (ROOT / "ios/Flutter/OAuth.xcconfig").write_text(
             "GOOGLE_REVERSED_CLIENT_ID = " + source["REVERSED_CLIENT_ID"] + "\n", encoding="utf-8")
+if args.admob_android_app_id:
+    settings["ADMOB_APP_ID_ANDROID"] = admob(args.admob_android_app_id, "~", "Android AdMob app id")
+if args.admob_android_native_unit:
+    settings["ADMOB_NATIVE_AD_UNIT_ANDROID"] = admob(args.admob_android_native_unit, "/", "Android native ad unit")
+if args.admob_ios_native_unit:
+    settings["ADMOB_NATIVE_AD_UNIT_IOS"] = admob(args.admob_ios_native_unit, "/", "iOS native ad unit")
+if args.admob_ios_app_id:
+    settings["ADMOB_APP_ID_IOS"] = admob(args.admob_ios_app_id, "~", "iOS AdMob app id")
+    xcconfig_lines.append("ADMOB_APP_ID_IOS = " + settings["ADMOB_APP_ID_IOS"])
+if xcconfig_lines:
+    target = ROOT / "ios/Flutter/OAuth.xcconfig"
+    existing = target.read_text(encoding="utf-8") if target.exists() else ""
+    keep = [row for row in existing.splitlines() if not any(row.startswith(line.split(" =")[0]) for line in xcconfig_lines)]
+    target.write_text(chr(10).join(keep + xcconfig_lines) + chr(10), encoding="utf-8")
 output = ROOT / "config/production.local.json"
 output.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
 print("Created ignored config/production.local.json from supplied provider files; no values printed.")

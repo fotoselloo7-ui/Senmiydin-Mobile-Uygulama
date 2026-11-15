@@ -208,4 +208,17 @@ class PublicShareTest extends TestCase
         $apple = $this->get('/.well-known/apple-app-site-association')->assertOk()->json();
         $this->assertSame(['ABCDE12345.com.senmiydin.app'], $apple['applinks']['details'][0]['appIDs']);
     }
+
+    public function test_app_ads_txt_is_served_only_for_a_real_admob_publisher_id(): void
+    {
+        config(['website.admob_publisher_id' => null]);
+        $this->get('/app-ads.txt')->assertNotFound();
+        config(['website.admob_publisher_id' => 'pub-not-valid']);
+        $this->get('/app-ads.txt')->assertNotFound();
+        config(['website.admob_publisher_id' => 'pub-3008758416596112']);
+        $response = $this->get('/app-ads.txt')->assertOk();
+        $this->assertStringStartsWith('text/plain', $response->headers->get('Content-Type'));
+        $this->assertSame("google.com, pub-3008758416596112, DIRECT, f08c47fec0942fa0
+", $response->getContent());
+    }
 }
