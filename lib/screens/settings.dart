@@ -214,7 +214,7 @@ class _PreferencesPageState extends State<PreferencesPage>
           scrollable: true,
           message: location.supportsBackground
               ? 'Geçtiğim Yerler için konumun uygulama arka plandayken de sunucuya gönderilir. Yaklaşık geçmiş bölgeler, sonradan bu bölgelerde paylaşılan hikâyeleri önermek ve bildirim tercihin açıksa haber vermek için saklanır. Kesin konumun diğer kullanıcılara gösterilmez. Android devam eden konum servisini gösterir. Kapattığında kayıt durur, geçmiş ve eşleşmelerin silinir.'
-              : 'Uygulama açıkken konumun sunucuya gönderilir. Yaklaşık geçmiş bölgeler, sonradan bu bölgelerde paylaşılan hikâyeleri önermek ve bildirim tercihin açıksa haber vermek için saklanır. Kesin konumun diğer kullanıcılara gösterilmez. Bu iOS sürümünde arka planda konum kaydı yapılmaz. Kapattığında kayıt durur, geçmiş ve eşleşmelerin silinir.',
+              : 'Uygulama açıkken konumun sunucuya gönderilir. Yaklaşık geçmiş bölgeler, sonradan bu bölgelerde paylaşılan hikâyeleri önermek ve bildirim tercihin açıksa haber vermek için saklanır. Kesin konumun diğer kullanıcılara gösterilmez. Arka planda konum kaydı yapılmaz. Kapattığında kayıt durur, geçmiş ve eşleşmelerin silinir.',
           action: 'Aç',
         );
         if (!confirmed || !mounted) return;

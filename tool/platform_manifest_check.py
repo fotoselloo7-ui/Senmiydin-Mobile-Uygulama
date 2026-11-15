@@ -34,13 +34,13 @@ REQUIRED_PERMISSIONS = {
     "android.permission.RECORD_AUDIO",
     "android.permission.ACCESS_COARSE_LOCATION",
     "android.permission.ACCESS_FINE_LOCATION",
-    "android.permission.FOREGROUND_SERVICE",
-    "android.permission.FOREGROUND_SERVICE_LOCATION",
 }
 
 # Permissions the product never needs. Seeing one means a plugin or a copy/paste added it silently.
 FORBIDDEN_PERMISSIONS = {
-    "android.permission.ACCESS_BACKGROUND_LOCATION": "background location is not used (foreground service only)",
+    "android.permission.ACCESS_BACKGROUND_LOCATION": "background location is not used",
+    "android.permission.FOREGROUND_SERVICE": "no foreground service: Places I Passed records only while the app is open",
+    "android.permission.FOREGROUND_SERVICE_LOCATION": "no foreground service: Places I Passed records only while the app is open",
     "android.permission.READ_EXTERNAL_STORAGE": "photos go through the system picker",
     "android.permission.WRITE_EXTERNAL_STORAGE": "photos go through the system picker",
     "android.permission.MANAGE_EXTERNAL_STORAGE": "all-files access is not used",
@@ -188,9 +188,9 @@ def check_android(manifest_path: Path) -> Report:
     )
     geolocator = services.get("com.baseflow.geolocator.GeolocatorLocationService")
     report.expect(
-        "Foreground location service",
-        geolocator is not None and attr(geolocator, "foregroundServiceType") == "location" and attr(geolocator, "exported") == "false",
-        "GeolocatorLocationService must be a non-exported foregroundServiceType=location service",
+        "No foreground location service",
+        geolocator is None,
+        "GeolocatorLocationService must be removed from the merged manifest (no foreground service is used)",
     )
     exported_providers = [name for name, node in providers.items() if attr(node, "exported") == "true"]
     report.expect("Providers are not exported", not exported_providers, f"exported providers: {', '.join(exported_providers)}")

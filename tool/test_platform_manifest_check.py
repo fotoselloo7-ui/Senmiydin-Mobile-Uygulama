@@ -13,8 +13,6 @@ PERMISSIONS = [
     "android.permission.RECORD_AUDIO",
     "android.permission.ACCESS_COARSE_LOCATION",
     "android.permission.ACCESS_FINE_LOCATION",
-    "android.permission.FOREGROUND_SERVICE",
-    "android.permission.FOREGROUND_SERVICE_LOCATION",
 ]
 
 
@@ -37,7 +35,6 @@ def manifest(*, cleartext="false", backup="false", permissions=PERMISSIONS, ads=
     <provider android:name="io.flutter.plugins.imagepicker.ImagePickerFileProvider" android:exported="false" />
     <service android:name="io.flutter.plugins.firebase.messaging.FlutterFirebaseMessagingService" android:exported="false" />
     <service android:name="com.google.firebase.messaging.FirebaseMessagingService" android:exported="false" />
-    <service android:name="com.baseflow.geolocator.GeolocatorLocationService" android:exported="false" android:foregroundServiceType="location" />
     {extra_application}
   </application>
 </manifest>"""

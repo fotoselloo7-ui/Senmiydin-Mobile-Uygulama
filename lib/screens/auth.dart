@@ -1911,7 +1911,7 @@ class _PermissionsPageState extends State<PermissionsPage>
               InfoNote(
                 store.location?.supportsBackground == true
                     ? 'Cihaz konumun şehir keşfi ve yakınlık için sunucuya gönderilir. Geçtiğim Yerler başlangıçta kapalıdır. Ayarlardan açarsan konumun uygulama arka plandayken de yaklaşık geçmiş bölgeleri kaydetmek ve ilgili hikâyeleri önermek için kullanılır. Bildirim tercihi ayrıdır; kesin konumun diğer kullanıcılara gösterilmez.'
-                    : 'Cihaz konumun şehir keşfi ve yakınlık için sunucuya gönderilir. Geçtiğim Yerler başlangıçta kapalıdır. Ayarlardan açarsan uygulama açıkken yaklaşık geçmiş bölgeler kaydedilir ve ilgili hikâyeler önerilebilir. iOS’ta arka planda konum kaydı yapılmaz; kesin konumun diğer kullanıcılara gösterilmez.',
+                    : 'Cihaz konumun şehir keşfi ve yakınlık için sunucuya gönderilir. Geçtiğim Yerler başlangıçta kapalıdır. Ayarlardan açarsan uygulama açıkken yaklaşık geçmiş bölgeler kaydedilir ve ilgili hikâyeler önerilebilir. Arka planda konum kaydı yapılmaz; kesin konumun diğer kullanıcılara gösterilmez.',
               ),
               const SizedBox(height: Space.sm),
               DeviceLocationRow(enabled: !busy),

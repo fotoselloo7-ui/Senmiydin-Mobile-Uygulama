@@ -25,18 +25,22 @@ enum DeviceLocationState {
 class LocationDevice {
   const LocationDevice();
 
-  bool get supportsBackground =>
-      defaultTargetPlatform == TargetPlatform.android;
+  /// Whether this device is Android (Android location manager settings).
+  bool get isAndroid => defaultTargetPlatform == TargetPlatform.android;
+
+  /// Places I Passed is recorded only while the app is open on every platform: there is no foreground service and no
+  /// background location, so nothing runs when the app is closed.
+  bool get supportsBackground => false;
   Future<bool> enabled() => Geolocator.isLocationServiceEnabled();
   Future<LocationPermission> permission() => Geolocator.checkPermission();
   Future<LocationPermission> requestPermission() =>
       Geolocator.requestPermission();
   Future<LocationAccuracyStatus> accuracy() => Geolocator.getLocationAccuracy();
   Future<Position?> lastKnown() => Geolocator.getLastKnownPosition(
-    forceAndroidLocationManager: supportsBackground,
+    forceAndroidLocationManager: isAndroid,
   );
   Future<Position> current() => Geolocator.getCurrentPosition(
-    locationSettings: supportsBackground
+    locationSettings: isAndroid
         ? AndroidSettings(
             forceLocationManager: true,
             accuracy: LocationAccuracy.high,
@@ -52,7 +56,7 @@ class LocationDevice {
 
   Stream<Position> updates({required bool background}) =>
       Geolocator.getPositionStream(
-        locationSettings: supportsBackground
+        locationSettings: isAndroid
             ? AndroidSettings(
                 forceLocationManager: true,
                 accuracy: LocationAccuracy.high,

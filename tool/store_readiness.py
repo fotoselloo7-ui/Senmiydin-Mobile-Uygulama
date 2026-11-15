@@ -148,8 +148,8 @@ def audit(skip_runtime: bool = False) -> dict:
         forbidden = sorted(p for p in permissions if p in FORBIDDEN_PERMISSIONS or ".AD_SERVICES_" in p)
         application = tree.find("application")
         evidence["android_permissions"] = permissions
-        add("Merged release permissions", "FAIL" if forbidden else "READY", ", ".join(forbidden) if forbidden else "Location FGS, microphone (voice messages) and AdMob AD_ID present; no background/camera/wide-media permissions.")
-        required = {"android.permission.ACCESS_COARSE_LOCATION", "android.permission.ACCESS_FINE_LOCATION", "android.permission.FOREGROUND_SERVICE_LOCATION", "android.permission.POST_NOTIFICATIONS", "android.permission.RECORD_AUDIO"}
+        add("Merged release permissions", "FAIL" if forbidden else "READY", ", ".join(forbidden) if forbidden else "Location (while in use), microphone (voice messages) and AdMob AD_ID present; no foreground-service/background/camera/wide-media permissions.")
+        required = {"android.permission.ACCESS_COARSE_LOCATION", "android.permission.ACCESS_FINE_LOCATION", "android.permission.POST_NOTIFICATIONS", "android.permission.RECORD_AUDIO"}
         add("Required Android configuration", "READY" if required.issubset(permissions) and application is not None and application.get(ANDROID_NS + "usesCleartextTraffic") == "false" else "FAIL", "Expected location/notification/microphone permissions; release cleartext disabled.")
     else:
         add("Merged release permissions", "WAITING", "Run -RefreshAndroidAudit; source-only inspection is insufficient.")
