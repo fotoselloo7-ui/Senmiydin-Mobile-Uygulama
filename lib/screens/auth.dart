@@ -130,22 +130,47 @@ class _SplashPageState extends State<SplashPage>
   /// Surface of the native splash (res/values/colors.xml launch_background); the artwork fades in over it.
   static const _nativeSurface = Color(0xFF3A027C);
 
+  /// The logo group in assets/brand/splash_eyeless.png is drawn smaller than the original artwork (see
+  /// tool/make_splash_art_small.py): every coordinate below is an original-artwork coordinate that is mapped through
+  /// the same scale about the mark centre.
+  static const _logoScale = 0.74;
+  static const _logoCenter = Offset(560, 745);
+
+  static Offset _map(Offset p) => _logoCenter + (p - _logoCenter) * _logoScale;
+
   static Offset _leftPupilCenter(double t) {
     if (t < 0) {
       final s = -t * _reach;
-      return Offset(524.0 * (1 - s) + 488.0 * s, 824.0 * (1 - s) + 826.0 * s);
+      return _map(
+        Offset(524.0 * (1 - s) + 488.0 * s, 824.0 * (1 - s) + 826.0 * s),
+      );
     }
     final s = t * _reach;
-    return Offset(524.0 * (1 - s) + 562.0 * s, 824.0 * (1 - s) + 815.0 * s);
+    return _map(
+      Offset(524.0 * (1 - s) + 562.0 * s, 824.0 * (1 - s) + 815.0 * s),
+    );
   }
 
   static Offset _rightPupilCenter(double t) {
     if (t < 0) {
       final s = -t * _reach;
-      return Offset(656.0 * (1 - s) + 624.0 * s, 791.0 * (1 - s) + 793.0 * s);
+      return _map(
+        Offset(656.0 * (1 - s) + 624.0 * s, 791.0 * (1 - s) + 793.0 * s),
+      );
     }
     final s = t * _reach;
-    return Offset(656.0 * (1 - s) + 688.0 * s, 791.0 * (1 - s) + 784.0 * s);
+    return _map(
+      Offset(656.0 * (1 - s) + 688.0 * s, 791.0 * (1 - s) + 784.0 * s),
+    );
+  }
+
+  static Rect _mapEllipse(double cx, double cy, double rx, double ry) {
+    final c = _map(Offset(cx, cy));
+    return Rect.fromCenter(
+      center: c,
+      width: 2 * rx * _logoScale,
+      height: 2 * ry * _logoScale,
+    );
   }
 
   @override
@@ -195,18 +220,18 @@ class _SplashPageState extends State<SplashPage>
                               final rp = _rightPupilCenter(t);
 
                               // Left sclera ellipse: center (515.8, 831.2), rx=78.5, ry=76.6
-                              const lRect = Rect.fromLTWH(
-                                515.8 - 78.5,
-                                831.2 - 76.6,
-                                157.0,
-                                153.2,
+                              final lRect = _mapEllipse(
+                                515.8,
+                                831.2,
+                                78.5,
+                                76.6,
                               );
                               // Right sclera ellipse: center (648.53, 793.66), rx=64.9, ry=65.4
-                              const rRect = Rect.fromLTWH(
-                                648.53 - 64.9,
-                                793.66 - 65.4,
-                                129.8,
-                                130.8,
+                              final rRect = _mapEllipse(
+                                648.53,
+                                793.66,
+                                64.9,
+                                65.4,
                               );
 
                               return Stack(
@@ -246,10 +271,16 @@ class _SplashPageState extends State<SplashPage>
                                         children: [
                                           Positioned(
                                             key: const Key('splash-pupil-left'),
-                                            left: lp.dx - lRect.left - 28.0,
-                                            top: lp.dy - lRect.top - 33.0,
-                                            width: 56.0,
-                                            height: 66.0,
+                                            left:
+                                                lp.dx -
+                                                lRect.left -
+                                                28.0 * _logoScale,
+                                            top:
+                                                lp.dy -
+                                                lRect.top -
+                                                33.0 * _logoScale,
+                                            width: 56.0 * _logoScale,
+                                            height: 66.0 * _logoScale,
                                             child: Image.asset(
                                               BrandAssets.pupilLeft,
                                               fit: BoxFit.fill,
@@ -271,10 +302,16 @@ class _SplashPageState extends State<SplashPage>
                                             key: const Key(
                                               'splash-pupil-right',
                                             ),
-                                            left: rp.dx - rRect.left - 24.0,
-                                            top: rp.dy - rRect.top - 29.0,
-                                            width: 48.0,
-                                            height: 58.0,
+                                            left:
+                                                rp.dx -
+                                                rRect.left -
+                                                24.0 * _logoScale,
+                                            top:
+                                                rp.dy -
+                                                rRect.top -
+                                                29.0 * _logoScale,
+                                            width: 48.0 * _logoScale,
+                                            height: 58.0 * _logoScale,
                                             child: Image.asset(
                                               BrandAssets.pupilRight,
                                               fit: BoxFit.fill,

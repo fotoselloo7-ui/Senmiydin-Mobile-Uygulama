@@ -2,6 +2,10 @@
 
 > **Güncel kaynak bu dosyanın ilk bölümüdür (15 Kasım 2026, auth yeniden tasarımı ve release düzeltmeleri).** Altındaki bölümler önceki turların tarihsel kayıtlarıdır; oradaki sayılar güncel durum değildir.
 
+## Splash logo küçültme (15 Kasım 2026)
+
+Uygulamanın kendi (Flutter) splash ekranında logo çok büyüktü. `tool/make_splash_art_small.py` logo grubunu (yırtık kâğıt işareti + yazı) %74'e küçültür ve işaretin merkezinde tutar; arka plan sanatın kendi düzgün gradyanından yeniden kurulur, orijinal `tool/source_art/splash_eyeless_full.png` olarak saklanır. `SplashPage` içindeki göz bebeği / sklera koordinatları aynı ölçekle (`_logoScale`, `_logoCenter`) dönüştürülür. Android sistem splash'ı (native) değişmedi. Doğrulama: `flutter analyze` temiz; `ui_quality_test`, `widget_test`, `android_splash_test` geçti (36 test); Pixel emülatörde logo ortalı ve küçük, göz bebekleri hareket ediyor (`docs/screenshots/ui-audit/splash-animated-small-logo.png`).
+
 ## Auth yeniden tasarımı, splash ve release çökmesi — 15 Kasım 2026 (en güncel)
 
 | Kontrol | Sonuç |

@@ -1,6 +1,6 @@
 """Builds the Android native splash icon so the system splash matches the Flutter splash (lib/screens/auth.dart).
 
-Source: assets/brand/splash_eyeless.png + pupil_left/right.png, the same layers the Flutter splash draws. The pupils are
+Source: tool/source_art/splash_eyeless_full.png + pupil_left/right.png, the same layers the Flutter splash draws. The pupils are
 placed exactly where the Flutter splash starts (gaze centre), so the hand-over from the system splash to the animated
 splash has the same picture. Only a soft disc around the torn-paper mark is used (it must fit the 192 dp circle that
 Android masks the icon to); its edge fades into the native background colour, which is the average colour of the
@@ -31,7 +31,7 @@ RIGHT = dict(center=(656.0, 791.0), size=(48, 58), sclera=(648.53, 793.66, 64.9,
 
 
 def composite_start_frame() -> Image.Image:
-    art = Image.open(BRAND / "splash_eyeless.png").convert("RGBA")
+    art = Image.open(ROOT / "tool/source_art/splash_eyeless_full.png").convert("RGBA")  # full-size mark (the in-app splash uses a smaller copy)
     for eye in (LEFT, RIGHT):
         cx, cy, rx, ry = eye["sclera"]
         clip = Image.new("L", art.size, 0)
