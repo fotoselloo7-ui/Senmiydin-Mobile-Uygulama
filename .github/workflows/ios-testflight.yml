@@ -1,0 +1,181 @@
+name: iOS TestFlight
+
+# Builds a signed App Store IPA on a macOS runner and uploads it to App Store Connect (TestFlight).
+# Manual only (Actions > iOS TestFlight > Run workflow). Required repository secrets are listed in docs/IOS_TESTFLIGHT_CI.md;
+# the job stops immediately with a clear message when one is missing. Nothing secret is ever committed.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-upload:
+    runs-on: macos-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check required secrets
+        env:
+          S1: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_BASE64 }}
+          S2: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+          S3: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          S4: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+          S5: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          S6: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          S7: ${{ secrets.IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
+          S8: ${{ secrets.IOS_OAUTH_XCCONFIG_BASE64 }}
+          S9: ${{ secrets.PRODUCTION_CONFIG_JSON_BASE64 }}
+        run: |
+          missing=""
+          for n in 1 2 3 4 5 6 7 8 9; do
+            v="S$n"
+            if [ -z "${!v}" ]; then missing="$missing S$n"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "Missing repository secrets (see docs/IOS_TESTFLIGHT_CI.md, order S1..S9):$missing"
+            exit 1
+          fi
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.4'
+          cache: true
+
+      - name: Restore ignored configuration files
+        env:
+          PLIST_B64: ${{ secrets.IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
+          OAUTH_B64: ${{ secrets.IOS_OAUTH_XCCONFIG_BASE64 }}
+          CONFIG_B64: ${{ secrets.PRODUCTION_CONFIG_JSON_BASE64 }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$PLIST_B64" | base64 --decode > ios/Runner/GoogleService-Info.plist
+          printf '%s' "$OAUTH_B64" | base64 --decode > ios/Flutter/OAuth.xcconfig
+          mkdir -p config
+          printf '%s' "$CONFIG_B64" | base64 --decode > config/production.local.json
+
+      - name: Flutter dependencies
+        run: flutter pub get
+
+      - name: Install Apple signing assets
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+          PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          set -euo pipefail
+          CERT_PATH="$RUNNER_TEMP/distribution.p12"
+          PROFILE_PATH="$RUNNER_TEMP/profile.mobileprovision"
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
+          printf '%s' "$CERTIFICATE_BASE64" | base64 --decode > "$CERT_PATH"
+          printf '%s' "$PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROFILE_PATH"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security cms -D -i "$PROFILE_PATH" > "$RUNNER_TEMP/profile.plist"
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" "$RUNNER_TEMP/profile.plist")
+          PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print :Name" "$RUNNER_TEMP/profile.plist")
+          TEAM_ID=$(/usr/libexec/PlistBuddy -c "Print :TeamIdentifier:0" "$RUNNER_TEMP/profile.plist")
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
+          echo "PROFILE_NAME=$PROFILE_NAME" >> "$GITHUB_ENV"
+          echo "TEAM_ID=$TEAM_ID" >> "$GITHUB_ENV"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+
+      - name: Configure Runner signing
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          path = Path("ios/Runner.xcodeproj/project.pbxproj")
+          text = path.read_text()
+          marker = "PRODUCT_BUNDLE_IDENTIFIER = com.senmiydin.app;"
+          replacement = (
+              f"DEVELOPMENT_TEAM = {os.environ['TEAM_ID']};\n"
+              f"\t\t\t\tCODE_SIGN_STYLE = Manual;\n"
+              f"\t\t\t\tCODE_SIGN_IDENTITY = \"Apple Distribution\";\n"
+              f"\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = \"{os.environ['PROFILE_NAME']}\";\n"
+              f"\t\t\t\tPRODUCT_BUNDLE_IDENTIFIER = com.senmiydin.app;"
+          )
+          count = text.count(marker)
+          if count == 0:
+              raise SystemExit("Runner bundle identifier not found.")
+          path.write_text(text.replace(marker, replacement))
+          print(f"Runner signing configured in {count} build configurations.")
+          PY
+
+      - name: Flutter analyze
+        run: flutter analyze
+
+      - name: Prepare Flutter iOS build
+        run: flutter build ios --release --no-codesign --dart-define-from-file=config/production.local.json
+
+      - name: Create signed archive
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
+            archive
+
+      - name: Export signed IPA
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>teamID</key><string>$TEAM_ID</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>signingCertificate</key><string>Apple Distribution</string>
+            <key>provisioningProfiles</key>
+            <dict><key>com.senmiydin.app</key><string>$PROFILE_NAME</string></dict>
+            <key>stripSwiftSymbols</key><true/>
+            <key>uploadSymbols</key><true/>
+          </dict>
+          </plist>
+          PLIST
+          mkdir -p "$RUNNER_TEMP/export"
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
+          IPA_PATH=$(find "$RUNNER_TEMP/export" -name "*.ipa" -print -quit)
+          if [ -z "$IPA_PATH" ]; then echo "IPA not found."; exit 1; fi
+          echo "IPA_PATH=$IPA_PATH" >> "$GITHUB_ENV"
+
+      - name: Upload to TestFlight
+        env:
+          API_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+          API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.appstoreconnect/private_keys"
+          KEY_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_$API_KEY_ID.p8"
+          printf '%s' "$API_PRIVATE_KEY" > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          xcrun altool --upload-app --type ios --file "$IPA_PATH" --apiKey "$API_KEY_ID" --apiIssuer "$API_ISSUER_ID"
+
+      - name: Keep the IPA for 7 days
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: senmiydin-ios-testflight
+          path: ${{ runner.temp }}/export/*.ipa
+          if-no-files-found: ignore
+          retention-days: 7
