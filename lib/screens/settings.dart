@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart' hide Text;
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../widgets/translated_text.dart';
 
@@ -150,6 +152,22 @@ class _SettingsPageState extends State<SettingsPage>
             'Geri Bildirim / Şikâyet',
             Icons.flag_outlined,
             onTap: () => openPage(context, '/report', 'Uygulama'),
+          ),
+          SettingsRow(
+            'destek@senmiydin.tr',
+            Icons.mail_outline,
+            onTap: () async {
+              final opened = await launchUrl(
+                Uri(scheme: 'mailto', path: 'destek@senmiydin.tr'),
+              ).catchError((_) => false);
+              if (opened || !context.mounted) return;
+              await Clipboard.setData(
+                const ClipboardData(text: 'destek@senmiydin.tr'),
+              );
+              if (context.mounted) {
+                toast(context, 'E-posta adresi kopyalandı.');
+              }
+            },
           ),
           const SectionLabel('OTURUM VE HESAP İŞLEMLERİ'),
           SettingsRow(

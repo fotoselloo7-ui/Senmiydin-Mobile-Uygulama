@@ -53,7 +53,7 @@ final class Settings
                 // Native feed ads are on by default; the app still renders none without real ad unit ids in release builds.
                 'ads_enabled' => true, 'feed_ad_interval' => 11,
                 // Operator identity for the legal pages. Never pre-filled: the operator supplies the real values.
-                'operator_name' => '', 'operator_address' => '', 'operator_registration' => '', 'operator_contact_email' => '',
+                'operator_name' => '', 'operator_address' => '', 'operator_registration' => '', 'operator_contact_email' => config('website.contact_email') ?? '',
             ];
     }
 

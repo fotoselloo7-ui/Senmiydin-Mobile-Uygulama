@@ -77,3 +77,8 @@ Uygulama imzalama SHA-256 değeri, backend'de `ANDROID_APP_LINK_SHA256` içine *
 - Üretim backend dağıtımı, SMTP teslim testi, canlı HTTPS web doğrulaması (madde 1–3).
 - Release-imzalı derlemede Google giriş turu, resmî In-App Review'in gerçek Play'de görünmesi, AdMob'dan gerçek doluluk (yeni reklam birimleri ~1 saat içinde aktifleşir; reklam gelmezse yerleşim boşluk bırakmaz — test ve kodda doğrulanmıştı).
 - Firebase projesi, kullanılmayan bir Cloud projesine eklendi (hesabın proje kotası dolu); istersen yeni bir proje kotası artışıyla taşınabilir. Proje adı "SenMiydin", `com.senmiydin.app` dışında uygulama yok.
+
+
+## İletişim adresleri (15 Kasım 2026)
+
+Destek: `destek@senmiydin.tr`, genel / KVKK iletişimi: `info@senmiydin.tr`. Üretim `.env` içinde `PUBLIC_SUPPORT_EMAIL=destek@senmiydin.tr` ve `PUBLIC_CONTACT_EMAIL=info@senmiydin.tr` olmalı (`backend/.env.example` böyle); uygulamada Ayarlar > Destek ve Hakkında altında `destek@senmiydin.tr` satırı var. **Posta kutularının gerçekten açılması gerekir** (hosting/e-posta kurulumu kullanıcıda). Repo herkese açık olduğundan telefon numarası burada yazılmaz.

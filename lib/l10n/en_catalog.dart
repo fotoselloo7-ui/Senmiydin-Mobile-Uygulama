@@ -392,6 +392,8 @@ const enCatalog = <String, String>{
   'Engellenen Kullanıcılar': 'Blocked Users',
   'Açık Kaynak Lisansları': 'Open Source Licenses',
   'Geri Bildirim / Şikâyet': 'Feedback / Report',
+  'E-posta adresi kopyalandı.': 'Email address copied.',
+  'destek@senmiydin.tr': 'destek@senmiydin.tr',
   'Hesabımı Sil': 'Delete My Account',
   'Sürüm 0.1.0': 'Version 0.1.0',
   'Gizlilik': 'Privacy',

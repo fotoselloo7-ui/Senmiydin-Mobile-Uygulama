@@ -53,7 +53,7 @@ karşılaşma,şehir,keşif,anı,yolculuk,sohbet,arkadaşlık,itiraf,konum
 | Privacy Policy URL | [GERÇEK BİLGİ GEREKLİ] — /gizlilik |
 | Account deletion web URL (Review Notes / destek) | [GERÇEK BİLGİ GEREKLİ] — /hesap-silme; ayrıca uygulama içi silme bulunur |
 | Copyright / satıcı / şirket | [GERÇEK BİLGİ GEREKLİ] |
-| Review contact adı, telefon, e-posta | [GERÇEK BİLGİ GEREKLİ] |
+| Review contact adı, telefon, e-posta | App Store Connect'e API ile girildi (15 Kasım 2026); telefon repoda tutulmaz (herkese açık repo), yerel `secrets/review/` içinde. E-posta: destek@senmiydin.tr |
 | Sign-in required | Yes |
 | Review username | [GERÇEK BİLGİ GEREKLİ] |
 | Review password | [GERÇEK BİLGİ GEREKLİ] — yalnız App Store Connect güvenli giriş alanında |
