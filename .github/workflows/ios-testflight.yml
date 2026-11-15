@@ -69,10 +69,19 @@ jobs:
         run: |
           flutter build ios --release --no-codesign             --build-number=$((GITHUB_RUN_NUMBER + 10))             --dart-define-from-file=config/production.local.json
 
-      - name: Create ad-hoc signed archive (the distribution signature is applied at export; no devices needed)
+      - name: Create unsigned archive (signing happens at export, which needs no registered devices)
         run: |
           set -euo pipefail
-          xcodebuild             -workspace ios/Runner.xcworkspace             -scheme Runner             -configuration Release             -sdk iphoneos             -destination 'generic/platform=iOS'             -archivePath "$RUNNER_TEMP/Runner.xcarchive"             CODE_SIGN_STYLE=Manual             CODE_SIGN_IDENTITY="-"             DEVELOPMENT_TEAM=""             PROVISIONING_PROFILE_SPECIFIER=""             archive
+          xcodebuild             -workspace ios/Runner.xcworkspace             -scheme Runner             -configuration Release             -sdk iphoneos             -destination 'generic/platform=iOS'             -archivePath "$RUNNER_TEMP/Runner.xcarchive"             CODE_SIGNING_ALLOWED=NO             CODE_SIGNING_REQUIRED=NO             CODE_SIGN_IDENTITY=""             DEVELOPMENT_TEAM=7YH3522U6V             archive
+
+      - name: Strip vendor signatures from embedded frameworks (export re-signs them with our distribution identity)
+        run: |
+          set -euo pipefail
+          APP="$RUNNER_TEMP/Runner.xcarchive/Products/Applications/Runner.app"
+          for f in "$APP"/Frameworks/*.framework; do
+            echo "== $f"; codesign -dv "$f" 2>&1 | grep -E "Authority|TeamIdentifier|not signed" | head -3 || true
+            codesign --remove-signature "$f" || true
+          done
 
       - name: Export and upload to TestFlight
         env:
