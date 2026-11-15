@@ -27,7 +27,8 @@ AAB SHA-256: `c4ceae11a057de43492e3f80baa56e55f7657fbe7f11e8dafcd1ae8f990ea60c` 
 | Paket yükleme | İmzalı AAB **Dahili test** taslağına yüklendi ve Play tarafından kabul edildi: sürüm 1 (0.1.0), API 24+, hedef SDK 36. TR/EN sürüm notları girildi. **Taslak olarak kaydedildi, yayına (rollout) alınmadı** |
 | Play App Signing | Etkin. SHA-256 `23:18:38:73:AB:3E:65:57:7D:C0:B7:AE:65:E5:4F:22:B4:93:16:F4:00:E1:35:D3:8A:2C:C1:B6:DA:A8:78:E8`, SHA-1 `F9:CE:9E:FF:E8:2C:9C:57:C2:F8:2B:B8:14:13:80:97:26:07:64:10`. İkisi de Firebase Android uygulamasına eklendi (Google ile giriş) |
 | Beyanlar | **Kaydedildi:** Reklam (içeriyor), Reklam Kimliği (kullanıyor; amaç reklam), Finans (özellik yok), Sağlık (özellik yok), Resmi kurum (hayır) |
-| Beyan bekleyen | Gizlilik politikası URL'si, Oturum açma bilgileri, İçerik derecelendirme (IARC şartları), Hedef kitle (oturum açma bilgilerine bağlı), Veri güvenliği, Satıcı durumu |
+| İçerik derecelendirme | **Tamamlandı** (IARC şartları kullanıcının sohbette verdiği açık onayla kabul edildi; iletişim e-postası kullanıcının seçimiyle Play hesap adresi). Kategori Sosyal; arkadaşlık amaçlı değil, çıplaklık/şiddet/tam konum/dijital satın alma yok, engelleme ve bildirme var, sohbet proaktif denetlenmiyor, etkileşim yalnız davetlilerle sınırlı değil. Sonuç 12+ / Teen düzeyi (ESRB Teen, PEGI 12 vb.). 16+ ürün kuralı Hedef kitle beyanında ayrıca girilecek |
+| Beyan bekleyen | Gizlilik politikası URL'si, Oturum açma bilgileri, Hedef kitle (oturum açma bilgilerine bağlı), Veri güvenliği, Satıcı durumu |
 
 Uygulama imzalama SHA-256 değeri, backend'de `ANDROID_APP_LINK_SHA256` içine **upload** SHA-256 (`2F:19:26:8B:…:BC:C9`) ile birlikte virgülle girilmelidir (assetlinks.json iki sertifikayı da sunar).
 
@@ -38,7 +39,6 @@ Uygulama imzalama SHA-256 değeri, backend'de `ANDROID_APP_LINK_SHA256` içine *
 3. **SMTP.** host, port, kullanıcı adı, parola, gönderen adresi. Şifre sıfırlama e-postası gerçek teslim testi bundan sonra.
 4. **Google Play Console — kalan beyanlar (uygulama oluşturuldu, yukarıdaki tablo).** Senin yapman gerekenler:
    - **Gizlilik politikası URL'si** (alan adı canlı olunca) ve **Oturum açma bilgileri**: gerçek bir inceleme hesabı (kullanıcı adı/parola) gerekir; üretim backend'i olmadan oluşturulamaz, uydurulmadı (`docs/store/REVIEW_ACCOUNT.md`).
-   - **İçerik derecelendirme anketi**: IARC hizmet şartlarının kabulünü içerir; senin kabul etmen gerekir. Cevap taslağı `docs/store/CONTENT_RATING.md`.
    - **Hedef kitle** (16+; oturum açma bilgileri bitmeden açılmıyor), **Veri güvenliği** (`docs/store/GOOGLE_PLAY_DATA_SAFETY.md`; canlı HTTPS/aktarım şifrelemesi doğrulanmadan gönderilmez), **Satıcı durumu** (tüzel kişilik beyanı).
    - **Ana mağaza girişi**: metinler `docs/store/localization/`'da hazır; öznitelik görselleri (512 simge, 1024×500 öne çıkan grafik, ekran görüntüleri) ve iletişim/web/gizlilik/hesap silme URL'leri girilecek.
 5. **Closed test.** Console, kurulum görevleri bitmeden Kapalı testi kilitli tutuyor. Tester e-posta listesi yok (**HUMAN ACTION REQUIRED: tester e-postaları**) ve Console bu hesapta üretime başvuru için "en az 12 tester, en az 14 gün" şartını gösteriyor (şart geçerli). Dahili test taslağı hazır; kurulum görevleri bitince aynı AAB Kapalı teste de yüklenir.
