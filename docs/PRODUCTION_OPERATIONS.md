@@ -34,7 +34,7 @@ Uygulama imzalama SHA-256 değeri, backend'de `ANDROID_APP_LINK_SHA256` içine *
 
 ## HUMAN ACTION REQUIRED (yalnızca sen yapabilirsin)
 
-1. **Üretim alan adı.** `senmiydin.com` DNS'te **çözülmüyor** (kayıtlı/yönlendirilmiş değil). Alan adını kaydet/yönlendir, HTTPS kur. Gizlilik, KVKK, hesap silme, `app-ads.txt` ve paylaşım bağlantıları buna bağlı. Release AAB `https://senmiydin.com/api/v1` adresini kullanır; farklı alan için `API_BASE_URL` ve `APP_LINK_HOST` değiştirilip yeniden derlenir.
+1. **Üretim alan adı.** `senmiydin.tr` DNS'te **çözülmüyor** (kayıtlı/yönlendirilmiş değil). Alan adını kaydet/yönlendir, HTTPS kur. Gizlilik, KVKK, hesap silme, `app-ads.txt` ve paylaşım bağlantıları buna bağlı. Release AAB `https://senmiydin.tr/api/v1` adresini kullanır; farklı alan için `API_BASE_URL` ve `APP_LINK_HOST` değiştirilip yeniden derlenir.
 2. **Üretim sunucusu.** Sunucu/barındırma erişimi yok: `APP_ENV=production`, `APP_DEBUG=false`, üretim DB, kuyruk işçisi (`queue:work database` — `DeliverPush` `database` bağlantısını kullanır), zamanlayıcı cron'u, özel depolama, sağlık ucu `docs/DEPLOYMENT.md` adımlarıyla kurulacak. `.env` içine: `PUSH_DRIVER=fcm`, `FCM_PROJECT_ID`, `FCM_CREDENTIALS` (sunucudaki servis hesabı dosyası), `GOOGLE_CLIENT_IDS`, `ADMOB_PUBLISHER_ID`, `ANDROID_APP_LINK_SHA256` (Play App Signing + upload SHA-256), `APPLE_TEAM_ID`.
 3. **SMTP.** host, port, kullanıcı adı, parola, gönderen adresi. Şifre sıfırlama e-postası gerçek teslim testi bundan sonra.
 4. **Google Play Console — kalan beyanlar (uygulama oluşturuldu, yukarıdaki tablo).** Senin yapman gerekenler:

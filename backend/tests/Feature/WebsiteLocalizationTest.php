@@ -29,9 +29,9 @@ class WebsiteLocalizationTest extends TestCase
             $this->assertStringContainsString('hreflang="x-default"', $html, $url);
             $this->assertStringContainsString('content="en_US"', $html, $url);
             $trSlug = Site::trSlug($path);
-            $this->assertStringContainsString('rel="canonical" href="https://senmiydin.com'.Site::path($trSlug, 'en').'"', $html, $url);
+            $this->assertStringContainsString('rel="canonical" href="https://senmiydin.tr'.Site::path($trSlug, 'en').'"', $html, $url);
             $this->assertStringContainsString('class="lang-switch"', $html);
-            $this->assertStringContainsString('href="https://senmiydin.com'.($trSlug === '' ? '/' : '/'.$trSlug).'" hreflang="tr"', $html, "Switch to Turkish from $url");
+            $this->assertStringContainsString('href="https://senmiydin.tr'.($trSlug === '' ? '/' : '/'.$trSlug).'" hreflang="tr"', $html, "Switch to Turkish from $url");
             $this->assertStringContainsString('Skip to content', $html);
             $this->assertStringNotContainsString('İçeriğe geç', $html);
             $this->assertSame(1, substr_count($html, '<h1'), "Exactly one H1 on $url");
@@ -44,7 +44,7 @@ class WebsiteLocalizationTest extends TestCase
             $html = $this->get('/'.$slug)->assertOk()->getContent();
             $this->assertStringContainsString('<html lang="tr">', $html);
             $this->assertStringContainsString('hreflang="en"', $html);
-            $this->assertStringContainsString('href="https://senmiydin.com'.Site::path($slug, 'en').'" hreflang="en"', $html);
+            $this->assertStringContainsString('href="https://senmiydin.tr'.Site::path($slug, 'en').'" hreflang="en"', $html);
             $this->assertStringContainsString('İçeriğe geç', $html);
         }
     }
@@ -226,7 +226,7 @@ class WebsiteLocalizationTest extends TestCase
     {
         $sitemap = $this->get('/sitemap.xml')->assertOk()->getContent();
         foreach (['/hesap-silme', '/en/delete-account', '/en', '/en/privacy', '/en/community-guidelines', '/kvkk', '/en/kvkk'] as $path) {
-            $this->assertStringContainsString('<loc>https://senmiydin.com'.$path.'</loc>', $sitemap);
+            $this->assertStringContainsString('<loc>https://senmiydin.tr'.$path.'</loc>', $sitemap);
         }
         $this->assertStringNotContainsString('/admin', $sitemap);
         $turkish = $this->getJson('/api/v1/legal/gizlilik')->assertOk()->json('data');

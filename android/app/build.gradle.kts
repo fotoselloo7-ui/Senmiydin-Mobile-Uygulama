@@ -58,7 +58,7 @@ android {
         // starting, and the app renders no ads at all in release (no ad unit id), see lib/core/ads_config.dart.
         // The public host share links use (App Links). Same domain as the website; override with --dart-define=APP_LINK_HOST.
         manifestPlaceholders["appLinkHost"] =
-            dartDefines["APP_LINK_HOST"]?.takeIf { it.isNotBlank() } ?: "senmiydin.com"
+            dartDefines["APP_LINK_HOST"]?.takeIf { it.isNotBlank() } ?: "senmiydin.tr"
         manifestPlaceholders["admobAppId"] =
             dartDefines["ADMOB_APP_ID_ANDROID"]?.takeIf { it.isNotBlank() }
                 ?: "ca-app-pub-3940256099942544~3347511713"

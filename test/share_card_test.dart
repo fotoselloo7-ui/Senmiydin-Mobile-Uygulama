@@ -55,7 +55,7 @@ void main() {
     body: body,
     dateLabel: '15 Kasım 2026',
     placeLabel: place,
-    url: 'https://senmiydin.com/p/ab12cd34ef56',
+    url: 'https://senmiydin.tr/p/ab12cd34ef56',
     cta: cta,
     continueLabel: continueLabel,
     logo: await asset('assets/brand/logo_header_light.png'),

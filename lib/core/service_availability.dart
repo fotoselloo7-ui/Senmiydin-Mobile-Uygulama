@@ -7,7 +7,7 @@ abstract final class ServiceAvailability {
   static const appleServiceId = String.fromEnvironment('APPLE_SERVICE_ID');
   static const appleRedirect = String.fromEnvironment(
     'APPLE_REDIRECT_URI',
-    defaultValue: 'https://senmiydin.com/auth/apple/callback',
+    defaultValue: 'https://senmiydin.tr/auth/apple/callback',
   );
   static const appleEnabled = bool.fromEnvironment('APPLE_SIGN_IN_ENABLED');
   static const project = String.fromEnvironment('FCM_PROJECT_ID');

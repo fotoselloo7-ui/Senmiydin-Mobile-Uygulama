@@ -16,7 +16,7 @@ class ProductionReadinessTest extends TestCase
 
     private function production(): void
     {
-        config(['app.url' => 'https://senmiydin.com', 'app.debug' => true]);
+        config(['app.url' => 'https://senmiydin.tr', 'app.debug' => true]);
         $this->app->instance('env', 'production');
         (new \App\Providers\AppServiceProvider($this->app))->boot();
     }
@@ -27,10 +27,10 @@ class ProductionReadinessTest extends TestCase
         $this->assertFalse(config('app.debug'));
         $this->assertTrue(config('session.secure'));
         $this->assertTrue(config('session.http_only'));
-        $this->get('http://senmiydin.com/admin/login')->assertStatus(308)->assertRedirect('https://senmiydin.com/admin/login');
-        $this->withHeader('X-Forwarded-Proto', 'https')->getJson('http://senmiydin.com/api/v1/app-config')->assertStatus(426);
+        $this->get('http://senmiydin.tr/admin/login')->assertStatus(308)->assertRedirect('https://senmiydin.tr/admin/login');
+        $this->withHeader('X-Forwarded-Proto', 'https')->getJson('http://senmiydin.tr/api/v1/app-config')->assertStatus(426);
         $this->get('https://attacker.example/')->assertStatus(400);
-        $this->get('https://senmiydin.com/admin/login')->assertOk()->assertHeader('Strict-Transport-Security', 'max-age=31536000');
+        $this->get('https://senmiydin.tr/admin/login')->assertOk()->assertHeader('Strict-Transport-Security', 'max-age=31536000');
     }
 
     public function test_api_failures_hide_sql_paths_and_stack_traces_even_with_debug_enabled(): void
@@ -84,17 +84,17 @@ class ProductionReadinessTest extends TestCase
 
     public function test_cors_only_exposes_the_configured_origin(): void
     {
-        config(['cors.allowed_origins' => ['https://senmiydin.com']]);
-        $this->withHeader('Origin', 'https://attacker.example')->getJson('/api/v1/app-config')->assertHeader('Access-Control-Allow-Origin', 'https://senmiydin.com');
-        $this->withHeader('Origin', 'https://senmiydin.com')->getJson('/api/v1/app-config')->assertHeader('Access-Control-Allow-Origin', 'https://senmiydin.com');
+        config(['cors.allowed_origins' => ['https://senmiydin.tr']]);
+        $this->withHeader('Origin', 'https://attacker.example')->getJson('/api/v1/app-config')->assertHeader('Access-Control-Allow-Origin', 'https://senmiydin.tr');
+        $this->withHeader('Origin', 'https://senmiydin.tr')->getJson('/api/v1/app-config')->assertHeader('Access-Control-Allow-Origin', 'https://senmiydin.tr');
     }
 
     public function test_production_admin_rejects_development_credentials_and_enforces_csrf(): void
     {
         Admin::create(['name' => 'Local', 'email' => 'admin@senmiydin.local', 'password' => 'Admin1234!', 'role' => 'super_admin']);
         $this->production();
-        $this->post('https://senmiydin.com/admin/login', ['email' => 'admin@senmiydin.local', 'password' => 'Admin1234!'])->assertStatus(419);
-        $this->withSession(['_token' => 'test-csrf'])->post('https://senmiydin.com/admin/login',
+        $this->post('https://senmiydin.tr/admin/login', ['email' => 'admin@senmiydin.local', 'password' => 'Admin1234!'])->assertStatus(419);
+        $this->withSession(['_token' => 'test-csrf'])->post('https://senmiydin.tr/admin/login',
             ['_token' => 'test-csrf', 'email' => 'admin@senmiydin.local', 'password' => 'Admin1234!'])->assertSessionHasErrors('email');
         $this->assertGuest('admin');
     }
@@ -104,6 +104,6 @@ class ProductionReadinessTest extends TestCase
         $this->production();
         config(['security.trusted_proxies' => ['127.0.0.1']]);
         $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1'])->withHeader('X-Forwarded-Proto', 'https')
-            ->getJson('http://senmiydin.com/api/v1/app-config')->assertOk();
+            ->getJson('http://senmiydin.tr/api/v1/app-config')->assertOk();
     }
 }

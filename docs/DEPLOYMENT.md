@@ -1,6 +1,6 @@
 # SenMiydin? deployment
 
-Public web, ayrı admin oturumu ve mobil API tek Laravel uygulamasıdır. Hedef web adresi https://senmiydin.com, API adresi https://senmiydin.com/api/v1 olur. Ayrı bir API alan adı gerekmez. Bu belge sunucu kurulumu içindir; alan adı veya sertifikanın bu bilgisayardan canlıya alındığı anlamına gelmez.
+Public web, ayrı admin oturumu ve mobil API tek Laravel uygulamasıdır. Hedef web adresi https://senmiydin.tr, API adresi https://senmiydin.tr/api/v1 olur. Ayrı bir API alan adı gerekmez. Bu belge sunucu kurulumu içindir; alan adı veya sertifikanın bu bilgisayardan canlıya alındığı anlamına gelmez.
 
 ## Sunucu
 
@@ -18,12 +18,12 @@ Sunucunun belge kökü yalnızca backend/public olmalı. Proje kökü, .env, sto
 ~~~nginx
 server {
     listen 80;
-    server_name senmiydin.com;
-    return 308 https://senmiydin.com$request_uri;
+    server_name senmiydin.tr;
+    return 308 https://senmiydin.tr$request_uri;
 }
 server {
     listen 443 ssl;
-    server_name senmiydin.com;
+    server_name senmiydin.tr;
     # ssl_certificate / ssl_certificate_key: gerçek sertifika yolları.
     root /srv/senmiydin/current/backend/public;
     index index.php;
@@ -63,7 +63,7 @@ php artisan view:cache
 
 key:generate yalnızca ilk kurulumda çalışır. Mevcut APP_KEY'yi yeniden üretme; push ve Apple tokenları, kuyruk verileri ve session kayıtları bu anahtarla şifrelenir. APP_KEY'yi ayrı ve güvenli şekilde yedekle.
 
-Üretimde APP_ENV=production, APP_DEBUG=false, APP_URL ve PUBLIC_SITE_URL=https://senmiydin.com olmalı. Kod üretimde debug yanıtlarını kapatır. Uygulama kullanıcısına kendi veritabanının gerekli tablo izinlerini ver; global kullanıcı/veritabanı yönetim yetkisi verme. Veritabanını altyapı yöneticisi oluşturur.
+Üretimde APP_ENV=production, APP_DEBUG=false, APP_URL ve PUBLIC_SITE_URL=https://senmiydin.tr olmalı. Kod üretimde debug yanıtlarını kapatır. Uygulama kullanıcısına kendi veritabanının gerekli tablo izinlerini ver; global kullanıcı/veritabanı yönetim yetkisi verme. Veritabanını altyapı yöneticisi oluşturur.
 
 app:check secret değerlerini yazdırmadan HTTPS, oturum, kuyruk, özel diskler, SMTP / destek, CORS, push ve demo hesap durumunu kontrol eder. Bu kontrol işlevsel e-posta / push teslimatının yerini tutmaz. Eksik gerçek hizmet bilgilerini tamamlayıp yeniden çalıştır.
 
@@ -159,7 +159,7 @@ Gerçek OAuth istemcileri yokken düğmeler e-posta ile giriş seçeneğine yön
 
 Apple Developer'da com.senmiydin.app App ID, Sign in with Apple capability ve doğru Team / provisioning profili gerekir. Backend APPLE_CLIENT_IDS kabul edilen App ID ve gerekiyorsa Service ID listesidir. APPLE_TEAM_ID, APPLE_KEY_ID ve APPLE_PRIVATE_KEY_PATH gerçek .p8 anahtarını gösterir.
 
-Mobil APPLE_SIGN_IN_ENABLED=true yalnızca gerçek yapılandırma tamamlanınca eklenir. Android web akışı için ayrıca gerçek APPLE_SERVICE_ID ve APPLE_REDIRECT_URI=https://senmiydin.com/auth/apple/callback gerekir. Bu HTTPS dönüş adresini Apple portalında Service ID'ye kaydet. Android paketli intent dönüşü hazırdır; keyfi bir dönüş adresi kabul edilmez. Callback state sunucu nonce kaydına bağlıdır; uygulama hem state hem kimlik tokenını kontrol eder.
+Mobil APPLE_SIGN_IN_ENABLED=true yalnızca gerçek yapılandırma tamamlanınca eklenir. Android web akışı için ayrıca gerçek APPLE_SERVICE_ID ve APPLE_REDIRECT_URI=https://senmiydin.tr/auth/apple/callback gerekir. Bu HTTPS dönüş adresini Apple portalında Service ID'ye kaydet. Android paketli intent dönüşü hazırdır; keyfi bir dönüş adresi kabul edilmez. Callback state sunucu nonce kaydına bağlıdır; uygulama hem state hem kimlik tokenını kontrol eder.
 
 iOS native akışında Service ID gerekmez. Apple authorization code sunucuda gerçek istemci kimliğiyle değiştirilir, JWT / nonce yeniden doğrulanır, refresh token şifrelenir. Hesap silinince auth/revoke çağrısı yeniden denenebilir. Apple private relay adreslerine mail için gönderici domainini Apple'da da yapılandır.
 

@@ -15,7 +15,7 @@ class WebsiteTest extends TestCase
         $this->get('/')->assertOk()->assertSee('Bazı karşılaşmalar')->assertSee('Nasıl çalıştığını keşfet')
             ->assertSee('Yolculuk Paylaşımları')->assertSee('Canlı kişi takibi yoktur')
             ->assertSee('Google Play')->assertSee('App Store')->assertSee('Temsili paylaşım')
-            ->assertSee('name="description"', false)->assertSee('rel="canonical" href="https://senmiydin.com/"', false)
+            ->assertSee('name="description"', false)->assertSee('rel="canonical" href="https://senmiydin.tr/"', false)
             ->assertSee('property="og:image"', false)->assertSee('name="twitter:card"', false)
             ->assertSee('SoftwareApplication')->assertDontSee('aggregateRating')->assertDontSee('downloadUrl');
     }
@@ -177,11 +177,11 @@ class WebsiteTest extends TestCase
     public function test_public_routes_sitemap_and_robots(): void
     {
         foreach (['nasil-calisir', 'ozellikler', 'guvenlik', 'gizlilik', 'kvkk', 'kullanim-kosullari', 'topluluk-kurallari', 'iletisim', 'hesap-silme'] as $slug) {
-            $this->get('/'.$slug)->assertOk()->assertSee('https://senmiydin.com/'.$slug);
+            $this->get('/'.$slug)->assertOk()->assertSee('https://senmiydin.tr/'.$slug);
         }
         $this->get('/sitemap.xml')->assertOk()->assertHeader('Content-Type', 'application/xml; charset=UTF-8')
-            ->assertSee('<loc>https://senmiydin.com/hesap-silme</loc>', false)->assertDontSee('/admin');
-        $this->get('/robots.txt')->assertOk()->assertSee('Sitemap: https://senmiydin.com/sitemap.xml');
+            ->assertSee('<loc>https://senmiydin.tr/hesap-silme</loc>', false)->assertDontSee('/admin');
+        $this->get('/robots.txt')->assertOk()->assertSee('Sitemap: https://senmiydin.tr/sitemap.xml');
     }
 
     public function test_public_forms_validate_and_queue_requests_without_deleting_accounts(): void

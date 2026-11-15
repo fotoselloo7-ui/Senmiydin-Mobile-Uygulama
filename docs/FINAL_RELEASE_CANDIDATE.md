@@ -63,7 +63,7 @@ Her madde: neden gerekli → hangi dosya/ayar → nasıl doğrulanır.
 
 | # | Bağımlılık | Neden | Dosya / ayar | Doğrulama |
 |---|---|---|---|---|
-| 1 | Gerçek alan adı, sunucu, DNS, SSL | Mobil release API `https://senmiydin.com/api/v1`; yasal URL'ler canlı olmalı | `config/production.json`, `APP_URL`, `docs/DEPLOYMENT.md` | `php artisan app:check --production`, `GET /health`, mağaza URL'leri 200 |
+| 1 | Gerçek alan adı, sunucu, DNS, SSL | Mobil release API `https://senmiydin.tr/api/v1`; yasal URL'ler canlı olmalı | `config/production.json`, `APP_URL`, `docs/DEPLOYMENT.md` | `php artisan app:check --production`, `GET /health`, mağaza URL'leri 200 |
 | 2 | Production veritabanı | MySQL/MariaDB, yedek, migration | `.env` `DB_*`, `php artisan migrate --force` (seed **yok**) | `app:check`, `migrate:status` |
 | 3 | Firebase Android uygulaması | Push için `google-services` değerleri | `python tool/configure_mobile.py --android google-services.json` → ignore edilen `config/production.local.json` | Gerçek cihazda push alma |
 | 4 | FCM servis hesabı | Sunucudan gerçek FCM gönderimi (`PUSH_DRIVER=fcm`) | `.env` `FCM_PROJECT_ID`, `FCM_CREDENTIALS` (web kökü dışında) | Test bildirimi; `failed_jobs` boş |

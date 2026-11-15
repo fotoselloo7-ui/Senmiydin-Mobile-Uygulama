@@ -7,7 +7,7 @@
 	<key>aps-environment</key>
 	<string>$(PUSH_APS_ENVIRONMENT)</string>
 	<key>com.apple.developer.associated-domains</key>
-	<array><string>applinks:senmiydin.com</string></array>
+	<array><string>applinks:senmiydin.tr</string></array>
 	<key>keychain-access-groups</key>
 	<array/>
 </dict>

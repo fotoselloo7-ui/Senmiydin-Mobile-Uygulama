@@ -4,7 +4,7 @@ Flutter mobil uygulaması hesap, profil, katalog ve sosyal paylaşım verilerini
 
 ## Üretim ve mağaza yapılandırması
 
-Sunucu kurulumu, HTTPS, private storage, queue / scheduler, yedekleme, Firebase, OAuth ve yayın imzası için tek yönerge [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) dosyasındadır. Debug emülatör adresi yerel API'yi, release varsayılanı `https://senmiydin.com/api/v1` adresini kullanır. Release derlemeleri `config/production.json` üzerinden yapılandırılır; gerçek kimlikler için ignore edilen `config/production.local.json` hazırlanabilir.
+Sunucu kurulumu, HTTPS, private storage, queue / scheduler, yedekleme, Firebase, OAuth ve yayın imzası için tek yönerge [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) dosyasındadır. Debug emülatör adresi yerel API'yi, release varsayılanı `https://senmiydin.tr/api/v1` adresini kullanır. Release derlemeleri `config/production.json` üzerinden yapılandırılır; gerçek kimlikler için ignore edilen `config/production.local.json` hazırlanabilir.
 
 Gerçek hesap silme, şifre ve SİL onayıyla çalışır. Mobil hukuk metinleri backend CMS'den okunur. Mağaza bağlantıları ve Android / iOS minimum-güncel sürümleri admin ayarlarında yönetilir. Release signing eksikse debug anahtarı kullanılmaz.
 

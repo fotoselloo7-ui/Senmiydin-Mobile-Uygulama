@@ -574,7 +574,7 @@ Başka bir kişinin açık adresi veya kesin konumu paylaşılmamalıdır.
 
 Ana alan adı:
 
-`senmiydin.com`
+`senmiydin.tr`
 
 Public web sitesi:
 

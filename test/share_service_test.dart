@@ -81,7 +81,7 @@ void main() {
     if (work.existsSync()) work.deleteSync(recursive: true);
   });
 
-  Post post({String? shareUrl = 'https://senmiydin.com/p/ab12cd34ef56', bool anonymous = false, List<String> images = const [], String? storyStatus, List<Person> participants = const []}) {
+  Post post({String? shareUrl = 'https://senmiydin.tr/p/ab12cd34ef56', bool anonymous = false, List<String> images = const [], String? storyStatus, List<Person> participants = const []}) {
     final item = Post(
       id: '7',
       authorId: AppStore().people[1].id,
@@ -98,7 +98,7 @@ void main() {
     return item;
   }
 
-  MapNoteItem note({bool anonymous = false, String? shareUrl = 'https://senmiydin.com/n/zz12zz34zz56', String? image}) => MapNoteItem.fromJson({
+  MapNoteItem note({bool anonymous = false, String? shareUrl = 'https://senmiydin.tr/n/zz12zz34zz56', String? image}) => MapNoteItem.fromJson({
     'id': 3,
     'body': 'Kırmızı montlu kız, yarın aynı yerde.',
     'is_anonymous': anonymous,
@@ -118,19 +118,19 @@ void main() {
   }, (json) => Person(id: 'account-7', name: json['name'] as String, handle: json['username'] as String, photo: '', remote: true));
 
   group('Share links the app is opened with', () {
-    final hosts = {'senmiydin.com', 'www.senmiydin.com'};
+    final hosts = {'senmiydin.tr', 'www.senmiydin.tr'};
     test('Only https links on the website host with the exact /p/<id> or /n/<id> shape are accepted', () {
-      expect(parseShareLink(Uri.parse('https://senmiydin.com/p/ab12cd34ef56'), hosts: hosts), const ShareLink('p', 'ab12cd34ef56'));
-      expect(parseShareLink(Uri.parse('https://www.senmiydin.com/n/zz12zz34zz56/'), hosts: hosts), const ShareLink('n', 'zz12zz34zz56'));
+      expect(parseShareLink(Uri.parse('https://senmiydin.tr/p/ab12cd34ef56'), hosts: hosts), const ShareLink('p', 'ab12cd34ef56'));
+      expect(parseShareLink(Uri.parse('https://www.senmiydin.tr/n/zz12zz34zz56/'), hosts: hosts), const ShareLink('n', 'zz12zz34zz56'));
       for (final bad in [
-        'http://senmiydin.com/p/ab12cd34ef56',
+        'http://senmiydin.tr/p/ab12cd34ef56',
         'https://evil.example/p/ab12cd34ef56',
-        'https://senmiydin.com.evil.example/p/ab12cd34ef56',
-        'https://senmiydin.com/p/AB12CD34EF56',
-        'https://senmiydin.com/p/short',
-        'https://senmiydin.com/p/ab12cd34ef56/extra',
-        'https://senmiydin.com/admin/ab12cd34ef56',
-        'https://senmiydin.com/',
+        'https://senmiydin.tr.evil.example/p/ab12cd34ef56',
+        'https://senmiydin.tr/p/AB12CD34EF56',
+        'https://senmiydin.tr/p/short',
+        'https://senmiydin.tr/p/ab12cd34ef56/extra',
+        'https://senmiydin.tr/admin/ab12cd34ef56',
+        'https://senmiydin.tr/',
         'senmiydin://p/ab12cd34ef56',
       ]) {
         expect(parseShareLink(Uri.parse(bad), hosts: hosts), isNull, reason: bad);
@@ -144,7 +144,7 @@ void main() {
       final card = (await tester.runAsync(() => service.postCard(post(), store)))!;
       expect(card.kind, ShareCardKind.post);
       expect(card.authorName, store.people[1].name);
-      expect(card.url, 'https://senmiydin.com/p/ab12cd34ef56');
+      expect(card.url, 'https://senmiydin.tr/p/ab12cd34ef56');
       expect(card.cta, "SenMiydin?'de gör");
       expect(card.photo, isNull);
       AppLocale.debugSet(const Locale('en'));
@@ -171,10 +171,10 @@ void main() {
 
     testWidgets('The first photo only is used and fetched; a missing photo just leaves it out', (tester) async {
       final store = AppStore();
-      final many = post(images: ['https://api.senmiydin.com/api/v1/post-media/1', 'https://api.senmiydin.com/api/v1/post-media/2', 'https://api.senmiydin.com/api/v1/post-media/3']);
+      final many = post(images: ['https://api.senmiydin.tr/api/v1/post-media/1', 'https://api.senmiydin.tr/api/v1/post-media/2', 'https://api.senmiydin.tr/api/v1/post-media/3']);
       final card = (await tester.runAsync(() => service.postCard(many, store)))!;
       expect(card.photo, isNotNull);
-      expect(requestedUrls.where((url) => url.contains('post-media')), ['https://api.senmiydin.com/api/v1/post-media/1']);
+      expect(requestedUrls.where((url) => url.contains('post-media')), ['https://api.senmiydin.tr/api/v1/post-media/1']);
       final failing = ShareService(platform: platform, workDirectory: () async => work, loader: (url, headers) async => null);
       final without = (await tester.runAsync(() => failing.postCard(many, store)))!;
       expect(without.photo, isNull);
@@ -287,7 +287,7 @@ void main() {
     testWidgets('Title and the four options; Bağlantıyı Kopyala copies the link and confirms', (tester) async {
       final store = AppStore();
       await tester.pumpWidget(app(store, (context) {
-        showShareSheet(context, service: service, url: 'https://senmiydin.com/p/ab12cd34ef56', build: (s) => s.postCard(post(), store));
+        showShareSheet(context, service: service, url: 'https://senmiydin.tr/p/ab12cd34ef56', build: (s) => s.postCard(post(), store));
         return const SizedBox();
       }));
       await tester.tap(find.text('aç'));
@@ -300,7 +300,7 @@ void main() {
       expect(find.text('Diğer…'), findsOneWidget);
       await tester.tap(find.byKey(const Key('share-link')));
       await tester.pumpAndSettle();
-      expect(platform.copied, ['https://senmiydin.com/p/ab12cd34ef56']);
+      expect(platform.copied, ['https://senmiydin.tr/p/ab12cd34ef56']);
       expect(find.text('Bağlantı kopyalandı.'), findsOneWidget);
     });
 
@@ -308,7 +308,7 @@ void main() {
       AppLocale.debugSet(const Locale('en'));
       final store = AppStore();
       await tester.pumpWidget(app(store, (context) {
-        showShareSheet(context, service: service, url: 'https://senmiydin.com/p/ab12cd34ef56', build: (s) => s.postCard(post(), store));
+        showShareSheet(context, service: service, url: 'https://senmiydin.tr/p/ab12cd34ef56', build: (s) => s.postCard(post(), store));
         return const SizedBox();
       }));
       await tester.tap(find.text('aç'));
@@ -324,7 +324,7 @@ void main() {
       platform.failShare = true;
       final store = AppStore();
       await tester.pumpWidget(app(store, (context) {
-        showShareSheet(context, service: service, url: 'https://senmiydin.com/p/ab12cd34ef56', build: (s) => s.postCard(post(), store));
+        showShareSheet(context, service: service, url: 'https://senmiydin.tr/p/ab12cd34ef56', build: (s) => s.postCard(post(), store));
         return const SizedBox();
       }));
       await tester.tap(find.text('aç'));
@@ -343,7 +343,7 @@ void main() {
         final store = AppStore();
         await tester.pumpWidget(host(
           store,
-          Builder(builder: (context) => Scaffold(body: Center(child: ElevatedButton(onPressed: () => showShareSheet(context, service: service, url: 'https://senmiydin.com/p/ab12cd34ef56', build: (s) => s.postCard(post(), store)), child: const Text('aç'))))),
+          Builder(builder: (context) => Scaffold(body: Center(child: ElevatedButton(onPressed: () => showShareSheet(context, service: service, url: 'https://senmiydin.tr/p/ab12cd34ef56', build: (s) => s.postCard(post(), store)), child: const Text('aç'))))),
           scale: 1.5,
         ));
         await tester.tap(find.text('aç'));

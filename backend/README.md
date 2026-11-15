@@ -117,7 +117,7 @@ php artisan serve --host=127.0.0.1 --port=8000
 
 Tek deployment yönergesi [../docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md) içindedir. Üretim ortamında migrate ve admin oluşturma sonrasında `php artisan app:check` kullan. Bu komut secret değerlerini yazdırmaz. Yeni hesap silme API'si `DELETE /api/v1/auth/account` mevcut şifre ve SİL onayıyla çalışır. Medya temizliği ve Apple token iptali outbox / scheduler ile yeniden denenir. Mobil hukuk metinleri `GET /api/v1/legal/{slug}` üzerinden aynı CMS'den alınır.
 
-Üretim queue ve mail işleri için varsayılan `.env.example` database kuyruğudur. Worker timeout 90, DB_QUEUE_RETRY_AFTER=120 olarak örneklendirilmiştir. Alan adı `https://senmiydin.com` altında web + API birlikte çalışır. Local çalışmada mevcut `.env` değerlerini üretim örneğiyle körlemesine değiştirme.
+Üretim queue ve mail işleri için varsayılan `.env.example` database kuyruğudur. Worker timeout 90, DB_QUEUE_RETRY_AFTER=120 olarak örneklendirilmiştir. Alan adı `https://senmiydin.tr` altında web + API birlikte çalışır. Local çalışmada mevcut `.env` değerlerini üretim örneğiyle körlemesine değiştirme.
 
 
 Release preflight: php artisan senmiydin:production-check --json (app:check alias). OK/WARNING/MISSING/ERROR durumları ve kategori döndürür; credential değerleri çıkmaz. Dış bilgi eksikliği exit 2, kod testi hatası değildir. Güvenli GET /health DB/cache erişimini yalnızca status ile gösterir.

@@ -24,8 +24,8 @@ Set<String> shareLinkHosts() {
   const configured = String.fromEnvironment('APP_LINK_HOST');
   final hosts = <String>{
     if (configured.isNotEmpty) configured.toLowerCase(),
-    'senmiydin.com',
-    'www.senmiydin.com',
+    'senmiydin.tr',
+    'www.senmiydin.tr',
   };
   final apiHost = ApiConfig.base.host.toLowerCase();
   if (apiHost.isNotEmpty && apiHost != 'localhost') {
