@@ -44,9 +44,12 @@ class _SplashPageState extends State<SplashPage>
     super.initState();
     // About 1.4 s: centre -> a little right -> a little left -> centre. Short, soft and never a delay of its own:
     // the account restore runs in parallel and the app opens as soon as both are done.
+    // AnimationBehavior.preserve: with the system animation scale at 0 (a developer option, or battery saver) Flutter
+    // would otherwise shrink this 1.4 s gaze to a few milliseconds and the eyes would never visibly move.
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1400),
+      animationBehavior: AnimationBehavior.preserve,
     );
     TweenSequenceItem<double> move(double from, double to, double ms) =>
         TweenSequenceItem(
@@ -79,9 +82,9 @@ class _SplashPageState extends State<SplashPage>
 
   Future<void> restore() async {
     setState(() => error = null);
-    final disableAnimations =
-        MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-    final animFuture = (disableAnimations || widget.initialGazeOffset != null)
+    // The gaze is a short, gentle brand moment (pupils only, no flashing): it always plays, whatever the system
+    // animation scale is. Only the fixed-offset QA mode skips it.
+    final animFuture = widget.initialGazeOffset != null
         ? Future<void>.value()
         : _controller.forward().orCancel.catchError((_) {});
     try {
@@ -103,6 +106,16 @@ class _SplashPageState extends State<SplashPage>
   // The gaze reaches a little further than the artwork's own rest position so the movement is clearly visible on a
   // phone, while the pupils stay inside their eye whites (the ClipOval below clips the last pixels).
   static const _reach = 1.15;
+
+  /// Artwork rows the mark sits above the screen centre (mark centre y = 745 of 1920): the artwork is moved down by
+  /// this much so the mark is on the centre, where the native splash draws it.
+  static const _markShift = 215.0;
+
+  /// Colour of the artwork's top edge, continued in the strip that the shift opens at the top.
+  static const _topColor = Color(0xFF1A0245);
+
+  /// Surface of the native splash (res/values/colors.xml launch_background); the artwork fades in over it.
+  static const _nativeSurface = Color(0xFF3A027C);
 
   static Offset _leftPupilCenter(double t) {
     if (t < 0) {
@@ -139,104 +152,130 @@ class _SplashPageState extends State<SplashPage>
               return FittedBox(
                 fit: fit,
                 alignment: Alignment.center,
-                child: SizedBox(
-                  width: 1080,
-                  height: 1920,
-                  child: AnimatedBuilder(
-                    animation: _gazeAnimation,
-                    builder: (context, _) {
-                      final t =
-                          widget.initialGazeOffset ??
-                          (disableAnimations ? 0.0 : _gazeAnimation.value);
-                      final lp = _leftPupilCenter(t);
-                      final rp = _rightPupilCenter(t);
+                child: ClipRect(
+                  child: SizedBox(
+                    width: 1080,
+                    height: 1920,
+                    // The artwork is moved down so the mark sits on the screen centre, exactly where the native
+                    // (system) splash draws it; the strip that opens at the top continues the artwork's top colour.
+                    child: Stack(
+                      children: [
+                        const Positioned(
+                          left: 0,
+                          right: 0,
+                          top: 0,
+                          height: _markShift + 2,
+                          child: ColoredBox(color: _topColor),
+                        ),
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          top: _markShift,
+                          height: 1920,
+                          child: AnimatedBuilder(
+                            animation: _gazeAnimation,
+                            builder: (context, _) {
+                              final t =
+                                  widget.initialGazeOffset ??
+                                  _gazeAnimation.value;
+                              final lp = _leftPupilCenter(t);
+                              final rp = _rightPupilCenter(t);
 
-                      // Left sclera ellipse: center (515.8, 831.2), rx=78.5, ry=76.6
-                      const lRect = Rect.fromLTWH(
-                        515.8 - 78.5,
-                        831.2 - 76.6,
-                        157.0,
-                        153.2,
-                      );
-                      // Right sclera ellipse: center (648.53, 793.66), rx=64.9, ry=65.4
-                      const rRect = Rect.fromLTWH(
-                        648.53 - 64.9,
-                        793.66 - 65.4,
-                        129.8,
-                        130.8,
-                      );
+                              // Left sclera ellipse: center (515.8, 831.2), rx=78.5, ry=76.6
+                              const lRect = Rect.fromLTWH(
+                                515.8 - 78.5,
+                                831.2 - 76.6,
+                                157.0,
+                                153.2,
+                              );
+                              // Right sclera ellipse: center (648.53, 793.66), rx=64.9, ry=65.4
+                              const rRect = Rect.fromLTWH(
+                                648.53 - 64.9,
+                                793.66 - 65.4,
+                                129.8,
+                                130.8,
+                              );
 
-                      return Stack(
-                        children: [
-                          Positioned.fill(
-                            child: Image.asset(
-                              BrandAssets.splashEyeless,
-                              fit: BoxFit.fill,
-                              gaplessPlayback: true,
-                              filterQuality: FilterQuality.medium,
-                              frameBuilder: (context, child, frame, sync) {
-                                if ((sync || frame != null) && !_artReady) {
-                                  WidgetsBinding.instance.addPostFrameCallback((
-                                    _,
-                                  ) {
-                                    if (mounted) {
-                                      setState(() => _artReady = true);
-                                    }
-                                  });
-                                }
-                                return child;
-                              },
-                            ),
-                          ),
-                          Positioned.fromRect(
-                            rect: lRect,
-                            child: ClipOval(
-                              child: Stack(
-                                clipBehavior: Clip.hardEdge,
+                              return Stack(
                                 children: [
-                                  Positioned(
-                                    key: const Key('splash-pupil-left'),
-                                    left: lp.dx - lRect.left - 28.0,
-                                    top: lp.dy - lRect.top - 33.0,
-                                    width: 56.0,
-                                    height: 66.0,
+                                  Positioned.fill(
                                     child: Image.asset(
-                                      BrandAssets.pupilLeft,
+                                      BrandAssets.splashEyeless,
                                       fit: BoxFit.fill,
                                       gaplessPlayback: true,
-                                      filterQuality: FilterQuality.high,
+                                      filterQuality: FilterQuality.medium,
+                                      frameBuilder:
+                                          (context, child, frame, sync) {
+                                            if ((sync || frame != null) &&
+                                                !_artReady) {
+                                              WidgetsBinding.instance
+                                                  .addPostFrameCallback((_) {
+                                                    if (mounted) {
+                                                      setState(
+                                                        () => _artReady = true,
+                                                      );
+                                                    }
+                                                  });
+                                            }
+                                            return child;
+                                          },
+                                    ),
+                                  ),
+                                  Positioned.fromRect(
+                                    rect: lRect,
+                                    child: ClipOval(
+                                      child: Stack(
+                                        clipBehavior: Clip.hardEdge,
+                                        children: [
+                                          Positioned(
+                                            key: const Key('splash-pupil-left'),
+                                            left: lp.dx - lRect.left - 28.0,
+                                            top: lp.dy - lRect.top - 33.0,
+                                            width: 56.0,
+                                            height: 66.0,
+                                            child: Image.asset(
+                                              BrandAssets.pupilLeft,
+                                              fit: BoxFit.fill,
+                                              gaplessPlayback: true,
+                                              filterQuality: FilterQuality.high,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned.fromRect(
+                                    rect: rRect,
+                                    child: ClipOval(
+                                      child: Stack(
+                                        clipBehavior: Clip.hardEdge,
+                                        children: [
+                                          Positioned(
+                                            key: const Key(
+                                              'splash-pupil-right',
+                                            ),
+                                            left: rp.dx - rRect.left - 24.0,
+                                            top: rp.dy - rRect.top - 29.0,
+                                            width: 48.0,
+                                            height: 58.0,
+                                            child: Image.asset(
+                                              BrandAssets.pupilRight,
+                                              fit: BoxFit.fill,
+                                              gaplessPlayback: true,
+                                              filterQuality: FilterQuality.high,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ],
-                              ),
-                            ),
+                              );
+                            },
                           ),
-                          Positioned.fromRect(
-                            rect: rRect,
-                            child: ClipOval(
-                              child: Stack(
-                                clipBehavior: Clip.hardEdge,
-                                children: [
-                                  Positioned(
-                                    key: const Key('splash-pupil-right'),
-                                    left: rp.dx - rRect.left - 24.0,
-                                    top: rp.dy - rRect.top - 29.0,
-                                    width: 48.0,
-                                    height: 58.0,
-                                    child: Image.asset(
-                                      BrandAssets.pupilRight,
-                                      fit: BoxFit.fill,
-                                      gaplessPlayback: true,
-                                      filterQuality: FilterQuality.high,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -270,15 +309,14 @@ class _SplashPageState extends State<SplashPage>
       ),
     );
 
-    // The native splash is clean white; the branded artwork fades in over it so there is no hard colour jump,
+    // The native splash has the same brand purple surface and mark; the artwork fades in over it so there is no jump,
     // and nothing waits for the fade (the account restore and the gaze run from the first frame).
     return ColoredBox(
-      color: Colors.white,
+      color: _nativeSurface,
       child: TweenAnimationBuilder<double>(
-        tween: Tween<double>(
-          begin: disableAnimations ? 1.0 : 0.0,
-          end: _artReady || disableAnimations ? 1.0 : 0.0,
-        ),
+        // Nothing of the branded splash is shown before the artwork is decoded (even with the system animation
+        // scale off, when the fade just snaps): the pupils never float alone on the dark surface.
+        tween: Tween<double>(begin: 0.0, end: _artReady ? 1.0 : 0.0),
         duration: disableAnimations
             ? Duration.zero
             : const Duration(milliseconds: 220),

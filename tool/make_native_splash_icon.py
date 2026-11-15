@@ -1,81 +1,85 @@
-"""Builds the Android native splash icon (icon only, transparent background) from the approved final splash artwork.
+"""Builds the Android native splash icon so the system splash matches the Flutter splash (lib/screens/auth.dart).
 
-Source: assets/brand/splash_master.png (the final SenMiydin? splash). Only the icon part is used: the torn-paper hole,
-the eyes and the three sparks; the wordmark and the purple surface are left out. The result is a 1152x1152 PNG
-(288 dp at xxxhdpi, Android 12 SplashScreen icon canvas) whose artwork stays inside the 192 dp circle that Android masks
-to, so the eyes are never cropped. No new logo is drawn: pixels come from the approved artwork.
+Source: assets/brand/splash_eyeless.png + pupil_left/right.png, the same layers the Flutter splash draws. The pupils are
+placed exactly where the Flutter splash starts (gaze centre), so the hand-over from the system splash to the animated
+splash has the same picture. Only a soft disc around the torn-paper mark is used (it must fit the 192 dp circle that
+Android masks the icon to); its edge fades into the native background colour, which is the average colour of the
+artwork around the mark. No new logo is drawn: every pixel comes from the approved artwork.
+
+Outputs: android/app/src/main/res/drawable-nodpi/native_splash_icon.png (1152x1152 RGBA, 288 dp @ xxxhdpi) and prints
+the launch background colour for res/values/colors.xml and lib/screens/auth.dart.
 
 Run: python tool/make_native_splash_icon.py
 """
 from pathlib import Path
 
-import cv2
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parent.parent
-SOURCE = ROOT / "assets/brand/splash_master.png"
-CANVAS = 1152          # 288 dp @ xxxhdpi
-SAFE_RADIUS = 372      # 192 dp circle = radius 384 px; keep a small margin
-CROP = (200, 440, 900, 1060)  # icon region inside the 1080x1920 master (excludes the wordmark)
+BRAND = ROOT / "assets/brand"
+CANVAS = 1152              # 288 dp @ xxxhdpi, the Android 12 SplashScreen icon canvas
+SAFE_RADIUS = 372          # the 192 dp mask circle has radius 384 px; keep a small margin
+MARK_CENTER = (560, 745)   # centre of the torn-paper mark in the 1080x1920 artwork
+DISC = 330                 # artwork radius that contains the paper ring and the three sparks
+FEATHER = 90               # soft edge (artwork px) that fades into the background colour
+WORDMARK_TOP = 997         # first artwork row that may contain the wordmark letters
+
+# Gaze centre of the Flutter splash (SplashPage._leftPupilCenter / _rightPupilCenter at t = 0).
+LEFT = dict(center=(524.0, 824.0), size=(56, 66), sclera=(515.8, 831.2, 78.5, 76.6), image="pupil_left.png")
+RIGHT = dict(center=(656.0, 791.0), size=(48, 58), sclera=(648.53, 793.66, 64.9, 65.4), image="pupil_right.png")
+
+
+def composite_start_frame() -> Image.Image:
+    art = Image.open(BRAND / "splash_eyeless.png").convert("RGBA")
+    for eye in (LEFT, RIGHT):
+        cx, cy, rx, ry = eye["sclera"]
+        clip = Image.new("L", art.size, 0)
+        ImageDraw.Draw(clip).ellipse((cx - rx, cy - ry, cx + rx, cy + ry), fill=255)
+        pupil = Image.open(BRAND / eye["image"]).convert("RGBA").resize(eye["size"], Image.LANCZOS)
+        layer = Image.new("RGBA", art.size, (0, 0, 0, 0))
+        px, py = eye["center"]
+        layer.alpha_composite(pupil, (round(px - eye["size"][0] / 2), round(py - eye["size"][1] / 2)))
+        # Same as the ClipOval of the Flutter splash.
+        alpha = np.minimum(np.array(layer.split()[3]), np.array(clip))
+        layer.putalpha(Image.fromarray(alpha))
+        art.alpha_composite(layer)
+    return art
+
+
+def background_color(frame: Image.Image) -> tuple:
+    """Average colour of the artwork in the ring just outside the disc: what the native surface should look like."""
+    rgb = np.array(frame.convert("RGB")).astype(float)
+    h, w = rgb.shape[:2]
+    yy, xx = np.mgrid[0:h, 0:w]
+    dist = np.hypot(xx - MARK_CENTER[0], yy - MARK_CENTER[1])
+    ring = (dist > DISC - 20) & (dist < DISC + 40) & (rgb.max(axis=2) < 170)  # skip paper, sparks and the wordmark
+    return tuple(int(round(v)) for v in np.median(rgb[ring], axis=0))
 
 
 def main() -> None:
-    rgb = np.array(Image.open(SOURCE).convert("RGB").crop(CROP))
-    r, g, b = (rgb[..., i].astype(int) for i in range(3))
-    # Sparks are saturated pink-lilac; paper and eye whites are near-white lilac.
-    sparks = ((r > 215) & (b > 235) & (r - g > 38)).astype(np.uint8) * 255
-    bright = ((rgb.min(axis=2) > 150) & (sparks == 0)).astype(np.uint8) * 255
-    bright[-60:, :] = 0  # wordmark remnants at the bottom edge of the crop
-    sparks[-60:, :] = 0
-    sparks[300:, :] = 0   # sparks sit in the upper right; anything lower is wordmark
-    sparks[:, :450] = 0
-    # The torn-paper ring: keep its large pieces and fill the whole ring (the dark hole with the eyes is inside it).
-    count, labels, stats, _ = cv2.connectedComponentsWithStats(bright, 8)
-    keep = np.zeros_like(bright)
-    for index in range(1, count):
-        if stats[index, cv2.CC_STAT_AREA] > 1500:
-            keep[labels == index] = 255
-    points = cv2.findNonZero(keep)
-    hull = cv2.convexHull(points)
-    hull_mask = np.zeros_like(bright)
-    cv2.fillConvexPoly(hull_mask, hull, 255)
-    # The hull of the paper ring, with its corners rounded (blur + threshold) so it reads as the torn hole's outline.
-    mask = cv2.GaussianBlur(hull_mask, (0, 0), 14)
-    mask = (mask > 150).astype(np.uint8) * 255
-    mask = cv2.erode(mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (13, 13)))
-    # The three sparks keep their own shape.
-    sparks = cv2.morphologyEx(sparks, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
-    sparks = cv2.dilate(sparks, np.ones((3, 3), np.uint8))
-    mask = cv2.bitwise_or(mask, sparks)
-    soft = cv2.GaussianBlur(mask, (0, 0), 1.6)
-    rgba = np.dstack([rgb, soft])
-    glyph = Image.fromarray(rgba, "RGBA")
-    box = glyph.getbbox()
-    glyph = glyph.crop(box)
-
-    # Scale so the farthest artwork pixel from the centre stays inside the safe radius.
-    alpha = np.array(glyph.split()[3]) > 40
-    ys, xs = np.nonzero(alpha)
-    cx, cy = (glyph.width - 1) / 2, (glyph.height - 1) / 2
-    farthest = float(np.sqrt((xs - cx) ** 2 + (ys - cy) ** 2).max())
-    scale = SAFE_RADIUS / farthest
-    glyph = glyph.resize((round(glyph.width * scale), round(glyph.height * scale)), Image.LANCZOS)
-
+    frame = composite_start_frame()
+    bg = background_color(frame)
+    cx, cy = MARK_CENTER
+    crop = frame.crop((cx - DISC, cy - DISC, cx + DISC, cy + DISC))
+    # Radial alpha: opaque inside, fading to transparent at the disc edge.
+    size = crop.width
+    yy, xx = np.mgrid[0:size, 0:size]
+    radius = np.hypot(xx - (size - 1) / 2, yy - (size - 1) / 2)
+    alpha = np.clip((DISC - radius) / FEATHER, 0.0, 1.0)
+    alpha = alpha * alpha * (3 - 2 * alpha)  # smoothstep
+    # The tops of the wordmark letters start just below the paper ring: cut them off (the mark is shown alone).
+    art_y = yy + (cy - DISC)
+    alpha = alpha * np.clip((WORDMARK_TOP - art_y) / 8.0, 0.0, 1.0)
+    crop.putalpha(Image.fromarray((alpha * 255).astype(np.uint8)))
+    scale = SAFE_RADIUS / DISC
+    glyph = crop.resize((round(size * scale), round(size * scale)), Image.LANCZOS)
     canvas = Image.new("RGBA", (CANVAS, CANVAS), (0, 0, 0, 0))
-    # A soft brand-purple shadow gives the white paper a readable edge on the light splash surface.
-    shadow = Image.new("RGBA", (CANVAS, CANVAS), (0, 0, 0, 0))
-    offset = ((CANVAS - glyph.width) // 2, (CANVAS - glyph.height) // 2)
-    shade = Image.new("RGBA", glyph.size, (91, 33, 182, 255))
-    shade.putalpha(glyph.split()[3].point(lambda v: int(v * 0.32)))
-    shadow.alpha_composite(shade, (offset[0], offset[1] + 10))
-    shadow = shadow.filter(ImageFilter.GaussianBlur(14))
-    canvas.alpha_composite(shadow)
-    canvas.alpha_composite(glyph, offset)
+    canvas.alpha_composite(glyph, ((CANVAS - glyph.width) // 2, (CANVAS - glyph.height) // 2))
     out = ROOT / "android/app/src/main/res/drawable-nodpi/native_splash_icon.png"
     out.parent.mkdir(parents=True, exist_ok=True)
     canvas.save(out, optimize=True)
-    print(out.relative_to(ROOT), canvas.size, f"glyph {glyph.size}, scale {scale:.3f}")
+    print(out.relative_to(ROOT), canvas.size, "background", "#%02X%02X%02X" % bg)
 
 
 if __name__ == "__main__":

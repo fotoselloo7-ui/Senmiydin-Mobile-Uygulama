@@ -80,6 +80,8 @@ android {
     buildTypes {
         release {
             signingConfig = if (hasReleaseSigning) signingConfigs.getByName("release") else null
+            // Keep rules for reflection-created classes (WorkManager's Room database) that R8 would otherwise strip.
+            proguardFiles("proguard-rules.pro")
         }
     }
 }

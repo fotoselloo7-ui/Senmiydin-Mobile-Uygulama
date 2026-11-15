@@ -515,4 +515,31 @@ void main() {
       expect((right() - rightCenter0).abs(), lessThan(2.0));
     },
   );
+
+  testWidgets(
+    'The gaze still plays when the system animation scale is off (disableAnimations): the eyes visibly move',
+    (t) async {
+      final store = AppStore();
+      addTearDown(store.dispose);
+      await t.pumpWidget(
+        StoreScope(
+          store: store,
+          child: const MediaQuery(
+            data: MediaQueryData(disableAnimations: true),
+            child: MaterialApp(home: SplashPage()),
+          ),
+        ),
+      );
+      double left() => t
+          .widget<Positioned>(find.byKey(const Key('splash-pupil-left')))
+          .left!;
+      final start = left();
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 500));
+      expect(left(), greaterThan(start + 25));
+      await t.pump(const Duration(milliseconds: 500));
+      expect(left(), lessThan(start - 25));
+      await t.pump(const Duration(milliseconds: 600));
+    },
+  );
 }

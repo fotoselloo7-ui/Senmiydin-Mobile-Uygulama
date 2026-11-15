@@ -141,53 +141,50 @@ class _ProfileContentState extends State<ProfileContent> {
     ),
   );
 
-  Widget _buildProfileTab(String title, IconData icon) {
+  /// Icon-only profile tab: the name stays as the accessibility label and the long-press tooltip.
+  Widget _buildProfileTab(String title, IconData icon, IconData activeIcon) {
     final active = tab == title;
+    final label = tr(title);
     return Expanded(
-      child: InkWell(
-        onTap: () => setState(() => tab = title),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    icon,
-                    size: 16,
-                    color: active ? AppColors.primary : AppColors.textSecondary,
-                  ),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: active
-                              ? FontWeight.w700
-                              : FontWeight.w600,
-                          color: active
-                              ? AppColors.primary
-                              : AppColors.textSecondary,
-                        ),
-                      ),
+      child: Semantics(
+        button: true,
+        selected: active,
+        label: label,
+        excludeSemantics: true,
+        child: Tooltip(
+          message: label,
+          child: InkWell(
+            key: Key('profile-tab-$title'),
+            onTap: () => setState(() => tab = title),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 12, bottom: 10),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 160),
+                    child: Icon(
+                      active ? activeIcon : icon,
+                      key: ValueKey(active),
+                      size: 25,
+                      color: active
+                          ? AppColors.primary
+                          : AppColors.textSecondary,
                     ),
                   ),
-                ],
-              ),
+                ),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  height: 3,
+                  width: active ? 30 : 0,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ],
             ),
-            Container(
-              height: 2.5,
-              decoration: BoxDecoration(
-                color: active ? AppColors.primary : Colors.transparent,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -443,7 +440,10 @@ class _ProfileContentState extends State<ProfileContent> {
           if (!own) ...[
             if (isBlocked)
               InfoNote(
-                trf('@{0} engellendi. İletişim kurmak için profil menüsünden engeli kaldırabilirsin.', [p.handle]),
+                trf(
+                  '@{0} engellendi. İletişim kurmak için profil menüsünden engeli kaldırabilirsin.',
+                  [p.handle],
+                ),
                 icon: Icons.block,
               )
             else
@@ -553,104 +553,6 @@ class _ProfileContentState extends State<ProfileContent> {
                 ],
               ),
             const SizedBox(height: 16),
-          ] else ...[
-            Row(
-              children: [
-                Expanded(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => openPage(context, '/edit-profile'),
-                      borderRadius: BorderRadius.circular(24),
-                      child: Ink(
-                        height: 46,
-                        decoration: BoxDecoration(
-                          gradient: AppShape.blueGradient,
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primary.withValues(alpha: .24),
-                              blurRadius: 10,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.edit_outlined,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                            SizedBox(width: 8),
-                            Flexible(
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  'Profili Düzenle',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => openPage(context, '/settings'),
-                      borderRadius: BorderRadius.circular(24),
-                      child: Container(
-                        height: 46,
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceBlue,
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(
-                            color: const Color(0xFFD6E4F7),
-                            width: 1.2,
-                          ),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.settings_outlined,
-                              color: AppColors.navy,
-                              size: 18,
-                            ),
-                            SizedBox(width: 8),
-                            Flexible(
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  'Ayarlar',
-                                  style: TextStyle(
-                                    color: AppColors.navy,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
           ],
           Stack(
             alignment: Alignment.bottomCenter,
@@ -658,13 +560,26 @@ class _ProfileContentState extends State<ProfileContent> {
               Container(height: 1, color: AppColors.line),
               Row(
                 children: [
-                  _buildProfileTab('Paylaşımlar', Icons.view_agenda_outlined),
-                  _buildProfileTab('Karşılaşmalar', Icons.auto_awesome_rounded),
-                  _buildProfileTab('Medya', Icons.photo_library_outlined),
+                  _buildProfileTab(
+                    'Paylaşımlar',
+                    Icons.view_agenda_outlined,
+                    Icons.view_agenda_rounded,
+                  ),
+                  _buildProfileTab(
+                    'Karşılaşmalar',
+                    Icons.auto_awesome_outlined,
+                    Icons.auto_awesome_rounded,
+                  ),
+                  _buildProfileTab(
+                    'Medya',
+                    Icons.photo_library_outlined,
+                    Icons.photo_library_rounded,
+                  ),
                   if (own)
                     _buildProfileTab(
                       'Kaydedilenler',
                       Icons.bookmark_outline_rounded,
+                      Icons.bookmark_rounded,
                     ),
                 ],
               ),

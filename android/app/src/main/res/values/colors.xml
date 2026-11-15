@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#3B046E</color>
-    <!-- Native splash surface: clean white. The brand purple comes from the icon itself. -->
-    <color name="launch_background">#FFFFFF</color>
+    <!-- Native splash surface: the brand purple of the animated splash (lib/screens/auth.dart _nativeSurface) with the same mark. -->
+    <color name="launch_background">#3A027C</color>
 </resources>

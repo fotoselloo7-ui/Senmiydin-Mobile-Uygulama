@@ -63,6 +63,11 @@ class AppDrawer extends StatelessWidget {
       route: '/interests',
     ),
     _DrawerItemDef(
+      title: 'Profili Düzenle',
+      icon: Icons.edit_outlined,
+      route: '/edit-profile',
+    ),
+    _DrawerItemDef(
       title: 'Filtreler',
       icon: Icons.tune_rounded,
       route: '/filters',
