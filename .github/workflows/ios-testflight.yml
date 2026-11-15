@@ -69,13 +69,10 @@ jobs:
         run: |
           flutter build ios --release --no-codesign             --build-number=$((GITHUB_RUN_NUMBER + 10))             --dart-define-from-file=config/production.local.json
 
-      - name: Create signed archive (Apple cloud-managed signing via API key)
-        env:
-          API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
-          API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      - name: Create unsigned archive (signing happens at export, which needs no registered devices)
         run: |
           set -euo pipefail
-          xcodebuild             -workspace ios/Runner.xcworkspace             -scheme Runner             -configuration Release             -sdk iphoneos             -destination 'generic/platform=iOS'             -archivePath "$RUNNER_TEMP/Runner.xcarchive"             -allowProvisioningUpdates             -authenticationKeyPath "$HOME/.appstoreconnect/private_keys/AuthKey_$API_KEY_ID.p8"             -authenticationKeyID "$API_KEY_ID"             -authenticationKeyIssuerID "$API_ISSUER_ID"             DEVELOPMENT_TEAM=7YH3522U6V             CODE_SIGN_STYLE=Automatic             archive
+          xcodebuild             -workspace ios/Runner.xcworkspace             -scheme Runner             -configuration Release             -sdk iphoneos             -destination 'generic/platform=iOS'             -archivePath "$RUNNER_TEMP/Runner.xcarchive"             CODE_SIGNING_ALLOWED=NO             CODE_SIGNING_REQUIRED=NO             CODE_SIGN_IDENTITY=""             DEVELOPMENT_TEAM=7YH3522U6V             archive
 
       - name: Export and upload to TestFlight
         env:
