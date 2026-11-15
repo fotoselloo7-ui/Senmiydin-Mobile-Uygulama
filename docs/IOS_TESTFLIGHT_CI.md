@@ -11,10 +11,14 @@ Windows cannot archive iOS, so `.github/workflows/ios-testflight.yml` builds, si
 `APP_STORE_CONNECT_ISSUER_ID`, `IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64`, `IOS_OAUTH_XCCONFIG_BASE64`,
 `PRODUCTION_CONFIG_JSON_BASE64`. The originals are in the git-ignored `secrets/` folder (see `secrets/README.md`).
 
-**Status: WAITING FOR GITHUB ACTIONS BILLING.** The first run (43734665363) never started: "recent account payments have
-failed or your spending limit needs to be increased" — the free plan's included usage ($13.83) is used up this month
-(macOS minutes are metered). Fix by adding a spending limit/payment method (GitHub → Settings → Billing → Budgets), or
-make the repository public (free minutes), or run the same steps on a Mac. Then re-run the workflow. The iOS build
-itself is untested until it runs once (Pods, Firebase, Sign in with Apple, AdMob), so expect a fix round.
+**Status (15 Nov 2026): WORKING.** Run 43741862685 built, signed and uploaded build **0.1.0 (15)** to App Store Connect; it is
+VALID, export compliance is set (no non-exempt encryption), it is attached to the App Store version (version string changed
+from 1.0 to 0.1.0 to match the build) and available to the TestFlight group "Internal" (account holder added). Fixes that
+were needed: public repo (free macOS minutes), archive unsigned (the team has no registered device for a development
+profile) and strip vendor signatures from the embedded frameworks so export re-signs them (Google Mobile Ads / UMP).
+Build number is `GITHUB_RUN_NUMBER + 10`, so every run is unique. `tool/asc_api.py` talks to the App Store Connect API.
+
+**Still needed before "Add for Review":** review contact phone number, copyright confirmation, content-rights and IDFA
+answers, App Privacy questionnaire (web only), reviewer sign-in (`secrets/review/REVIEW_ACCOUNT.txt`) and a deployed backend.
 
 The app is iPhone-only (`TARGETED_DEVICE_FAMILY = 1`), so no iPad screenshots are required.
