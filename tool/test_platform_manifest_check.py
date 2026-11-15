@@ -99,6 +99,20 @@ class AndroidManifestTests(unittest.TestCase):
         link = '<activity android:name="com.example.Link" android:exported="false"><intent-filter><data android:scheme="https" android:host="senmiydin.com" /></intent-filter></activity>'
         self.assertIn("Deep link schemes", failed(run(manifest(extra_application=link))))
 
+    def test_verified_app_links_for_shared_posts_and_notes_are_allowed(self):
+        link = (
+            '<activity android:name="com.example.Link" android:exported="false"><intent-filter android:autoVerify="true">'
+            '<data android:scheme="https" android:host="senmiydin.com" android:pathPrefix="/p/" />'
+            '<data android:scheme="https" android:host="senmiydin.com" android:pathPrefix="/n/" /></intent-filter></activity>'
+        )
+        self.assertEqual(failed(run(manifest(extra_application=link))), set())
+
+    def test_app_links_without_auto_verify_or_with_other_paths_fail(self):
+        unverified = '<activity android:name="com.example.Link" android:exported="false"><intent-filter><data android:scheme="https" android:host="senmiydin.com" android:pathPrefix="/p/" /></intent-filter></activity>'
+        self.assertIn("App Links are auto-verified", failed(run(manifest(extra_application=unverified))))
+        broad = '<activity android:name="com.example.Link" android:exported="false"><intent-filter android:autoVerify="true"><data android:scheme="https" android:host="senmiydin.com" android:pathPrefix="/admin/" /></intent-filter></activity>'
+        self.assertIn("Deep link schemes", failed(run(manifest(extra_application=broad))))
+
     def test_local_endpoints_must_not_leak_into_the_release_manifest(self):
         leak = '<meta-data android:name="api" android:value="http://10.0.2.2:8000" />'
         self.assertIn("No debug / local endpoints in the manifest", failed(run(manifest(extra_application=leak))))

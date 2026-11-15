@@ -18,6 +18,9 @@ class MapNote extends Model
 
     protected static function booted(): void
     {
+        static::creating(function (self $note): void {
+            $note->public_id ??= \Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(12));
+        });
         // Permanent deletion (owner "Kalıcı Sil", the retention purge) takes the private photo with it.
         static::forceDeleted(function (self $note): void {
             if ($note->image_path) {

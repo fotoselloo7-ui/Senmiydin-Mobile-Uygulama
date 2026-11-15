@@ -90,7 +90,7 @@ class AgeSafetyTest extends TestCase
     {
         $this->as($this->teenA)->putJson('/api/v1/profile', ['birth_date' => '1990-01-01', 'age_band' => 'adult'])->assertStatus(200);
         $this->assertSame('2010-06-01', $this->teenA->fresh()->birth_date->toDateString());
-        $this->as($this->teenA)->getJson('/api/v1/profile')->assertJsonPath('data.age_band', 'teen');
+        $this->as($this->teenA)->getJson('/api/v1/profile')->assertJsonPath('data.age_band', 'teen')->assertJsonPath('data.created_at', fn ($value) => is_string($value) && strtotime($value) !== false);
     }
 
     public function test_registration_accepts_sixteen_and_rejects_fifteen(): void

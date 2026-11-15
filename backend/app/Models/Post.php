@@ -25,6 +25,13 @@ class Post extends Model
         return ['is_anonymous' => 'boolean', 'comments_enabled' => 'boolean', 'occurred_at' => 'datetime'];
     }
 
+    protected static function booted(): void
+    {
+        static::creating(function (self $post): void {
+            $post->public_id ??= \Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(12));
+        });
+    }
+
     public const STORY_PENDING = 'pending';
     public const STORY_REJECTED = 'rejected';
     public const STORY_PUBLISHED = 'published';

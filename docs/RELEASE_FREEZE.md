@@ -8,6 +8,8 @@
 
 Ödeme, jeton, uygulama içi satın alma, sesli/görüntülü arama, rastgele anonim sohbet **yoktur** ve eklenmeyecektir. Hediyeler ücretsizdir; veri şeması ileride ücretli hediyeye hazırdır ama bu sürümde ödeme akışı yoktur.
 
+> **Freeze notu (15 Kasım 2026):** Kullanıcının açıkça istediği dört yayın hazırlığı özelliği freeze'e alındı: Android native splash, göz animasyonu, haftalık değerlendirme daveti ve herkese açık içeriğin dış paylaşım kartı/bağlantısı (`docs/VALIDATION.md` ilk bölüm). Bunlar tamamlanıp test edildi; kapsam yine donuktur.
+
 ## Freeze sonrası yalnızca şunlar kabul edilir
 
 1. **Blokaj hatası** — uygulama açılmıyor, giriş/kayıt çalışmıyor, veri kaybı, çökme.

@@ -19,6 +19,7 @@ import '../widgets/common.dart';
 import '../widgets/location_ui.dart';
 import '../widgets/native_feed_ad.dart';
 import '../widgets/notifications_sheet.dart';
+import '../widgets/review_invite.dart';
 import '../widgets/social.dart';
 import '../widgets/social_page.dart';
 import 'discovery.dart';
@@ -35,6 +36,7 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int tab = 0;
   RoutePolling? encounterClock;
+  Timer? reviewTimer;
   int configTicks = 0;
   @override
   void didChangeDependencies() {
@@ -57,12 +59,30 @@ class _HomeShellState extends State<HomeShell> {
   @override
   void dispose() {
     encounterClock?.dispose();
+    reviewTimer?.cancel();
     super.dispose();
+  }
+
+  /// The weekly review invitation (see ReviewPrompt): only a moment after a meaningful action, once the person is
+  /// back on the home screen, and never on top of another page or dialog.
+  void scheduleReviewInvite(AppStore store) {
+    if (!store.reviewInviteReady || (reviewTimer?.isActive ?? false)) return;
+    reviewTimer = Timer(const Duration(milliseconds: 1600), () {
+      if (!mounted || !store.reviewInviteReady) return;
+      if (ModalRoute.of(context)?.isCurrent != true) {
+        // Something is open on top (the post that was just commented on, a dialog ...): look again a moment later, so
+        // the invitation comes once the person is back here and never on top of what they are doing.
+        scheduleReviewInvite(store);
+        return;
+      }
+      unawaited(showReviewInvite(context, store));
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final store = StoreScope.of(context);
+    scheduleReviewInvite(store);
     if (store.maintenanceNotice case final notice?) {
       return AppPage(
         title: tr('Bakım çalışması'),

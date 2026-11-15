@@ -475,7 +475,7 @@ void main() {
   }
 
   testWidgets(
-    'Animated splash moves only pupils left then right within sclera ClipOval and settles at center',
+    'Animated splash moves only pupils centre, a little right, a little left, then settles at the centre (about 1.4 s)',
     (t) async {
       final store = AppStore();
       addTearDown(store.dispose);
@@ -489,42 +489,30 @@ void main() {
       );
 
       expect(find.byType(ClipOval), findsNWidgets(2));
-      final leftCenter0 = t
+      double left() => t
           .widget<Positioned>(find.byKey(const Key('splash-pupil-left')))
           .left!;
-      final rightCenter0 = t
+      double right() => t
           .widget<Positioned>(find.byKey(const Key('splash-pupil-right')))
           .left!;
+      final leftCenter0 = left();
+      final rightCenter0 = right();
 
-      // Start the ticker scheduled in addPostFrameCallback, then advance to t=600ms (holding left gaze)
+      // Start the ticker scheduled in addPostFrameCallback, then advance to t=500ms (holding the right gaze)
       await t.pump();
-      await t.pump(const Duration(milliseconds: 600));
-      final leftAtLeftGaze = t
-          .widget<Positioned>(find.byKey(const Key('splash-pupil-left')))
-          .left!;
-      final rightAtLeftGaze = t
-          .widget<Positioned>(find.byKey(const Key('splash-pupil-right')))
-          .left!;
-      expect(leftAtLeftGaze, lessThan(leftCenter0 - 25));
-      expect(rightAtLeftGaze, lessThan(rightCenter0 - 20));
+      await t.pump(const Duration(milliseconds: 500));
+      expect(left(), greaterThan(leftCenter0 + 25));
+      expect(right(), greaterThan(rightCenter0 + 20));
 
-      // Pump to t=950ms (returned to center)
-      await t.pump(const Duration(milliseconds: 350));
-      final leftAtMidCenter = t
-          .widget<Positioned>(find.byKey(const Key('splash-pupil-left')))
-          .left!;
-      expect((leftAtMidCenter - leftCenter0).abs(), lessThan(2.0));
+      // t=1000ms: holding the left gaze
+      await t.pump(const Duration(milliseconds: 500));
+      expect(left(), lessThan(leftCenter0 - 25));
+      expect(right(), lessThan(rightCenter0 - 20));
 
-      // Pump to t=1300ms (holding right gaze)
-      await t.pump(const Duration(milliseconds: 350));
-      final leftAtRightGaze = t
-          .widget<Positioned>(find.byKey(const Key('splash-pupil-left')))
-          .left!;
-      final rightAtRightGaze = t
-          .widget<Positioned>(find.byKey(const Key('splash-pupil-right')))
-          .left!;
-      expect(leftAtRightGaze, greaterThan(leftCenter0 + 25));
-      expect(rightAtRightGaze, greaterThan(rightCenter0 + 20));
+      // t=1400ms: back at the centre, and the animation is over
+      await t.pump(const Duration(milliseconds: 400));
+      expect((left() - leftCenter0).abs(), lessThan(2.0));
+      expect((right() - rightCenter0).abs(), lessThan(2.0));
     },
   );
 }

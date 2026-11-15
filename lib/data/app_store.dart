@@ -16,6 +16,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 
 import 'account_api.dart';
+import 'review_prompt.dart';
 import 'encounter_api.dart';
 import 'communication_api.dart';
 import 'push_client.dart';
@@ -33,7 +34,9 @@ class AppStore extends ChangeNotifier {
     LocationDevice? locationDevice,
     ComposeDraftStore? drafts,
     AdsService? ads,
+    ReviewPrompt? reviews,
   }) : drafts = drafts ?? ComposeDraftStore(),
+       reviews = reviews ?? ReviewPrompt(),
        ads = ads ?? AdsService(),
        _api = api,
        auth = api == null ? null : AuthService(api),
@@ -605,6 +608,7 @@ class AppStore extends ChangeNotifier {
       ..storyStatus = incoming.storyStatus
       ..storyRevision = incoming.storyRevision
       ..storyParticipants = incoming.storyParticipants
+      ..shareUrl = incoming.shareUrl
       ..cityWide = incoming.cityWide
       ..createdAt = incoming.createdAt
       ..time = incoming.time;
@@ -680,6 +684,20 @@ class AppStore extends ChangeNotifier {
     )).map(_rememberPost);
   }
 
+  /// Asks the server what a shared link points to for this account: `('post', id)` or `('map_note', id)`, or null
+  /// when it is not available to this account (removed, private, blocked, other age group ...).
+  Future<(String, int)?> resolveShareLink(String publicId) async {
+    try {
+      final data = await _social!.object('GET', 'share-links/$publicId');
+      final id = (data['id'] as num?)?.toInt();
+      final type = data['type'] as String?;
+      return id == null || type == null ? null : (type, id);
+    } on ApiFailure catch (failure) {
+      if (failure.status == 404) return null;
+      rethrow;
+    }
+  }
+
   Future<Post> loadPost(String id) async =>
       _rememberPost(await _social!.object('GET', 'posts/$id'));
 
@@ -734,6 +752,7 @@ class AppStore extends ChangeNotifier {
       postsVersion++;
       notifyListeners();
     }
+    unawaited(noteMeaningfulAction());
     return post;
   }
 
@@ -909,6 +928,7 @@ class AppStore extends ChangeNotifier {
     post.commentCount++;
     commentsVersion++;
     notifyListeners();
+    unawaited(noteMeaningfulAction());
   }
 
   Future<void> removeComment(Post post, Comment comment) async {
@@ -1026,6 +1046,11 @@ class AppStore extends ChangeNotifier {
         await drafts.clear('account-$id');
       } catch (_) {
         // Best effort: the account is gone either way.
+      }
+      try {
+        await reviews.forget(id);
+      } catch (_) {
+        // Only bookkeeping.
       }
     }
     _clearAccount();
@@ -1160,6 +1185,7 @@ class AppStore extends ChangeNotifier {
     _nearbyCache.clear();
     _account = null;
     _accountPerson = null;
+    _reviewInviteReady = false;
     authenticated = false;
     ads.reset();
     push?.endSession();
@@ -1237,6 +1263,38 @@ class AppStore extends ChangeNotifier {
   String city = 'Alanya';
   bool authenticated = false;
   Person get me => _accountPerson ?? people.first;
+
+  // ------------------------------------------------------------------------------------------------ review invitation
+
+  /// The app's own weekly "rate SenMiydin?" invitation (see [ReviewPrompt]).
+  final ReviewPrompt reviews;
+  bool _reviewInviteReady = false;
+
+  /// An invitation is due: a meaningful action just succeeded and the account qualifies. The home screen shows it a
+  /// moment after the person is back there, never while something else is going on.
+  bool get reviewInviteReady => _reviewInviteReady;
+
+  /// A post, comment, message, Map Note or reply of the signed-in account went through.
+  Future<void> noteMeaningfulAction() async {
+    final account = _account;
+    if (!connected || account == null) return;
+    try {
+      await reviews.recordAction(account.id);
+      if (await reviews.isEligible(account.id, account.createdAt) && !_reviewInviteReady) {
+        _reviewInviteReady = true;
+        notifyListeners();
+      }
+    } catch (_) {
+      // Bookkeeping must never break the action that just succeeded.
+    }
+  }
+
+  /// The invitation is on screen now (or was dropped): start the weekly cooldown.
+  Future<void> reviewInviteShown() async {
+    _reviewInviteReady = false;
+    final account = _account;
+    if (account != null) await reviews.markShown(account.id);
+  }
   Person person(String id) => id == _accountPerson?.id
       ? _accountPerson!
       : _remotePeople[id] ?? people.firstWhere((p) => p.id == id);

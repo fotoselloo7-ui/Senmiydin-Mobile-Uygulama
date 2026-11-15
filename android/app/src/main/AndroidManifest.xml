@@ -23,6 +23,8 @@
         <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="${admobAppId}" />
         <!-- SenMiydin location is never an ad signal; Google's own advertising-id based measurement stays off. -->
         <meta-data android:name="com.google.android.gms.ads.DELAY_APP_MEASUREMENT_INIT" android:value="true" />
+        <!-- Share links are routed by the app itself (app_links): Flutter must not also turn the link path into a route. -->
+        <meta-data android:name="flutter_deeplinking_enabled" android:value="false" />
         <meta-data android:name="firebase_messaging_auto_init_enabled" android:value="false" />
         <meta-data android:name="firebase_analytics_collection_enabled" android:value="false" />
         <activity
@@ -45,6 +47,15 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <!-- Android App Links for shared posts and Map Notes: https://<host>/p/<id> and /n/<id>. Verified through
+                 /.well-known/assetlinks.json (served once the release signing fingerprint is configured on the server). -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="${appLinkHost}" android:pathPrefix="/p/" />
+                <data android:scheme="https" android:host="${appLinkHost}" android:pathPrefix="/n/" />
             </intent-filter>
         </activity>
         <activity android:name="com.aboutyou.dart_packages.sign_in_with_apple.SignInWithAppleCallback" android:exported="true">
@@ -71,6 +82,8 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- Instagram Stories hand-off: only to see whether Instagram is installed. -->
+        <package android:name="com.instagram.android" />
     </queries>
 </manifest>
 

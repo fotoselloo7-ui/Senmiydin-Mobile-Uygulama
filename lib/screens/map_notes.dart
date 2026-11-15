@@ -22,6 +22,7 @@ import '../widgets/account_action.dart';
 import '../widgets/common.dart';
 import '../widgets/map_attribution.dart';
 import '../widgets/map_note_widgets.dart';
+import '../widgets/share_sheet.dart';
 import '../widgets/social_page.dart';
 import '../core/app_locale.dart';
 
@@ -224,6 +225,7 @@ class _MapNoteDetailPageState extends State<MapNoteDetailPage>
         requestId: requestId,
       );
       if (!mounted) return;
+      unawaited(StoreScope.of(context).noteMeaningfulAction());
       text.clear();
       requestId = const Uuid().v4();
       FocusManager.instance.primaryFocus?.unfocus();
@@ -366,6 +368,24 @@ class _MapNoteDetailPageState extends State<MapNoteDetailPage>
                         MapNoteLetter(
                           item,
                           actions: [
+                            // A live public letter can be shared as a card; once it left the map it has no link.
+                            if (item.shareUrl != null)
+                              TextButton.icon(
+                                key: const Key('share-map-note'),
+                                onPressed: () => showShareSheet(
+                                  context,
+                                  url: item.shareUrl!,
+                                  build: (service) => service.noteCard(
+                                    item,
+                                    StoreScope.of(context),
+                                  ),
+                                ),
+                                icon: const Icon(
+                                  Icons.ios_share_rounded,
+                                  size: 18,
+                                ),
+                                label: Text(tr('Paylaş')),
+                              ),
                             if (item.mine && item.isActive)
                               TextButton.icon(
                                 key: const Key('archive-map-note'),
@@ -655,6 +675,7 @@ class _MapNoteComposePageState extends State<MapNoteComposePage>
         requestId: requestId,
         image: photo,
       );
+      unawaited(store.noteMeaningfulAction());
       if (mounted) {
         Navigator.pop(context, created);
         toast(context, 'Notun haritaya bırakıldı.');

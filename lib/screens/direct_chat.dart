@@ -465,6 +465,7 @@ class _DirectChatPageState extends State<DirectChatPage>
           sendError = null;
         });
         store!.communicationChanged();
+        unawaited(store!.noteMeaningfulAction());
         if (scroll.hasClients) scroll.jumpTo(0);
       } on ApiFailure catch (failure) {
         if (mounted) setState(() => sendError = failure.detail);
@@ -552,6 +553,7 @@ class _DirectChatPageState extends State<DirectChatPage>
           sendError = null;
         });
         store!.communicationChanged();
+        unawaited(store!.noteMeaningfulAction());
         if (scroll.hasClients) scroll.jumpTo(0);
       } on ApiFailure catch (failure) {
         // The recording stays in the preview so the same request can be retried.
@@ -675,6 +677,7 @@ class _DirectChatPageState extends State<DirectChatPage>
           sendError = null;
         });
         store!.communicationChanged();
+        unawaited(store!.noteMeaningfulAction());
         if (scroll.hasClients) scroll.jumpTo(0);
       } on ApiFailure catch (failure) {
         if (mounted) setState(() => sendError = failure.detail);
@@ -705,6 +708,7 @@ class _DirectChatPageState extends State<DirectChatPage>
           sendError = null;
         });
         store!.communicationChanged();
+        unawaited(store!.noteMeaningfulAction());
         if (scroll.hasClients) scroll.jumpTo(0);
       } on ApiFailure catch (failure) {
         if (mounted) setState(() => sendError = failure.detail);

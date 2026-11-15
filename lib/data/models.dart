@@ -149,11 +149,15 @@ class Post {
     this.occurredAt,
     this.matchHint,
     this.travel,
+    this.shareUrl,
   }) : _time = time,
        comments = comments ?? [];
   DateTime? occurredAt;
   String? matchHint;
   TravelDetails? travel;
+
+  /// Public https link (null when the server says this post may not leave the app: private, teen, removed ...).
+  String? shareUrl;
   final String id, authorId;
   String text;
   final PostKind kind;

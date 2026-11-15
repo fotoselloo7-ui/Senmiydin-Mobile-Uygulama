@@ -15,6 +15,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/theme.dart';
 import 'data/account_api.dart';
 import 'data/app_store.dart';
+import 'data/deep_links.dart';
 import 'data/communication_api.dart';
 import 'data/encounter_api.dart';
 import 'data/models.dart';
@@ -95,10 +96,61 @@ class _SenMiydinAppState extends State<SenMiydinApp> {
     }
   }
 
+  DeepLinks? _deepLinks;
+  ShareLink? _pendingLink, _lastLink;
+  DateTime? _lastLinkAt;
+
+  /// A shared link was opened: once the person is signed in, resolve it and open the post / letter inside the app.
+  void openShareLink(ShareLink link) {
+    // The same link arrives twice (as a route and from app_links): open it once.
+    final now = DateTime.now();
+    if (link == _lastLink &&
+        _lastLinkAt != null &&
+        now.difference(_lastLinkAt!) < const Duration(seconds: 4)) {
+      return;
+    }
+    _lastLink = link;
+    _lastLinkAt = now;
+    _pendingLink = link;
+    unawaited(_openPendingLink());
+  }
+
+  Future<void> _openPendingLink() async {
+    final link = _pendingLink;
+    if (link == null || !store.connected || !store.authenticated) return;
+    final navigator = _navigator.currentState;
+    if (navigator == null) return;
+    _pendingLink = null;
+    final user = store.account?.id;
+    try {
+      final target = await store.resolveShareLink(link.publicId);
+      if (!mounted || store.account?.id != user) return;
+      if (target == null) {
+        _messenger.currentState?.showSnackBar(
+          SnackBar(content: Text(tr('Bu içerik artık kullanılamıyor.'))),
+        );
+        return;
+      }
+      final (type, id) = target;
+      unawaited(
+        navigator.pushNamed(
+          type == 'map_note' ? '/map-note' : '/post',
+          arguments: type == 'map_note' ? id : '$id',
+        ),
+      );
+    } on ApiFailure {
+      // Offline or a server error: the person can open the link again.
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     _signedIn = store.authenticated;
+    if (store.connected) {
+      _deepLinks = DeepLinks(onLink: openShareLink);
+      unawaited(_deepLinks!.start());
+    }
     store.push?.onOpen = (id) => unawaited(openPush(id));
     store.push?.onForeground = (id) {
       unawaited(store.refreshUnread());
@@ -117,7 +169,9 @@ class _SenMiydinAppState extends State<SenMiydinApp> {
 
   void _sessionChanged() {
     final ended = _signedIn && !store.authenticated;
+    final started = !_signedIn && store.authenticated;
     _signedIn = store.authenticated;
+    if (started) unawaited(_openPendingLink());
     if (ended) {
       setState(() {
         _sessionVersion++;
@@ -130,6 +184,7 @@ class _SenMiydinAppState extends State<SenMiydinApp> {
 
   @override
   void dispose() {
+    unawaited(_deepLinks?.dispose());
     store.push
       ?..onOpen = null
       ..onForeground = null;
@@ -207,6 +262,21 @@ class _SenMiydinAppState extends State<SenMiydinApp> {
         store.authenticated &&
         entryRoutes.contains(settings.name)) {
       return buildRoute(RouteSettings(name: store.accountRoute));
+    }
+    // Android hands a tapped share link to Flutter as a route name (`/p/<id>`) as well as to app_links. It is not a real
+    // page: the landing route closes itself at once and the link is opened through the one shared path below.
+    final linked = parseShareLink(
+      Uri(
+        scheme: 'https',
+        host: shareLinkHosts().first,
+        path: settings.name ?? '',
+      ),
+    );
+    if (linked != null) {
+      return MaterialPageRoute<dynamic>(
+        settings: settings,
+        builder: (_) => _ShareLinkLanding(onReady: () => openShareLink(linked)),
+      );
     }
     final Widget page = switch (settings.name) {
       '/' => const SplashPage(),
@@ -323,4 +393,27 @@ class _SenMiydinAppState extends State<SenMiydinApp> {
     };
     return MaterialPageRoute<dynamic>(settings: settings, builder: (_) => page);
   }
+}
+
+/// The route a tapped share link first lands on: it shows nothing, closes itself and hands the link on.
+class _ShareLinkLanding extends StatefulWidget {
+  const _ShareLinkLanding({required this.onReady});
+  final VoidCallback onReady;
+  @override
+  State<_ShareLinkLanding> createState() => _ShareLinkLandingState();
+}
+
+class _ShareLinkLandingState extends State<_ShareLinkLanding> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      widget.onReady();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => const Scaffold(body: SizedBox.expand());
 }

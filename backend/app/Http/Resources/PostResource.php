@@ -49,6 +49,8 @@ class PostResource extends JsonResource
                 'operator_name' => $travel->operator_name, 'service_code' => $travel->service_code,
                 'vehicle_identifier' => $travel->vehicle_identifier, 'is_public' => $travel->is_public,
             ] : null,
+            // A public https link, only for content that may leave the app (see App\Sharing\PublicShare); null otherwise.
+            'share_url' => \App\Sharing\PublicShare::postUrl($this->resource),
             'created_at' => $this->created_at->toISOString(),
             'updated_at' => $this->updated_at->toISOString(),
             'media' => $this->media->map(fn ($image) => [

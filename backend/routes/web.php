@@ -13,6 +13,13 @@ Route::post('/auth/apple/callback', [App\Http\Controllers\SocialAuthController::
 
 Route::get('/health', App\Http\Controllers\HealthController::class)->middleware('throttle:60,1');
 
+// Public share links (https://<domain>/p/<id>, /n/<id>) and the deep-link verification files.
+Route::get('/p/{publicId}', [App\Http\Controllers\PublicShareController::class, 'post'])->where('publicId', '[a-z0-9]{12}')->middleware('throttle:120,1')->name('share.post');
+Route::get('/n/{publicId}', [App\Http\Controllers\PublicShareController::class, 'note'])->where('publicId', '[a-z0-9]{12}')->middleware('throttle:120,1')->name('share.note');
+Route::get('/.well-known/assetlinks.json', [App\Http\Controllers\PublicShareController::class, 'assetLinks']);
+Route::get('/.well-known/apple-app-site-association', [App\Http\Controllers\PublicShareController::class, 'appleAssociation']);
+Route::get('/apple-app-site-association', [App\Http\Controllers\PublicShareController::class, 'appleAssociation']);
+
 Route::get('/', [WebsiteController::class, 'page'])->name('website.home');
 Route::get('/{slug}', [WebsiteController::class, 'page'])->whereIn('slug', [
     'nasil-calisir', 'ozellikler', 'guvenlik', 'gizlilik', 'kvkk', 'kullanim-kosullari',

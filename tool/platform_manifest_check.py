@@ -74,6 +74,7 @@ EXPORTED_IF_PERMISSION_PROTECTED = {
     "androidx.profileinstaller.ProfileInstallReceiver": "android.permission.DUMP",
 }
 ALLOWED_URL_SCHEMES = {"signinwithapple"}
+ALLOWED_LINK_PREFIXES = {"/p/", "/n/"}
 GOOGLE_SAMPLE_ADMOB_ANDROID = "ca-app-pub-3940256099942544~3347511713"
 GOOGLE_SAMPLE_ADMOB_IOS = "ca-app-pub-3940256099942544~1458002511"
 
@@ -221,17 +222,29 @@ def check_android(manifest_path: Path) -> Report:
     report.expect("Components with intent filters declare exported", not implicit, f"implicit export: {', '.join(implicit)}")
 
     schemes: set[str] = set()
-    hosts_http: list[str] = []
+    bad_links: list[str] = []
     for node in app.iter("data"):
         scheme = attr(node, "scheme")
-        if scheme:
-            schemes.add(scheme)
-            if scheme in ("http", "https"):
-                hosts_http.append(attr(node, "host") or "*")
+        if not scheme:
+            continue
+        schemes.add(scheme)
+        if scheme == "https":
+            # Android App Links for shared posts / Map Notes only: a real host and exactly the /p/ or /n/ prefixes.
+            host = attr(node, "host") or ""
+            prefix = attr(node, "pathPrefix") or ""
+            if not host or "$" in host or prefix not in ALLOWED_LINK_PREFIXES:
+                bad_links.append(f"{host or '*'}{prefix or '/*'}")
     report.expect(
         "Deep link schemes",
-        schemes <= ALLOWED_URL_SCHEMES,
-        f"unexpected URL schemes {sorted(schemes - ALLOWED_URL_SCHEMES)}; app links must be reviewed and verified (assetlinks.json) first",
+        schemes <= ALLOWED_URL_SCHEMES | {"https"} and not bad_links,
+        f"unexpected URL schemes {sorted(schemes - ALLOWED_URL_SCHEMES - {'https'})} or web links {bad_links}; "
+        "app links must be limited to /p/ and /n/ on the real host",
+    )
+    link_filters = [f for f in app.iter("intent-filter") if any(attr(d, "scheme") == "https" for d in f.findall("data"))]
+    report.expect(
+        "App Links are auto-verified",
+        all(attr(f, "autoVerify") == "true" for f in link_filters),
+        "https intent filters need android:autoVerify=\"true\" (and /.well-known/assetlinks.json on the host)",
     )
     main = activities.get("com.senmiydin.app.MainActivity")
     launcher = main is not None and any(
@@ -334,7 +347,16 @@ def check_ios() -> Report:
     )
     report.expect("Privacy manifest has tracking domains when tracking is declared", not privacy.get("NSPrivacyTracking") or bool(privacy.get("NSPrivacyTrackingDomains")), "NSPrivacyTracking true needs NSPrivacyTrackingDomains")
 
-    report.expect("Runner.entitlements present", (ios / "Runner/Runner.entitlements").is_file(), "missing entitlements file")
+    entitlements_path = ios / "Runner/Runner.entitlements"
+    report.expect("Runner.entitlements present", entitlements_path.is_file(), "missing entitlements file")
+    if entitlements_path.is_file():
+        entitlements = plistlib.loads(entitlements_path.read_bytes())
+        domains = entitlements.get("com.apple.developer.associated-domains", [])
+        report.expect(
+            "Universal Links (associated domains) declared",
+            any(str(domain).startswith("applinks:") for domain in domains),
+            "add applinks:<website domain>; the apple-app-site-association file is served once APPLE_TEAM_ID is configured",
+        )
     report.expect("Handoff document present", (ROOT / "docs/IOS_MAC_HANDOFF.md").is_file(), "docs/IOS_MAC_HANDOFF.md missing")
     report.ok("Scope", "static files only: no Xcode build, signing or archive was run")
     return report

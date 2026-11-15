@@ -80,6 +80,14 @@ Person socialPerson(Map<String, dynamic> json) => Person(
   isFollowing: json['following'] == true,
 );
 
+/// A share link is only ever an https address; anything else from the server is ignored.
+String? safeShareUrl(Object? value) {
+  final uri = value is String ? Uri.tryParse(value) : null;
+  return uri != null && uri.scheme == 'https' && uri.host.isNotEmpty
+      ? uri.toString()
+      : null;
+}
+
 Post socialPost(Map<String, dynamic> json, String authorId) => Post(
   id: json['id'].toString(),
   authorId: authorId,
@@ -112,6 +120,7 @@ Post socialPost(Map<String, dynamic> json, String authorId) => Post(
   storyTitle: json['story_title'] as String?,
   storyStatus: json['story_status'] as String?,
   storyRevision: json['story_revision'] as int?,
+  shareUrl: safeShareUrl(json['share_url']),
   remote: true,
   distance: 0,
 );

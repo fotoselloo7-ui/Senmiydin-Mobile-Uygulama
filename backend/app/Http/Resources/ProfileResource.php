@@ -27,6 +27,7 @@ class ProfileResource extends JsonResource
             'bio' => $this->bio,
             'occupation_school' => $this->occupation_school,
             'account_status' => $this->account_status,
+            'created_at' => $this->created_at?->toISOString(),
             'last_seen_at' => $this->last_seen_at?->toISOString(),
             'message_privacy' => $this->message_privacy,
             'show_activity' => $this->show_activity,

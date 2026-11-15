@@ -96,6 +96,7 @@ Route::prefix('v1')->group(function (): void {
         Route::put('saved-collections/{collection}/posts/{post}', [SavedCollectionController::class, 'add'])->whereNumber(['collection', 'post'])->middleware('throttle:reaction');
         Route::delete('saved-collections/{collection}/posts/{post}', [SavedCollectionController::class, 'remove'])->whereNumber(['collection', 'post'])->middleware('throttle:reaction');
         Route::post('posts', [PostController::class, 'store'])->middleware('throttle:post-write');
+        Route::get('share-links/{publicId}', [App\Http\Controllers\PublicShareController::class, 'resolve'])->where('publicId', '[a-z0-9]{12}');
         Route::get('posts/{post}', [PostController::class, 'show'])->whereNumber('post');
         Route::put('posts/{post}', [PostController::class, 'update'])->whereNumber('post')->middleware('throttle:post-write');
         Route::delete('posts/{post}', [PostController::class, 'destroy'])->whereNumber('post')->middleware('throttle:post-write');

@@ -380,11 +380,15 @@ class AccountProfile {
       locationHistoryEnabled = json['location_history_enabled'] == true,
       onboardingStep = json['onboarding_step'] as int,
       ageBand = json['age_band'] as String? ?? 'adult',
+      createdAt = DateTime.tryParse(json['created_at'] as String? ?? ''),
       preferredLocale = json['preferred_locale'] as String?,
       interests = CatalogItem.list(json['interests']);
 
   /// Server-derived `teen` (16–17) or `adult`; read-only here.
   final String ageBand;
+
+  /// When the account was created (null from an older server): decides when the review invitation may appear.
+  final DateTime? createdAt;
   final String? preferredLocale;
 
   final String messagePrivacy;

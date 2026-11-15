@@ -32,48 +32,38 @@ class SplashPage extends StatefulWidget {
 class _SplashPageState extends State<SplashPage>
     with SingleTickerProviderStateMixin {
   String? error;
+
+  /// The big eyeless artwork has been decoded. Nothing of the branded splash is shown before that, so the pupils
+  /// never float alone on the surface while the artwork is still loading.
+  bool _artReady = false;
   late final AnimationController _controller;
   late final Animation<double> _gazeAnimation;
 
   @override
   void initState() {
     super.initState();
+    // About 1.4 s: centre -> a little right -> a little left -> centre. Short, soft and never a delay of its own:
+    // the account restore runs in parallel and the app opens as soon as both are done.
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1700),
+      duration: const Duration(milliseconds: 1400),
     );
+    TweenSequenceItem<double> move(double from, double to, double ms) =>
+        TweenSequenceItem(
+          tween: Tween<double>(
+            begin: from,
+            end: to,
+          ).chain(CurveTween(curve: Curves.easeInOutCubic)),
+          weight: ms,
+        );
     _gazeAnimation = TweenSequence<double>([
-      TweenSequenceItem(tween: ConstantTween<double>(0.0), weight: 250),
-      TweenSequenceItem(
-        tween: Tween<double>(
-          begin: 0.0,
-          end: -1.0,
-        ).chain(CurveTween(curve: Curves.easeInOutCubic)),
-        weight: 300,
-      ),
-      TweenSequenceItem(tween: ConstantTween<double>(-1.0), weight: 200),
-      TweenSequenceItem(
-        tween: Tween<double>(
-          begin: -1.0,
-          end: 0.0,
-        ).chain(CurveTween(curve: Curves.easeInOutCubic)),
-        weight: 200,
-      ),
-      TweenSequenceItem(
-        tween: Tween<double>(
-          begin: 0.0,
-          end: 1.0,
-        ).chain(CurveTween(curve: Curves.easeInOutCubic)),
-        weight: 300,
-      ),
-      TweenSequenceItem(tween: ConstantTween<double>(1.0), weight: 200),
-      TweenSequenceItem(
-        tween: Tween<double>(
-          begin: 1.0,
-          end: 0.0,
-        ).chain(CurveTween(curve: Curves.easeInOutCubic)),
-        weight: 250,
-      ),
+      TweenSequenceItem(tween: ConstantTween<double>(0.0), weight: 150),
+      move(0.0, 1.0, 280),
+      TweenSequenceItem(tween: ConstantTween<double>(1.0), weight: 120),
+      move(1.0, -1.0, 380),
+      TweenSequenceItem(tween: ConstantTween<double>(-1.0), weight: 120),
+      move(-1.0, 0.0, 250),
+      TweenSequenceItem(tween: ConstantTween<double>(0.0), weight: 100),
     ]).animate(_controller);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -110,21 +100,25 @@ class _SplashPageState extends State<SplashPage>
     }
   }
 
+  // The gaze reaches a little further than the artwork's own rest position so the movement is clearly visible on a
+  // phone, while the pupils stay inside their eye whites (the ClipOval below clips the last pixels).
+  static const _reach = 1.15;
+
   static Offset _leftPupilCenter(double t) {
     if (t < 0) {
-      final s = -t;
+      final s = -t * _reach;
       return Offset(524.0 * (1 - s) + 488.0 * s, 824.0 * (1 - s) + 826.0 * s);
     }
-    final s = t;
+    final s = t * _reach;
     return Offset(524.0 * (1 - s) + 562.0 * s, 824.0 * (1 - s) + 815.0 * s);
   }
 
   static Offset _rightPupilCenter(double t) {
     if (t < 0) {
-      final s = -t;
+      final s = -t * _reach;
       return Offset(656.0 * (1 - s) + 624.0 * s, 791.0 * (1 - s) + 793.0 * s);
     }
-    final s = t;
+    final s = t * _reach;
     return Offset(656.0 * (1 - s) + 688.0 * s, 791.0 * (1 - s) + 784.0 * s);
   }
 
@@ -132,7 +126,7 @@ class _SplashPageState extends State<SplashPage>
   Widget build(BuildContext context) {
     final disableAnimations =
         MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-    return Scaffold(
+    final scaffold = Scaffold(
       backgroundColor: const Color(0xFF1E0245),
       body: Stack(
         fit: StackFit.expand,
@@ -173,9 +167,6 @@ class _SplashPageState extends State<SplashPage>
                       );
 
                       return Stack(
-                        key: ValueKey<double>(
-                          double.parse(t.toStringAsFixed(2)),
-                        ),
                         children: [
                           Positioned.fill(
                             child: Image.asset(
@@ -183,6 +174,18 @@ class _SplashPageState extends State<SplashPage>
                               fit: BoxFit.fill,
                               gaplessPlayback: true,
                               filterQuality: FilterQuality.medium,
+                              frameBuilder: (context, child, frame, sync) {
+                                if ((sync || frame != null) && !_artReady) {
+                                  WidgetsBinding.instance.addPostFrameCallback((
+                                    _,
+                                  ) {
+                                    if (mounted) {
+                                      setState(() => _artReady = true);
+                                    }
+                                  });
+                                }
+                                return child;
+                              },
                             ),
                           ),
                           Positioned.fromRect(
@@ -264,6 +267,25 @@ class _SplashPageState extends State<SplashPage>
               ),
             ),
         ],
+      ),
+    );
+
+    // The native splash is clean white; the branded artwork fades in over it so there is no hard colour jump,
+    // and nothing waits for the fade (the account restore and the gaze run from the first frame).
+    return ColoredBox(
+      color: Colors.white,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween<double>(
+          begin: disableAnimations ? 1.0 : 0.0,
+          end: _artReady || disableAnimations ? 1.0 : 0.0,
+        ),
+        duration: disableAnimations
+            ? Duration.zero
+            : const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+        builder: (context, opacity, child) =>
+            Opacity(opacity: opacity, child: child),
+        child: scaffold,
       ),
     );
   }
@@ -680,8 +702,10 @@ class _AuthPageState extends State<AuthPage> with AccountAction<AuthPage> {
                               now.month,
                               now.day,
                             ),
-                            helpText:
-                                trf('Devam etmek için {0} yaşını doldurmalısın', [age]),
+                            helpText: trf(
+                              'Devam etmek için {0} yaşını doldurmalısın',
+                              [age],
+                            ),
                           );
                           if (mounted && value != null) {
                             setState(() => birthday = value);
@@ -711,7 +735,10 @@ class _AuthPageState extends State<AuthPage> with AccountAction<AuthPage> {
                     ),
                     Expanded(
                       child: Text(
-                        trf('{0} yaşını doldurdum ve aşağıdaki koşulları kabul ediyorum.', [StoreScope.of(context).minimumAge]),
+                        trf(
+                          '{0} yaşını doldurdum ve aşağıdaki koşulları kabul ediyorum.',
+                          [StoreScope.of(context).minimumAge],
+                        ),
                         style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.muted,
@@ -1389,7 +1416,9 @@ class _InterestsPageState extends State<InterestsPage>
                   ),
                   const SizedBox(height: Space.md),
                   InfoNote(
-                    trf('{0} ilgi alanı seçtin. En az 5 seçim yap.', [selected.length]),
+                    trf('{0} ilgi alanı seçtin. En az 5 seçim yap.', [
+                      selected.length,
+                    ]),
                   ),
                   const SizedBox(height: Space.md),
                 ],
@@ -1630,7 +1659,10 @@ class _SocialLoginPageState extends State<SocialLoginPage>
             InfoNote(
               enabled
                   ? 'Kimliğini güvenli şekilde doğrula. Yeni hesap için kayıt bilgilerini tamamlaman istenir.'
-                  : trf('{0} ile giriş şu anda kullanılamıyor. E-posta ve şifrenle devam edebilirsin.', [widget.provider]),
+                  : trf(
+                      '{0} ile giriş şu anda kullanılamıyor. E-posta ve şifrenle devam edebilirsin.',
+                      [widget.provider],
+                    ),
             ),
             const SizedBox(height: Space.xl),
             if (enabled)

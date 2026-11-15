@@ -8,7 +8,7 @@ import 'package:flutter/material.dart' hide Text;
 import 'translated_text.dart';
 
 import 'package:flutter/services.dart';
-import 'package:share_plus/share_plus.dart';
+import 'share_sheet.dart';
 
 import '../core/theme.dart';
 import '../core/navigation.dart';
@@ -627,21 +627,18 @@ Future<void> editPostText(
 
 Future<void> sharePost(BuildContext context, Post post) async {
   if (post.remote) {
-    final render = context.findRenderObject();
-    try {
-      await SharePlus.instance.share(
-        ShareParams(
-          text: post.text.isEmpty
-              ? 'SenMiydin? · ${post.city} · ${post.kind.label}'
-              : post.text,
-          sharePositionOrigin: render is RenderBox && render.hasSize
-              ? render.localToGlobal(Offset.zero) & render.size
-              : null,
-        ),
-      );
-    } on PlatformException {
-      if (context.mounted) toast(context, 'Paylaşım menüsü açılamadı.');
+    // Only public content may leave the app (the server decides and sends a link); everything else says so.
+    final url = post.shareUrl;
+    if (url == null) {
+      toast(context, tr('Bu içerik uygulama dışında paylaşılamaz.'));
+      return;
     }
+    final store = StoreScope.of(context);
+    await showShareSheet(
+      context,
+      url: url,
+      build: (service) => service.postCard(post, store),
+    );
     return;
   }
   await showModalBottomSheet<void>(

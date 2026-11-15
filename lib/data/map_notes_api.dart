@@ -51,6 +51,7 @@ class MapNoteItem {
           : person(json['author'] as Map<String, dynamic>),
       placeLabel = json['place_label'] as String? ?? '',
       image = ApiClient.mediaUrl(json['image'] as String?),
+      shareUrl = safeShareUrl(json['share_url']),
       group = json['group'] as String,
       latitude = (json['latitude'] as num).toDouble(),
       longitude = (json['longitude'] as num).toDouble(),
@@ -77,6 +78,7 @@ class MapNoteItem {
       author = other.author,
       placeLabel = other.placeLabel,
       image = other.image,
+      shareUrl = other.shareUrl,
       group = other.group,
       latitude = other.latitude,
       longitude = other.longitude,
@@ -97,6 +99,9 @@ class MapNoteItem {
 
   /// The letter's optional photo (private URL, empty when there is none).
   final String image;
+
+  /// Public https link while the letter is live and public; null once it left the map.
+  final String? shareUrl;
   bool get hasImage => image.isNotEmpty;
   final bool anonymous, mine, canReply;
   final Person? author;

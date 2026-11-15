@@ -1,8 +1,34 @@
 # Doğrulama
 
-> **Güncel kaynak bu dosyanın ilk bölümüdür (15 Kasım 2026, son mesajlaşma/medya ve release freeze).** Altındaki bölümler önceki turların tarihsel kayıtlarıdır; oradaki sayılar güncel durum değildir.
+> **Güncel kaynak bu dosyanın ilk bölümüdür (15 Kasım 2026, splash, değerlendirme ve dış paylaşım).** Altındaki bölümler önceki turların tarihsel kayıtlarıdır; oradaki sayılar güncel durum değildir.
 
-## Son mesajlaşma/medya ve release freeze doğrulaması — 15 Kasım 2026 (en güncel)
+## Splash, haftalık değerlendirme ve dış paylaşım kartları — 15 Kasım 2026 (en güncel)
+
+Başlangıç `1a3a9ce` (yeniden ölçüldü: Laravel 265 / 5335, Flutter 342, analyze temiz). Bu tur freeze'e **kullanıcının açıkça istediği** üç özellik girdi: Android native splash, göz animasyonu, haftalık değerlendirme daveti, dış paylaşım kartları. Dördü de yayın hazırlığının parçasıdır; başka özellik eklenmedi.
+
+| Kontrol | Sonuç |
+|---|---|
+| Laravel `php artisan test` | **276 test / 5414 assertion** (+11: `PublicShareTest`) |
+| `flutter analyze` | **No issues found** |
+| Flutter `flutter test` | **393 test** (+51: `android_splash_test` 4, `review_prompt_test` 21, `share_card_test` 8, `share_service_test` 18; eski göz animasyonu testi yeni sıraya uyarlandı: merkez → sağ → sol → merkez) |
+| `tool/l10n_audit.py --all` | **0 eksik** (catalog 807) |
+| `platform_manifest_check.py android --build` | FAIL yok; App Links (`/p/`, `/n/`, `autoVerify`) kabul edilir, başka https yolu reddedilir (15 birim testi). AdMob kimliği `MISSING` |
+| `platform_manifest_check.py ios` | FAIL yok (Associated Domains `applinks:` eklendi) |
+| Pixel 6a regresyon | **9/9**, `clean=true` |
+
+**Android native splash.** `androidx.core:core-splashscreen` (SplashScreen API) + beyaz yüzey + yalnız ikon (`native_splash_icon.png`, onaylı splash artwork'ünden `tool/make_native_splash_icon.py` ile çıkarıldı: yırtık kâğıt, gözler, üç ışık çizgisi; 1152 px = 288 dp, Android 12'nin 192 dp maske dairesinin içinde). Eski mor dikdörtgen artwork, `values-v31` / `values-night` geçersiz kılmaları ve `launch_background` çizimleri kaldırıldı. Pixel 6a'da soğuk / sıcak / süreç öldürme kayıtları (ffmpeg kare analizi): beyaz native splash → Flutter splash'ta 220 ms yumuşak geçiş → Home; siyah/beyaz parlama, kare atlaması ve havada asılı gözbebeği yok. Kayıtlar `docs/screenshots/ui-audit/splash-*.png`.
+
+**Göz animasyonu — kök neden.** Animasyon vardı ama (1) hareket genliği artwork'ün kendi pozuna çok yakındı (±36 / 1080 px), (2) yaklaşık 3 sn süren soğuk açılıştan sonra yalnız 1,7 sn görünüyordu ve (3) her kare `Stack`'in anahtarı değiştiği için yeniden kuruluyordu. Şimdi: merkez → biraz sağ → biraz sol → merkez, 1,4 sn, `easeInOutCubic`, genlik ×1,15 (gözbebeği göz akında kalır); büyük artwork çözülmeden hiçbir şey çizilmez (gözbebekleri tek başına görünmez).
+
+**Haftalık değerlendirme.** `in_app_review` 2.0.12 (MIT, doğrulanmış yayıncı, 160/160 puan) → Android Play In-App Review, iOS StoreKit. Kural: hesap ≥ 3 günlük (sunucudan `created_at`) **ve** ≥ 3 anlamlı işlem (paylaşım, yorum, mesaj, Harita Notu, not yanıtı) **ve** son davetten ≥ 7 gün; oturum başına en fazla 1; hesap başına ayrı sayaç; hesap silinince temizlenir. Davet yalnız anlamlı işlemden sonra ve kişi Home'a döndüğünde 1,6 sn gecikmeyle çıkar (üstte başka sayfa/diyalog varsa bekler). "Şimdi Değil", kaydırarak kapatma ve "Değerlendir" aynı 7 günlük bekleme süresini başlatır; "Değerlendir" herkes için aynı resmi isteği açar (önce "sevdin mi?" kapısı yok). OS sheet'i bastırırsa/hata verirse sessizce geçilir; yalnızca gerçek bir `PLAY_STORE_URL` / `APP_STORE_URL` (https) tanımlıysa mağaza sayfası yedek olarak açılır. Resmi sheet'in gerçekten görünmesi Play kotasına bağlıdır ve closed-test Play yüklemesinde ayrıca doğrulanır; debug'da yalnız davet zamanlaması (seam + Pixel) doğrulandı.
+
+**Dış paylaşım.** Herkese açık, yetişkin yazarlı gönderi / yayında ortak karşılaşma hikâyesi / canlı Harita Notu `https://<alan adı>/p/<id>` ve `/n/<id>` bağlantısı alır (`public_id`: rastgele 12 karakter, satır id'siyle ilgisiz). Özel, silinmiş, moderasyonlu, süresi dolmuş/arşivlenmiş, onaysız karşılaşma ve **16–17 yaş içeriği** bağlantı almaz (web 404). Kartlar uygulamada çizilir (Flutter, ekran dışı → PNG, metaveri yok): Hikâye 1080×1920, diğerleri 1080×1350; anonim kartta ad/avatar/handle hiç yok, Harita Notu kartında yalnız yaklaşık bölge etiketi var. Paylaşım sayfası (`Paylaş`): Hikâyede Paylaş (Instagram yüklüyse ve `INSTAGRAM_FACEBOOK_APP_ID` verilmişse doğrudan Story composer, aksi halde normal paylaşım sayfası), Görsel Kart, Bağlantıyı Kopyala, Diğer. Gelen bağlantı Android App Links ile uygulamada açılır (`app_links` 7.2.2, Apache-2.0); uygulama yoksa web önizleme (OG/Twitter/canonical, noindex). `/.well-known/assetlinks.json` ve `apple-app-site-association` yalnız gerçek imza parmak izi / Team ID yapılandırılınca sunulur. Pixel 6a: metin, fotoğraflı, anonim, ortak karşılaşma ve Harita Notu kartları cihazda üretildi (`docs/screenshots/ui-audit/share-card-*.png`, `share-sheet.png`); Android paylaşım seçicisine görsel+bağlantı ile ulaşıldı; Instagram kurulu olmadığı için yedek yol doğrulandı; bağlantıyla soğuk/sıcak açılış doğrulandı.
+
+**Cihazda bulunup düzeltilenler:** `share_plus` kendi `share_plus` önbellek klasörünü her paylaşımda boşalttığı için kartlar kendi klasörümüze (`senmiydin_share`) taşındı; Flutter, gelen bağlantıyı ayrıca rota adı (`/p/<id>`) olarak itiyordu ("Sayfa Bulunamadı") → bağlantı rotası kendini kapatıp tek yoldan açıyor; davet zamanlayıcısı üstte sayfa varken sönüyordu → Home geri gelene kadar yeniden dener.
+
+---
+
+## Son mesajlaşma/medya ve release freeze doğrulaması — 15 Kasım 2026 (önceki tur)
 
 Başlangıç `1519d36` (RC). Bu turda: gelişmiş emoji paneli, sesli mesaj, ücretsiz hediyeler, fotoğraflı Harita Notu, ham zaman damgasından canlı dil değişen göreli zaman, birleşik Android release manifest kontrolü, iOS statik kontrol, release freeze.
 
