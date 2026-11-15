@@ -1146,23 +1146,7 @@ class _AuthPageState extends State<AuthPage> with AccountAction<AuthPage> {
             style: const TextStyle(color: AppColors.red, fontSize: 12.5),
           ),
         ),
-      const SizedBox(height: 10),
-      Row(
-        children: [
-          AgeBadge(age),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Text(
-              'SenMiydin? yalnızca bu yaş ve üzeri içindir; yaş grupları ayrı tutulur.',
-              style: TextStyle(
-                fontSize: 12.5,
-                height: 1.35,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ),
-        ],
-      ),
+      const SizedBox(height: 6),
       const SizedBox(height: 10),
       _switchRow(),
     ];

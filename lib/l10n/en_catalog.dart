@@ -695,8 +695,6 @@ const enCatalog = <String, String>{
   'veya': 'or',
   '{0} yaşını doldurdum; {1} ve {2}\'nı okudum, kabul ediyorum.':
       "I am {0} or older and have read and accept the {1} and the {2}.",
-  'SenMiydin? yalnızca bu yaş ve üzeri içindir; yaş grupları ayrı tutulur.':
-      'SenMiydin? is only for this age and older; age groups are kept apart.',
   'Devam ederek {0} ve {1}\'nı kabul etmiş sayılırsın.':
       "By continuing you accept the {0} and the {1}.",
   'Hesabın yok mu?': "Don't have an account?",
