@@ -24,7 +24,7 @@ cd "$APP"
 setenv() { # setenv KEY VALUE  (VALUE must not contain '|')
   if grep -q "^$1=" .env; then sed -i "s|^$1=.*|$1=$2|" .env; else printf '%s=%s\n' "$1" "$2" >> .env; fi
 }
-genpw() { tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32; }
+genpw() { openssl rand -hex 20; }
 
 mkdir -p "$SECRETS" && chmod 700 "$SECRETS"
 
