@@ -68,7 +68,7 @@ setenv QUEUE_WORKER_CONFIGURED true
 "$P" artisan down --retry=30 || true
 "$P" artisan migrate --force
 "$P" artisan db:seed --force
-"$P" artisan storage:link 2>/dev/null || true
+[ -L public/storage ] || "$P" artisan storage:link
 "$P" artisan optimize:clear >/dev/null
 "$P" artisan config:cache
 "$P" artisan route:cache
@@ -89,7 +89,7 @@ fi
 # Scheduler + queue worker (shared hosting: one worker pass per minute).
 CRON_SCHED="* * * * * cd $APP && $P artisan schedule:run >> /dev/null 2>&1"
 CRON_QUEUE="* * * * * cd $APP && $P artisan queue:work --stop-when-empty --max-time=55 --tries=3 >> /dev/null 2>&1"
-( crontab -l 2>/dev/null | grep -v "senmiydin_src/backend" ; echo "$CRON_SCHED" ; echo "$CRON_QUEUE" ) | crontab -
+{ crontab -l 2>/dev/null | grep -v "senmiydin_src/backend" || true; echo "$CRON_SCHED"; echo "$CRON_QUEUE"; } | crontab -
 
 chmod -R ug+rwX storage bootstrap/cache
 echo "== deploy finished"
