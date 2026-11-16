@@ -311,12 +311,11 @@ def check_ios() -> Report:
         "NSCameraUsageDescription": "camera photos",
         "NSPhotoLibraryUsageDescription": "photo picker",
         "NSLocationWhenInUseUsageDescription": "approximate location",
-        "NSUserTrackingUsageDescription": "App Tracking Transparency for ads",
     }
     for key, purpose in permissions.items():
         value = info.get(key)
         report.expect(f"{key} ({purpose})", isinstance(value, str) and len(value.strip()) >= 20, "missing or too short to explain the use")
-    for forbidden in ("NSLocationAlwaysAndWhenInUseUsageDescription", "NSLocationAlwaysUsageDescription", "NSContactsUsageDescription"):
+    for forbidden in ("NSLocationAlwaysAndWhenInUseUsageDescription", "NSLocationAlwaysUsageDescription", "NSContactsUsageDescription", "NSUserTrackingUsageDescription"):
         report.expect(f"No {forbidden}", forbidden not in info, "permission the product does not use")
     for localization in ("en", "tr"):
         strings_path = ios / f"Runner/{localization}.lproj/InfoPlist.strings"

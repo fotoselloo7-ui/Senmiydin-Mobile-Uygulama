@@ -41,7 +41,7 @@ GeolocatorLocationService location tipindedir. Foreground service yalnız uygula
 | UIBackgroundModes=remote-notification | Var | APNs/push bildirimi | Konum yetkisi değildir | Background location diye beyan edilmez |
 | NSMicrophoneUsageDescription | Var (tr + en) | Özel mesajda sesli mesaj kaydı | Mikrofon düğmesine basınca; önce uygulama içi açıklama | Ret → diğer mesaj türleri çalışır; Mac'te gerçek cihaz testi bekleniyor |
 | NSContactsUsageDescription | Yok | Rehber tarama yok | Talep edilmez | — |
-| NSUserTrackingUsageDescription | Var | AdMob reklam kimliği (ATT) | Reklam onayı akışında | Ret → izlemesiz reklam |
+| NSUserTrackingUsageDescription | Yok (16 Kasım 2026, build 22) | ATT istenmez; IDFA okunmaz | — | iOS reklamları kişiselleştirilmemiş, tracking yok |
 | com.apple.developer.applesignin | Var | Gerçek Apple Sign In etkinleştirilirse | Alternatif giriş; parola girişi mevcut | Gerçek Team/key/capability yokken başarı iddiası yok |
 
 Windows denetimi source plist/entitlement ve plugin kaynaklarıyla sınırlıdır. Mac’te archive, birleşik privacy report ve gerçek iOS cihaz izin/ret/limited-photo testleri beklenir.

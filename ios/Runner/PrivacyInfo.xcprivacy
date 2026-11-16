@@ -4,18 +4,16 @@
   App-level privacy manifest, derived from docs/store/APPLE_PRIVACY_LABELS.md (the code based data matrix).
   SDK manifests (Flutter, Firebase, Google Sign-In, Google Mobile Ads) are merged by Xcode on top of this file.
   It must be checked against the Xcode "Privacy Report" of the real archive on a Mac before App Store submission.
-  Tracking is declared because Google AdMob may use the advertising identifier for adult accounts that allow it
-  (UMP + App Tracking Transparency). Teen (16-17) accounts get age-restricted treatment and no ad tracking.
+  No tracking: the app never asks for App Tracking Transparency and never reads the advertising identifier (IDFA).
+  Google AdMob requests on iOS are always non-personalized; the UMP consent flow still runs where it is required.
+  Teen (16-17) accounts additionally get age-restricted treatment.
 -->
 <plist version="1.0">
 <dict>
 	<key>NSPrivacyTracking</key>
-	<true/>
+	<false/>
 	<key>NSPrivacyTrackingDomains</key>
-	<array>
-		<string>googleads.g.doubleclick.net</string>
-		<string>pagead2.googlesyndication.com</string>
-	</array>
+	<array/>
 	<key>NSPrivacyAccessedAPITypes</key>
 	<array/>
 	<key>NSPrivacyCollectedDataTypes</key>

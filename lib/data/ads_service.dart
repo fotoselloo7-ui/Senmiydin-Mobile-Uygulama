@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
@@ -89,8 +90,12 @@ class GoogleAdsPlatform implements AdsPlatform {
     ad = NativeAd(
       adUnitId: unitId,
       // A plain request: no location, no keywords, no content url. Teens get non-personalized ads on top of the
-      // under-age treatment configured at start.
-      request: AdRequest(nonPersonalizedAds: teen ? true : null),
+      // under-age treatment configured at start. iOS never tracks: no ATT prompt, no IDFA, so every iOS request is
+      // non-personalized.
+      request: AdRequest(
+        nonPersonalizedAds:
+            teen || defaultTargetPlatform == TargetPlatform.iOS ? true : null,
+      ),
       nativeTemplateStyle: NativeTemplateStyle(
         templateType: TemplateType.small,
         cornerRadius: 12,

@@ -139,7 +139,7 @@ def audit(skip_runtime: bool = False) -> dict:
     manual("Background disclosure prominence", "background_disclosure_reviewed", "WAITING", "Normal onboarding and activation disclosure present; final Google policy/video review remains open. No Home/new screen added.")
 
     ios = plistlib.loads((ROOT / "ios/Runner/Info.plist").read_bytes())
-    add("iOS permission configuration", "READY" if "NSLocationWhenInUseUsageDescription" in ios and "location" not in ios.get("UIBackgroundModes", []) and "NSLocationAlwaysAndWhenInUseUsageDescription" not in ios and ("NSUserTrackingUsageDescription" in ios) == ("GADApplicationIdentifier" in ios) else "FAIL", "When In Use; no background location. The ATT usage text exists exactly when AdMob (GADApplicationIdentifier) is integrated. Remote-notification is distinct.")
+    add("iOS permission configuration", "READY" if "NSLocationWhenInUseUsageDescription" in ios and "location" not in ios.get("UIBackgroundModes", []) and "NSLocationAlwaysAndWhenInUseUsageDescription" not in ios and "NSUserTrackingUsageDescription" not in ios else "FAIL", "When In Use; no background location. No ATT usage text: AdMob runs without tracking or the IDFA (non-personalized on iOS). Remote-notification is distinct.")
 
     merged = ROOT / "build/app/intermediates/merged_manifest/release/processReleaseMainManifest/AndroidManifest.xml"
     if merged.is_file():

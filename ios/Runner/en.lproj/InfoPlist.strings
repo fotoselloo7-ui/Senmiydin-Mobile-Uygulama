@@ -2,5 +2,4 @@
 "NSLocationWhenInUseUsageDescription" = "Uses your approximate device location for city discovery, people and posts nearby.";
 "NSCameraUsageDescription" = "The camera is used to take a photo and add it to your post.";
 "NSPhotoLibraryUsageDescription" = "Your photo library is used to add photos to your profile, posts or private messages.";
-"NSUserTrackingUsageDescription" = "Used so ads can be shown that suit you better. Your location is never used for advertising.";
 "NSMicrophoneUsageDescription" = "Used to record a voice message. A recording is delivered to the other person only when you send it.";
