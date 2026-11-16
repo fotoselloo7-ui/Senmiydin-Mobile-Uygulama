@@ -14,10 +14,8 @@ enum ShareCardFormat {
   const ShareCardFormat(this.logicalSize);
   final Size logicalSize;
   static const pixelRatio = 3.0;
-  Size get pixels => Size(
-    logicalSize.width * pixelRatio,
-    logicalSize.height * pixelRatio,
-  );
+  Size get pixels =>
+      Size(logicalSize.width * pixelRatio, logicalSize.height * pixelRatio);
 }
 
 enum ShareCardKind { post, encounter, mapNote }
@@ -119,7 +117,11 @@ class ShareCardView extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0xFFF1EAFF), Color(0xFFEAF3FF), Color(0xFFFFFFFF)],
+                  colors: [
+                    Color(0xFFF1EAFF),
+                    Color(0xFFEAF3FF),
+                    Color(0xFFFFFFFF),
+                  ],
                   stops: [0, .55, 1],
                 ),
               ),
@@ -139,7 +141,12 @@ class ShareCardView extends StatelessWidget {
           ),
           Positioned.fill(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(22, story ? 44 : 22, 22, story ? 40 : 18),
+              padding: EdgeInsets.fromLTRB(
+                22,
+                story ? 44 : 22,
+                22,
+                story ? 40 : 18,
+              ),
               child: Column(
                 children: [
                   RawImage(
@@ -188,9 +195,16 @@ class ShareCardView extends StatelessWidget {
           const header = 88.0;
           const footer = 30.0;
           var room = constraints.maxHeight - header - footer;
-          final photoHeight = data.photo == null
+          // The photo keeps its own shape (never cropped): as wide as the card allows, but no taller than its share
+          // of the free space; a tall photo is then centred at a narrower width.
+          final photo = data.photo;
+          final photoAspect = photo == null || photo.height == 0
+              ? 1.0
+              : photo.width / photo.height;
+          final photoHeight = photo == null
               ? 0.0
-              : math.min(room * (story ? .46 : .5), story ? 230.0 : 150.0);
+              : math.min(width / photoAspect, room * (story ? .62 : .58));
+          final photoWidth = photoHeight * photoAspect;
           room -= photoHeight == 0 ? 0 : photoHeight + 12;
           final fit = fitShareText(data.body, width, room - 24);
           final cut = fit.truncated;
@@ -202,15 +216,17 @@ class ShareCardView extends StatelessWidget {
               _author(),
               const SizedBox(height: 12),
               if (data.photo != null) ...[
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: photoHeight,
-                    child: RawImage(
-                      image: data.photo,
-                      fit: BoxFit.cover,
-                      filterQuality: FilterQuality.high,
+                Center(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: SizedBox(
+                      width: photoWidth,
+                      height: photoHeight,
+                      child: RawImage(
+                        image: data.photo,
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.high,
+                      ),
                     ),
                   ),
                 ),
@@ -363,7 +379,10 @@ class ShareCardView extends StatelessWidget {
             child: Stack(
               children: [
                 for (var i = 0; i < data.pairAvatars.length.clamp(0, 2); i++)
-                  Positioned(left: i * 26.0, child: _ring(_avatar(data.pairAvatars[i], 38))),
+                  Positioned(
+                    left: i * 26.0,
+                    child: _ring(_avatar(data.pairAvatars[i], 38)),
+                  ),
               ],
             ),
           ),
@@ -424,12 +443,18 @@ class ShareCardView extends StatelessWidget {
 
   Widget _ring(Widget child) => Container(
     padding: const EdgeInsets.all(2),
-    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+    decoration: const BoxDecoration(
+      color: Colors.white,
+      shape: BoxShape.circle,
+    ),
     child: child,
   );
 
   Widget _meta() => material.Text(
-    [data.placeLabel, data.dateLabel].where((part) => part.isNotEmpty).join(' · '),
+    [
+      data.placeLabel,
+      data.dateLabel,
+    ].where((part) => part.isNotEmpty).join(' · '),
     maxLines: 1,
     overflow: TextOverflow.ellipsis,
     style: const TextStyle(
