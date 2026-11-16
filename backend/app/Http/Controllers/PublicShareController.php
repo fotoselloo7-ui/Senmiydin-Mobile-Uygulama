@@ -9,6 +9,7 @@ use App\Models\Post;
 use App\Sharing\PublicShare;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
@@ -46,6 +47,28 @@ class PublicShareController extends Controller
             'body' => $post->body,
             'place' => $post->city->name,
             'date' => $post->created_at,
+            'image' => ($first = $post->media->first()) ? [
+                'url' => route('share.post.image', $post->public_id),
+                'width' => $first->width, 'height' => $first->height, 'mime' => $first->mime_type,
+            ] : null,
+        ]);
+    }
+
+    /**
+     * The first photo of a post that is public right now, so a shared link shows the post itself in WhatsApp, Instagram,
+     * X and other previews. Same rules as the page: anything not shareable (private, moderated, teen author ...) is a 404.
+     */
+    public function postImage(string $publicId)
+    {
+        $post = PublicShare::findPost($publicId);
+        $image = $post?->media->first();
+        abort_if($image === null, 404);
+        $disk = Storage::disk($image->disk);
+        abort_unless($disk->exists($image->file_path), 404);
+
+        return $disk->response($image->file_path, 'senmiydin.jpg', [
+            'Content-Type' => $image->mime_type, 'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'public, max-age=300', 'X-Robots-Tag' => 'noindex',
         ]);
     }
 
@@ -117,7 +140,7 @@ class PublicShareController extends Controller
             'locale' => $locale,
             't' => $text,
             'settings' => $values,
-            'content' => $content + ['excerpt' => Str::limit(trim((string) $content['body']), 600, '…')],
+            'content' => $content + ['image' => null, 'excerpt' => Str::limit(trim((string) $content['body']), 600, '…')],
             'title' => $content['kind'].' · '.$content['who'].' · '.($values['app_name'] ?? 'SenMiydin?'),
             'description' => $description,
             'canonical' => config('website.url').'/'.$path,

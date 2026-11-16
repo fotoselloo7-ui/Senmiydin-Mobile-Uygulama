@@ -13,11 +13,22 @@
     <meta property="og:title" content="{{ $title }}">
     <meta property="og:description" content="{{ $description }}">
     <meta property="og:url" content="{{ $canonical }}">
-    <meta property="og:image" content="{{ config('website.url') }}/web/og.png">
+    @if($content['image'])
+        <meta property="og:image" content="{{ $content['image']['url'] }}">
+        <meta property="og:image:secure_url" content="{{ $content['image']['url'] }}">
+        <meta property="og:image:type" content="{{ $content['image']['mime'] }}">
+        @if($content['image']['width'] && $content['image']['height'])
+            <meta property="og:image:width" content="{{ $content['image']['width'] }}">
+            <meta property="og:image:height" content="{{ $content['image']['height'] }}">
+        @endif
+        <meta property="og:image:alt" content="{{ $title }}">
+    @else
+        <meta property="og:image" content="{{ config('website.url') }}/web/og.png">
+    @endif
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{{ $title }}">
     <meta name="twitter:description" content="{{ $description }}">
-    <meta name="twitter:image" content="{{ config('website.url') }}/web/og.png">
+    <meta name="twitter:image" content="{{ $content['image']['url'] ?? config('website.url').'/web/og.png' }}">
     <style>
         :root{color-scheme:light;--ink:#12213f;--muted:#5b6785;--blue:#0a66d6;--lilac:#7c20d4;--line:#e3e8f0}
         *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:linear-gradient(180deg,#f3f0ff,#eef5ff 60%,#fff);min-height:100vh}
@@ -28,6 +39,7 @@
         .body{white-space:pre-wrap;font-size:18px;line-height:1.55;margin:16px 0;overflow-wrap:anywhere}
         .cta{display:block;text-align:center;background:var(--blue);color:#fff;text-decoration:none;font-weight:800;border-radius:16px;padding:14px 18px;margin-top:20px}
         .stores{display:flex;gap:10px;justify-content:center;margin-top:12px;flex-wrap:wrap}.stores a{color:var(--blue);font-weight:700;text-decoration:none;border:1px solid var(--line);border-radius:12px;padding:9px 14px;background:#fff}
+        .photo{display:block;width:100%;height:auto;max-height:80vh;object-fit:contain;border-radius:18px;margin:14px 0 4px;background:#f7f9fc}
         .note{text-align:center;color:var(--muted);font-size:13px;margin-top:14px}
     </style>
 </head>
@@ -40,6 +52,10 @@
         @foreach($content['handles'] as $handle)<div class="handle">{{ $handle }}</div>@endforeach
         @if($content['badge'])<span class="badge">{{ $content['badge'] }}</span>@endif
         <p class="body">{{ $content['excerpt'] }}</p>
+        @if($content['image'])
+            <img class="photo" src="{{ $content['image']['url'] }}" alt="" loading="lazy"
+                 @if($content['image']['width'] && $content['image']['height']) width="{{ $content['image']['width'] }}" height="{{ $content['image']['height'] }}" @endif>
+        @endif
         <div class="meta">{{ $content['place'] }} · {{ $content['date']->locale($locale)->translatedFormat('j F Y') }}</div>
         <a class="cta" href="{{ $deepLink }}">{{ $t['open'] }}</a>
         @php($play = $settings['play_store_url'] ?? '')

@@ -8,6 +8,7 @@ import 'package:flutter/material.dart' hide Text;
 import 'translated_text.dart';
 
 import 'package:flutter/services.dart';
+
 import 'share_sheet.dart';
 
 import '../core/theme.dart';
@@ -23,6 +24,15 @@ import 'media_viewer.dart';
 import 'social_page.dart';
 import '../core/app_locale.dart';
 
+ImageProvider socialImageProvider(AppStore store, String path) {
+  final uri = Uri.tryParse(path);
+  if (uri?.scheme == 'https' || uri?.scheme == 'http') {
+    return NetworkImage(path, headers: store.mediaHeaders(path));
+  }
+  if (path.startsWith('assets/')) return AssetImage(path);
+  return FileImage(File(path));
+}
+
 Widget socialMediaImage(
   AppStore store,
   String path, {
@@ -30,15 +40,7 @@ Widget socialMediaImage(
   double? width,
   double? height,
 }) {
-  final uri = Uri.tryParse(path);
-  final ImageProvider provider;
-  if (uri?.scheme == 'https' || uri?.scheme == 'http') {
-    provider = NetworkImage(path, headers: store.mediaHeaders(path));
-  } else if (path.startsWith('assets/')) {
-    provider = AssetImage(path);
-  } else {
-    provider = FileImage(File(path));
-  }
+  final provider = socialImageProvider(store, path);
   return Image(
     image: provider,
     width: width,
@@ -55,30 +57,104 @@ Widget socialMediaImage(
 }
 
 class ImageCarousel extends StatefulWidget {
-  const ImageCarousel(this.images, {super.key, this.height = 215});
+  const ImageCarousel(
+    this.images, {
+    super.key,
+    this.height = 215,
+    this.adaptive = true,
+  });
   final List<String> images;
+
+  /// Fixed height when [adaptive] is false (compact previews), and the height used until the first photo's size is
+  /// known.
   final double height;
+
+  /// Photos are shown whole, in the shape they were uploaded: the box takes the first photo's aspect ratio (limited to
+  /// Instagram's range, 4:5 portrait to 1.91:1 landscape) and every photo is fitted inside it without cropping.
+  final bool adaptive;
   @override
   State<ImageCarousel> createState() => _ImageCarouselState();
 }
+
+/// Narrowest (4:5 portrait) and widest (1.91:1 landscape) box a post photo gets.
+const double kPostMinAspect = 4 / 5;
+const double kPostMaxAspect = 1.91;
 
 class _ImageCarouselState extends State<ImageCarousel> {
   int index = 0;
   // Each mounted gallery owns its page; route storage can otherwise restore another post's page.
   final controller = PageController(keepPage: false);
+  double? _aspect;
+  ImageStream? _stream;
+  ImageStreamListener? _listener;
+  String? _measured;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _measureFirst();
+  }
+
+  @override
+  void didUpdateWidget(covariant ImageCarousel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _measureFirst();
+  }
+
+  void _measureFirst() {
+    if (!widget.adaptive || widget.images.isEmpty) return;
+    final first = widget.images.first;
+    if (_measured == first) return;
+    _measured = first;
+    _stopListening();
+    final provider = socialImageProvider(StoreScope.of(context), first);
+    final stream = provider.resolve(createLocalImageConfiguration(context));
+    final listener = ImageStreamListener((info, _) {
+      final w = info.image.width.toDouble();
+      final h = info.image.height.toDouble();
+      if (!mounted || w <= 0 || h <= 0) return;
+      final aspect = (w / h).clamp(kPostMinAspect, kPostMaxAspect);
+      if (aspect != _aspect) setState(() => _aspect = aspect);
+    }, onError: (_, _) {});
+    stream.addListener(listener);
+    _stream = stream;
+    _listener = listener;
+  }
+
+  void _stopListening() {
+    final stream = _stream, listener = _listener;
+    if (stream != null && listener != null) stream.removeListener(listener);
+    _stream = null;
+    _listener = null;
+  }
+
   @override
   void dispose() {
+    _stopListening();
     controller.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final width = constraints.maxWidth.isFinite
+          ? constraints.maxWidth
+          : MediaQuery.sizeOf(context).width;
+      final aspect = _aspect;
+      final boxHeight = widget.adaptive && aspect != null
+          ? width / aspect
+          : widget.height;
+      return _carousel(context, boxHeight);
+    },
+  );
+
+  Widget _carousel(BuildContext context, double boxHeight) => Column(
     children: [
       ClipRRect(
         borderRadius: BorderRadius.circular(14),
         child: SizedBox(
-          height: widget.height,
+          height: boxHeight,
           width: double.infinity,
           child: Stack(
             children: [
@@ -98,12 +174,16 @@ class _ImageCarouselState extends State<ImageCarousel> {
                       setState(() => index = next);
                     }
                   },
-                  child: socialMediaImage(
-                    StoreScope.of(context),
-                    widget.images[i],
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    height: widget.height,
+                  child: ColoredBox(
+                    color: AppColors.surfaceSecondary,
+                    child: socialMediaImage(
+                      StoreScope.of(context),
+                      widget.images[i],
+                      // Adaptive galleries never crop: each photo is shown whole inside the box.
+                      fit: widget.adaptive ? BoxFit.contain : BoxFit.cover,
+                      width: double.infinity,
+                      height: boxHeight,
+                    ),
                   ),
                 ),
               ),
@@ -1018,7 +1098,7 @@ class PublishedEncounterCard extends StatelessWidget {
         ),
         if (post.images.isNotEmpty) ...[
           const SizedBox(height: Space.sm),
-          PostMediaView(post, height: compact ? 156 : 215),
+          PostMediaView(post, height: compact ? 156 : 215, adaptive: !compact),
         ],
       ],
     ),
@@ -1027,11 +1107,17 @@ class PublishedEncounterCard extends StatelessWidget {
 
 /// Only actual post/story attachments belong here; identity avatars stay in headers.
 class PostMediaView extends StatelessWidget {
-  const PostMediaView(this.post, {super.key, this.height = 215});
+  const PostMediaView(
+    this.post, {
+    super.key,
+    this.height = 215,
+    this.adaptive = true,
+  });
   final Post post;
   final double height;
+  final bool adaptive;
   @override
   Widget build(BuildContext context) => post.images.isEmpty
       ? const SizedBox.shrink()
-      : ImageCarousel(post.images, height: height);
+      : ImageCarousel(post.images, height: height, adaptive: adaptive);
 }

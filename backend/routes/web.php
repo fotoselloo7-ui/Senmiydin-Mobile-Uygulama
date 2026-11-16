@@ -21,6 +21,7 @@ Route::get('/app-ads.txt', function () {
     return response("google.com, {$publisher}, DIRECT, f08c47fec0942fa0
 ", 200, ['Content-Type' => 'text/plain; charset=utf-8']);
 });
+Route::get('/p/{publicId}/image', [App\Http\Controllers\PublicShareController::class, 'postImage'])->where('publicId', '[a-z0-9]{12}')->middleware('throttle:240,1')->name('share.post.image');
 Route::get('/p/{publicId}', [App\Http\Controllers\PublicShareController::class, 'post'])->where('publicId', '[a-z0-9]{12}')->middleware('throttle:120,1')->name('share.post');
 Route::get('/n/{publicId}', [App\Http\Controllers\PublicShareController::class, 'note'])->where('publicId', '[a-z0-9]{12}')->middleware('throttle:120,1')->name('share.note');
 Route::get('/.well-known/assetlinks.json', [App\Http\Controllers\PublicShareController::class, 'assetLinks']);

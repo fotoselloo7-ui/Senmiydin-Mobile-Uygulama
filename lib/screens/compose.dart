@@ -1028,7 +1028,10 @@ class EncounterPage extends StatelessWidget {
         children: [
           if (pending) ...[
             InfoNote(
-              trf('Örnek karşılaşma · {0} olarak gelen karşılaşma isteğini görüyorsun. Onay verdikten sonra kendi hesabına dönersin.', [to.name]),
+              trf(
+                'Örnek karşılaşma · {0} olarak gelen karşılaşma isteğini görüyorsun. Onay verdikten sonra kendi hesabına dönersin.',
+                [to.name],
+              ),
             ),
             const SizedBox(height: Space.xl),
           ],
@@ -1089,7 +1092,10 @@ class EncounterPage extends StatelessWidget {
               Text(
                 store.connected
                     ? post.city
-                    : trf('{0} · Yaklaşık {1} km', [post.city, post.distance.toStringAsFixed(1).replaceAll('.', ',')]),
+                    : trf('{0} · Yaklaşık {1} km', [
+                        post.city,
+                        post.distance.toStringAsFixed(1).replaceAll('.', ','),
+                      ]),
               ),
             ],
           ),
@@ -1102,7 +1108,8 @@ class EncounterPage extends StatelessWidget {
             ],
           ),
           const SizedBox(height: Space.lg),
-          if (post.images.isNotEmpty) ImageCarousel(post.images, height: 180),
+          if (post.images.isNotEmpty)
+            ImageCarousel(post.images, height: 180, adaptive: false),
           const SizedBox(height: Space.xl),
           if (pending) ...[
             PrimaryButton(

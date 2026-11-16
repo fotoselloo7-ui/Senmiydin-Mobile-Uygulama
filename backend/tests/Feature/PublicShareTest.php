@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -91,6 +92,30 @@ class PublicShareTest extends TestCase
         $page->assertSee('property="og:title"', false);
         $page->assertSee('property="og:image"', false);
         $page->assertSee('name="twitter:card"', false);
+    }
+
+    public function test_a_shared_post_with_a_photo_previews_that_photo_and_private_or_teen_photos_never_leave(): void
+    {
+        Storage::fake('local');
+        Storage::disk('local')->put('posts/a.jpg', 'fake-jpeg-bytes');
+        $post = $this->makePost($this->ada);
+        $post->media()->create(['disk' => 'local', 'file_path' => 'posts/a.jpg', 'sort_order' => 0, 'width' => 1080, 'height' => 1350, 'mime_type' => 'image/jpeg']);
+        $image = url('/p/'.$post->public_id.'/image');
+
+        $page = $this->get('/p/'.$post->public_id)->assertOk();
+        $page->assertSee('<meta property="og:image" content="'.$image.'">', false);
+        $page->assertSee('<meta property="og:image:width" content="1080">', false);
+        $page->assertSee('<meta property="og:image:height" content="1350">', false);
+        $page->assertSee('class="photo"', false);
+        $this->get('/p/'.$post->public_id.'/image')->assertOk()->assertHeader('Content-Type', 'image/jpeg');
+
+        $private = $this->makePost($this->ada, ['visibility' => 'private']);
+        $private->media()->create(['disk' => 'local', 'file_path' => 'posts/a.jpg', 'sort_order' => 0, 'width' => 1, 'height' => 1, 'mime_type' => 'image/jpeg']);
+        $teen = $this->makePost($this->teen);
+        $teen->media()->create(['disk' => 'local', 'file_path' => 'posts/a.jpg', 'sort_order' => 0, 'width' => 1, 'height' => 1, 'mime_type' => 'image/jpeg']);
+        $this->get('/p/'.$private->public_id.'/image')->assertNotFound();
+        $this->get('/p/'.$teen->public_id.'/image')->assertNotFound();
+        $this->get('/p/'.$this->makePost($this->ada)->public_id.'/image')->assertNotFound();
     }
 
     public function test_the_page_follows_accept_language_and_the_lang_parameter(): void
