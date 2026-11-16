@@ -142,10 +142,10 @@ class ShareCardView extends StatelessWidget {
           Positioned.fill(
             child: Padding(
               padding: EdgeInsets.fromLTRB(
-                22,
-                story ? 44 : 22,
-                22,
-                story ? 40 : 18,
+                26,
+                story ? 60 : 24,
+                26,
+                story ? 52 : 20,
               ),
               child: Column(
                 children: [
@@ -155,9 +155,9 @@ class ShareCardView extends StatelessWidget {
                     fit: BoxFit.contain,
                     filterQuality: FilterQuality.high,
                   ),
-                  SizedBox(height: story ? 24 : 12),
+                  SizedBox(height: story ? 30 : 14),
                   Expanded(child: _card()),
-                  SizedBox(height: story ? 22 : 12),
+                  SizedBox(height: story ? 28 : 14),
                   _footer(),
                 ],
               ),
@@ -172,7 +172,7 @@ class ShareCardView extends StatelessWidget {
     final letter = data.kind == ShareCardKind.mapNote;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+      padding: EdgeInsets.fromLTRB(22, story ? 22 : 18, 22, story ? 20 : 16),
       decoration: BoxDecoration(
         color: letter ? const Color(0xFFFFFBF5) : Colors.white,
         borderRadius: BorderRadius.circular(28),
@@ -191,9 +191,9 @@ class ShareCardView extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
-          // Header (chip + author) and footer line take a fixed amount; the photo and the text share the rest.
-          const header = 88.0;
-          const footer = 30.0;
+          // Header (optional chip + author) and the meta line take a fixed amount; the photo and the text share the rest.
+          final header = (_showChip ? 40.0 : 0.0) + 64.0;
+          const footer = 40.0;
           var room = constraints.maxHeight - header - footer;
           // The photo keeps its own shape (never cropped): as wide as the card allows, but no taller than its share
           // of the free space; a tall photo is then centred at a narrower width.
@@ -203,22 +203,21 @@ class ShareCardView extends StatelessWidget {
               : photo.width / photo.height;
           final photoHeight = photo == null
               ? 0.0
-              : math.min(width / photoAspect, room * (story ? .62 : .58));
+              : math.min(width / photoAspect, room * (story ? .70 : .55));
           final photoWidth = photoHeight * photoAspect;
-          room -= photoHeight == 0 ? 0 : photoHeight + 12;
+          room -= photoHeight == 0 ? 0 : photoHeight + 16;
           final fit = fitShareText(data.body, width, room - 24);
           final cut = fit.truncated;
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _chip(),
-              const SizedBox(height: 10),
+              if (_showChip) ...[_chip(), const SizedBox(height: 12)],
               _author(),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               if (data.photo != null) ...[
                 Center(
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(20),
                     child: SizedBox(
                       width: photoWidth,
                       height: photoHeight,
@@ -230,7 +229,7 @@ class ShareCardView extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
               ],
               Expanded(
                 child: ClipRect(
@@ -265,7 +264,7 @@ class ShareCardView extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               _meta(),
             ],
           );
@@ -273,6 +272,9 @@ class ShareCardView extends StatelessWidget {
       ),
     );
   }
+
+  bool get _showChip =>
+      data.badge != null || data.kind == ShareCardKind.mapNote;
 
   Widget _chip() {
     final encounter = data.badge != null;
@@ -470,7 +472,7 @@ class ShareCardView extends StatelessWidget {
       children: [
         Container(
           width: double.infinity,
-          height: 46,
+          height: story ? 48 : 42,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             gradient: AppShape.blueGradient,
@@ -486,7 +488,7 @@ class ShareCardView extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: story ? 10 : 6),
         material.Text(
           data.url.replaceFirst('https://', ''),
           maxLines: 1,
