@@ -69,6 +69,61 @@ class SocialIdentityTest extends TestCase
         $this->postJson('/api/v1/auth/social/google', ['id_token' => $token])->assertUnauthorized();
     }
 
+    public function test_a_new_google_account_needs_no_password_and_sensitive_actions_reverify_with_google(): void
+    {
+        $token = $this->signed();
+        // First sign-in: the identity is valid but unknown, so the app shows "complete your profile" (no password field).
+        $this->postJson('/api/v1/auth/social/google', ['id_token' => $token])->assertStatus(412);
+        $fields = ['id_token' => $token, 'username' => 'deniz', 'name' => 'Deniz Yıldız', 'birth_date' => '1995-01-01',
+            'city_id' => City::first()->id, 'accepted_terms' => true];
+        $this->postJson('/api/v1/auth/social/google', [...$fields, 'birth_date' => now()->subYears(10)->toDateString()])
+            ->assertUnprocessable()->assertJsonValidationErrors('birth_date');
+        $this->postJson('/api/v1/auth/social/google', [...$fields, 'username' => 'x'])->assertUnprocessable()->assertJsonValidationErrors('username');
+        $created = $this->postJson('/api/v1/auth/social/google', $fields)->assertCreated();
+        // The verified provider e-mail is used as it is; the birth date is the one the person entered.
+        $created->assertJsonPath('data.user.email', 'deniz@example.test')->assertJsonPath('data.user.birth_date', '1995-01-01')
+            ->assertJsonPath('data.user.has_password', false)->assertJsonPath('data.user.social_providers', ['google'])
+            ->assertJsonPath('data.user.onboarding_step', 0);
+        $session = $created->json('data.token');
+
+        // An existing account signs straight in, and nothing sends it back to registration.
+        $this->postJson('/api/v1/auth/social/google', ['id_token' => $token])->assertOk()->assertJsonPath('data.user.username', 'deniz');
+        $this->assertDatabaseCount('users', 1);
+        // There is no usable password: neither an e-mail login nor a password confirmed deletion can succeed.
+        $this->postJson('/api/v1/auth/login', ['identifier' => 'deniz', 'password' => 'Account12345!'])->assertUnauthorized();
+        app('auth')->forgetGuards();
+        $this->withToken($session)->deleteJson('/api/v1/auth/account', ['password' => 'Account12345!', 'confirmation' => 'SİL'])->assertUnprocessable();
+        // Somebody else's Google account is not a proof for this account.
+        app('auth')->forgetGuards();
+        $this->withToken($session)->deleteJson('/api/v1/auth/account', ['provider' => 'google', 'confirmation' => 'SİL',
+            'id_token' => $this->signed(['sub' => 'another-subject'])])->assertUnprocessable()->assertJsonValidationErrors('id_token');
+        // An old token cannot be replayed.
+        app('auth')->forgetGuards();
+        $this->withToken($session)->deleteJson('/api/v1/auth/account', ['provider' => 'google', 'confirmation' => 'SİL',
+            'id_token' => $this->signed(['iat' => time() - 1000])])->assertUnprocessable();
+        $this->assertDatabaseHas('users', ['username' => 'deniz', 'account_status' => 'active']);
+        // A fresh sign-in with the same Google account is (after the deletion attempt limit of three a minute has passed).
+        $this->travel(2)->minutes();
+        app('auth')->forgetGuards();
+        $this->withToken($session)->deleteJson('/api/v1/auth/account', ['provider' => 'google', 'confirmation' => 'SİL',
+            'id_token' => $this->signed()])->assertOk();
+        $this->assertDatabaseHas('users', ['account_status' => 'deleted']);
+        $this->assertDatabaseCount('social_identities', 0);
+    }
+
+    public function test_a_password_reset_gives_a_social_account_its_own_app_password(): void
+    {
+        $this->postJson('/api/v1/auth/social/google', ['id_token' => $this->signed(), 'username' => 'deniz', 'name' => 'Deniz',
+            'birth_date' => '1995-01-01', 'city_id' => City::first()->id, 'accepted_terms' => true])->assertCreated();
+        $user = User::firstOrFail();
+        $this->assertFalse($user->has_password);
+        $code = \Illuminate\Support\Facades\Password::broker()->createToken($user);
+        $this->postJson('/api/v1/auth/reset-password', ['email' => $user->email, 'token' => $code,
+            'password' => 'OwnAppPassword42', 'password_confirmation' => 'OwnAppPassword42'])->assertOk();
+        $this->assertTrue($user->fresh()->has_password);
+        $this->postJson('/api/v1/auth/login', ['identifier' => 'deniz', 'password' => 'OwnAppPassword42'])->assertOk();
+    }
+
     public function test_a_matching_email_never_silently_links_an_existing_password_account(): void
     {
         User::create(['name' => 'Deniz', 'username' => 'deniz', 'email' => 'deniz@example.test', 'password' => 'Account12345!',

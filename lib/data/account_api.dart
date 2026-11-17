@@ -64,6 +64,9 @@ class ApiClient {
   bool _disposed = false;
   int _pending = 0;
 
+  /// Whether a session token is loaded (public endpoints then identify the caller for fair throttling).
+  bool get signedIn => _token != null;
+
   Future<dynamic> send(
     String method,
     String path, {
@@ -354,6 +357,132 @@ class CatalogItem {
       .toList(growable: false);
 }
 
+/// A stored place (as fine as a neighbourhood): its own name, the hierarchy above it and a compact label. Never a
+/// coordinate.
+class PlaceSummary {
+  const PlaceSummary({
+    required this.id,
+    required this.name,
+    this.context = '',
+    String? label,
+    this.type = '',
+    this.countryCode = '',
+  }) : label = label ?? name;
+
+  factory PlaceSummary.fromJson(Map<String, dynamic> json) => PlaceSummary(
+    id: json['id'] as int,
+    name: json['name'] as String,
+    context: json['context'] as String? ?? '',
+    label: json['label'] as String?,
+    type: json['type'] as String? ?? '',
+    countryCode: json['country_code'] as String? ?? '',
+  );
+
+  static PlaceSummary? maybe(Object? json) =>
+      json is Map<String, dynamic> ? PlaceSummary.fromJson(json) : null;
+
+  final int id;
+  final String name, context, label, type, countryCode;
+}
+
+/// One place search result. It is stored on the server only when somebody picks it ([PlaceService.resolve]).
+class PlaceResult {
+  const PlaceResult({
+    required this.token,
+    required this.name,
+    this.context = '',
+    String? label,
+    this.type = '',
+    this.countryCode = '',
+  }) : label = label ?? name;
+
+  factory PlaceResult.fromJson(Map<String, dynamic> json) => PlaceResult(
+    token: json['token'] as String,
+    name: json['name'] as String,
+    context: json['context'] as String? ?? '',
+    label: json['label'] as String?,
+    type: json['type'] as String? ?? '',
+    countryCode: json['country_code'] as String? ?? '',
+  );
+
+  final String token, name, context, label, type, countryCode;
+}
+
+/// What a location picker returns: the area feeds are scoped to (`city`) and, when one was picked, the finer place.
+class ChosenPlace {
+  const ChosenPlace(this.city, {this.place});
+
+  factory ChosenPlace.fromJson(Map<String, dynamic> json) => ChosenPlace(
+    CatalogItem.fromJson(json['city'] as Map<String, dynamic>),
+    place: PlaceSummary.maybe(json['place']),
+  );
+
+  final CatalogItem city;
+  final PlaceSummary? place;
+  int? get placeId => place?.id;
+  String get label => place?.label ?? city.name;
+
+  /// Local draft form (private app storage).
+  Map<String, Object?> toDraft() => {
+    'city_id': city.id,
+    'city': city.name,
+    'place_id': place?.id,
+    'label': place?.label,
+  };
+
+  static ChosenPlace? fromDraft(Object? raw) {
+    if (raw is! Map || raw['city_id'] is! int || raw['city'] is! String) {
+      return null;
+    }
+    final id = raw['place_id'], label = raw['label'];
+    return ChosenPlace(
+      CatalogItem(raw['city_id'] as int, raw['city'] as String),
+      place: id is int && label is String
+          ? PlaceSummary(id: id, name: label, label: label)
+          : null,
+    );
+  }
+}
+
+/// Places for the location picker, always through the SenMiydin API (never a map provider directly).
+class PlaceService {
+  PlaceService(this.client);
+
+  final ApiClient client;
+
+  Future<List<PlaceResult>> search(String query, {String? country}) async {
+    final data = await client.send(
+      'GET',
+      'places/search',
+      authenticated: client.signedIn,
+      query: {'q': query, 'country': ?country},
+    ) as Map<String, dynamic>;
+    return (data['items'] as List)
+        .map((item) => PlaceResult.fromJson(item as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  Future<PlaceResult?> reverse(double latitude, double longitude) async {
+    final data = await client.send(
+      'GET',
+      'places/reverse',
+      authenticated: client.signedIn,
+      query: {'latitude': '$latitude', 'longitude': '$longitude'},
+    ) as Map<String, dynamic>;
+    final item = data['item'];
+    return item is Map<String, dynamic> ? PlaceResult.fromJson(item) : null;
+  }
+
+  Future<ChosenPlace> resolve(String token) async => ChosenPlace.fromJson(
+    await client.send(
+      'POST',
+      'places/resolve',
+      authenticated: client.signedIn,
+      body: {'token': token},
+    ) as Map<String, dynamic>,
+  );
+}
+
 class AccountProfile {
   AccountProfile.fromJson(Map<String, dynamic> json)
     : id = json['id'] as int,
@@ -364,6 +493,14 @@ class AccountProfile {
           : null,
       activeCitySource = json['active_city_source'] as String?,
       city = CatalogItem.fromJson(json['city'] as Map<String, dynamic>),
+      place = PlaceSummary.maybe(json['place']),
+      email = json['email'] as String? ?? '',
+      birthDate = DateTime.tryParse(json['birth_date'] as String? ?? ''),
+      // Older servers do not send these: every account then has an app password and no linked provider.
+      hasPassword = json['has_password'] as bool? ?? true,
+      socialProviders = List<String>.from(
+        json['social_providers'] as List? ?? const [],
+      ),
       avatar = ApiClient.mediaUrl(json['avatar'] as String?),
       cover = ApiClient.mediaUrl(json['cover_image'] as String?),
       bio = json['bio'] as String,
@@ -397,6 +534,15 @@ class AccountProfile {
   final int id, onboardingStep;
   final String name, username, avatar, cover, bio, occupation;
   final CatalogItem city;
+
+  /// The home place the person chose (null for accounts that only picked a city from the old list).
+  final PlaceSummary? place;
+  final String email;
+  final DateTime? birthDate;
+
+  /// False for a Google / Apple account without an app password: sensitive actions re-verify with that provider.
+  final bool hasPassword;
+  final List<String> socialProviders;
   final CatalogItem? activeCity;
   final String? activeCitySource;
   final List<String> connections;
@@ -438,12 +584,17 @@ class AuthService {
     await client.clearToken();
   }
 
-  Future<void> erase(String password) async {
+  /// Deletes the account. The proof is either the app password or a fresh provider sign-in ([proof] fields:
+  /// provider, id_token and, for Apple, nonce).
+  Future<void> erase({String? password, Map<String, Object?>? proof}) async {
     await client.send(
       'DELETE',
       'auth/account',
       authenticated: true,
-      body: {'password': password, 'confirmation': 'SİL'},
+      body: {
+        if (proof != null) ...proof else 'password': password,
+        'confirmation': 'SİL',
+      },
     );
     await client.clearToken();
   }

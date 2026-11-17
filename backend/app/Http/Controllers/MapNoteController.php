@@ -139,7 +139,7 @@ class MapNoteController extends Controller
             throw ValidationException::withMessages(['body' => 'Notunu yaz.']);
         }
         $resolved = app(CityResolver::class)->resolve((float) $data['latitude'], (float) $data['longitude']);
-        if ($resolved && (int) $resolved !== (int) $data['city_id']) {
+        if (! \App\Places\Areas::accepts((int) $data['city_id'], (float) $data['latitude'], (float) $data['longitude'], $resolved)) {
             throw ValidationException::withMessages(['latitude' => 'Seçtiğin nokta bu şehirde görünmüyor. Haritada şehrinin içinde bir yer seç.']);
         }
 

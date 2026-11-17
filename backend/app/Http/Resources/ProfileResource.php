@@ -22,6 +22,11 @@ class ProfileResource extends JsonResource
             'active_city' => $this->activeCity?->only('id', 'name', 'slug'),
             'active_city_source' => $this->active_city_source,
             'city' => $this->city->only('id', 'name', 'slug'),
+            // The chosen home place; null for accounts that only ever picked a city from the old catalogue.
+            'place' => $this->place?->summary(),
+            // False for a Google / Apple account without an app password; sensitive actions then re-verify with the provider.
+            'has_password' => (bool) ($this->has_password ?? true),
+            'social_providers' => \Illuminate\Support\Facades\DB::table('social_identities')->where('user_id', $this->id)->pluck('provider')->all(),
             'avatar' => $this->avatar ? route('avatars.show', ['filename' => basename($this->avatar)], false) : null,
             'cover_image' => $this->coverUrl(),
             'bio' => $this->bio,

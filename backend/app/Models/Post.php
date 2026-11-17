@@ -18,7 +18,7 @@ class Post extends Model
 
     public const TYPES = ['moment', 'confession', 'thought', 'travel', 'encounter'];
 
-    protected $fillable = ['user_id', 'city_id', 'body', 'type', 'is_anonymous', 'visibility', 'comments_enabled', 'request_id', 'occurred_at', 'place_label'];
+    protected $fillable = ['user_id', 'city_id', 'body', 'type', 'is_anonymous', 'visibility', 'comments_enabled', 'request_id', 'occurred_at', 'place_label', 'place_id'];
 
     protected function casts(): array
     {
@@ -60,6 +60,12 @@ class Post extends Model
     public function travel(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(PostTravelDetail::class);
+    }
+
+    /** The place the author chose for the post (optional; older posts only have a city). */
+    public function place(): BelongsTo
+    {
+        return $this->belongsTo(Place::class);
     }
 
     public function city(): BelongsTo
@@ -116,8 +122,9 @@ class Post extends Model
         return $query->with([
             'jointEncounter.invitation.requester',
             'jointEncounter.invitation.target',
-            'city:id,name,slug',
-            'travel.origin:id,name,slug', 'travel.destination:id,name,slug',
+            'city:id,name,slug,labels', 'place',
+            'travel.origin:id,name,slug,labels', 'travel.destination:id,name,slug,labels',
+            'travel.originPlace', 'travel.destinationPlace',
             'media',
             'author' => fn (BelongsTo $authors) => $authors->withExists([
                 'followers as followed_by_viewer' => fn (Builder $users) => $users->where($users->qualifyColumn('id'), $viewer->id),

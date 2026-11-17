@@ -7,6 +7,7 @@ import '../widgets/translated_text.dart';
 import '../data/social_sign_in.dart';
 
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
 import '../core/brand_assets.dart';
@@ -707,25 +708,40 @@ class _AuthPageState extends State<AuthPage> with AccountAction<AuthPage> {
   final handle = TextEditingController(),
       email = TextEditingController(),
       password = TextEditingController(),
-      confirm = TextEditingController();
+      confirm = TextEditingController(),
+      name = TextEditingController();
   DateTime? birthday;
 
-  /// The display name starts as the social account's name (or the username) and is completed in the profile step.
-  String? socialName;
-  String city = 'Alanya';
+  /// Where the person lives: a real place (neighbourhood, district, city ...) chosen with the location picker.
+  ChosenPlace? place;
   bool accepted = false;
   bool askedAge = false;
 
-  /// Inline messages: a failed attempt (red) or an information note (lilac); inline errors for the two non-text
+  /// Inline messages: a failed attempt (red) or an information note (lilac); inline errors for the non-text
   /// requirements of the registration.
-  String? failure, notice, birthdayError, termsError;
+  String? failure, notice, birthdayError, placeError, termsError;
   bool submitted = false;
+
+  /// Google / Apple already verified who this is: the form only completes the profile (no password, no e-mail).
+  bool get completingSocial => widget.social != null;
 
   @override
   void initState() {
     super.initState();
     email.text = widget.social?.email ?? '';
-    socialName = widget.social?.name;
+    name.text = widget.social?.name ?? '';
+    handle.text = suggestedUsername(widget.social?.email ?? '');
+  }
+
+  /// A username suggestion from the e-mail address ("Deniz.Kaya@x" -> "deniz.kaya"); the person can change it.
+  static String suggestedUsername(String email) {
+    final local = email
+        .split('@')
+        .first
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9_.]'), '');
+    final trimmed = local.length > 24 ? local.substring(0, 24) : local;
+    return trimmed.length >= 3 ? trimmed : '';
   }
 
   @override
@@ -740,7 +756,7 @@ class _AuthPageState extends State<AuthPage> with AccountAction<AuthPage> {
 
   @override
   void dispose() {
-    for (final c in [handle, email, password, confirm]) {
+    for (final c in [handle, email, password, confirm, name]) {
       c.dispose();
     }
     super.dispose();
@@ -782,6 +798,10 @@ class _AuthPageState extends State<AuthPage> with AccountAction<AuthPage> {
       setState(() => birthdayError = 'Doğum tarihini seçmelisin.');
       complete = false;
     }
+    if (widget.register && place == null) {
+      setState(() => placeError = 'Konumunu seç.');
+      complete = false;
+    }
     if (widget.register && !accepted) {
       setState(
         () => termsError = 'Devam etmek için koşulları kabul etmelisin.',
@@ -795,24 +815,25 @@ class _AuthPageState extends State<AuthPage> with AccountAction<AuthPage> {
         if (widget.register) {
           final username = handle.text.trim().replaceFirst(RegExp(r'^@'), '');
           await store.signIn(
-            widget.social == null
-                ? 'register'
-                : 'social/${widget.social!.provider}',
+            completingSocial ? 'social/${widget.social!.provider}' : 'register',
             {
               ...?widget.social?.fields,
-              // The sign-up form has no name field: the display name starts as the social name or the username and
-              // is completed in the next (profile) step.
-              'name': (socialName ?? '').trim().isEmpty
-                  ? username
-                  : socialName!.trim(),
+              // E-mail sign-up has no name field: the display name starts as the username and is completed in the
+              // profile step. A social sign-up starts from the provider name, which the person may change here.
+              'name': name.text.trim().isEmpty ? username : name.text.trim(),
               'username': username,
               'email': email.text.trim(),
-              'password': password.text,
+              // Google / Apple accounts need no password; the provider password is never asked for.
+              if (!completingSocial) 'password': password.text,
               'birth_date': birthday!.toIso8601String().split('T').first,
-              'city_id': await store.cityId(city),
+              'city_id': place!.city.id,
+              'place_id': ?place!.placeId,
               'accepted_terms': accepted,
             },
           );
+          if (completingSocial) {
+            unawaited(importProviderPhoto(store, widget.social!.photoUrl));
+          }
         } else {
           await store.signIn('login', {
             'identifier': email.text.trim(),
@@ -831,12 +852,10 @@ class _AuthPageState extends State<AuthPage> with AccountAction<AuthPage> {
     }
     if (widget.register) {
       final username = handle.text.trim().replaceFirst('@', '');
-      store.me.name = (socialName ?? '').trim().isEmpty
-          ? username
-          : socialName!.trim();
+      store.me.name = name.text.trim().isEmpty ? username : name.text.trim();
       store.me.handle = username;
-      store.me.city = city;
-      store.city = city;
+      store.me.city = place!.city.name;
+      store.city = place!.city.name;
       store.refresh();
       openPage(context, '/complete');
     } else {
@@ -861,6 +880,8 @@ class _AuthPageState extends State<AuthPage> with AccountAction<AuthPage> {
     }
     _run(() async {
       final credential = await SocialSignIn.authenticate(provider, store.auth!);
+      // Cancelled in the provider sheet: back to the form, nothing to report.
+      if (credential == null) return;
       try {
         await store.signIn('social/${credential.provider}', credential.fields);
         if (mounted) {
@@ -882,6 +903,44 @@ class _AuthPageState extends State<AuthPage> with AccountAction<AuthPage> {
         }
       }
     });
+  }
+
+  Future<void> pickPlace() async {
+    final chosen = await choosePlace(context, current: place?.label);
+    if (mounted && chosen != null) {
+      setState(() {
+        place = chosen;
+        placeError = null;
+      });
+    }
+  }
+
+  /// Best effort: the Google profile photo becomes the first profile photo. Only Google's own image host is read, and
+  /// a failure simply leaves the photo for the profile step.
+  static Future<void> importProviderPhoto(AppStore store, String? url) async {
+    final uri = Uri.tryParse(url ?? '');
+    if (uri == null || uri.scheme != 'https') return;
+    if (!uri.host.endsWith('.googleusercontent.com')) return;
+    try {
+      final response = await http
+          .get(
+            uri.replace(
+              path: uri.path.replaceAll(RegExp(r'=s\d+(-c)?$'), '=s800'),
+            ),
+          )
+          .timeout(const Duration(seconds: 10));
+      final type = response.headers['content-type'] ?? '';
+      if (response.statusCode != 200 ||
+          !type.startsWith('image/') ||
+          response.bodyBytes.length > 5 * 1024 * 1024) {
+        return;
+      }
+      await store.uploadAvatar(
+        XFile.fromData(response.bodyBytes, name: 'profile.jpg', mimeType: type),
+      );
+    } catch (_) {
+      // The profile step offers the photo again.
+    }
   }
 
   Future<void> pickBirthday() async {
@@ -1121,6 +1180,7 @@ class _AuthPageState extends State<AuthPage> with AccountAction<AuthPage> {
               errorText: birthdayError,
               onTap: busy ? null : pickBirthday,
             ),
+            _placeField(),
           ],
         ),
       ),
@@ -1132,68 +1192,170 @@ class _AuthPageState extends State<AuthPage> with AccountAction<AuthPage> {
         onPressed: busy ? null : submit,
       ),
       const SizedBox(height: 16),
-      Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 28,
-            height: 28,
-            child: Checkbox(
-              value: accepted,
-              activeColor: AppColors.brandPurple,
-              side: const BorderSide(color: AppColors.borderStrong, width: 1.5),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(6),
-              ),
-              onChanged: busy
-                  ? null
-                  : (v) => setState(() {
-                      accepted = v ?? false;
-                      if (accepted) termsError = null;
-                    }),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 5),
-              child: AuthRichText(
-                "{0} yaşını doldurdum; {1} ve {2}'nı okudum, kabul ediyorum.",
-                [
-                  '$age',
-                  AuthLink(
-                    'Kullanım Koşulları',
-                    () => showLegal(context, 'Kullanım Koşulları'),
-                  ),
-                  AuthLink(
-                    'Gizlilik Politikası',
-                    () => showLegal(context, 'Gizlilik Politikası'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-      if (termsError != null)
-        Padding(
-          padding: const EdgeInsets.only(top: 6, left: 36),
-          child: Text(
-            termsError!,
-            style: const TextStyle(color: AppColors.red, fontSize: 12.5),
-          ),
-        ),
+      ..._terms(age),
       const SizedBox(height: 6),
       const SizedBox(height: 10),
       _switchRow(),
     ];
   }
 
+  Widget _placeField() => AuthSelectField(
+    key: const Key('register-place'),
+    label: 'Konum',
+    icon: Icons.location_on_outlined,
+    value: place?.label,
+    errorText: placeError,
+    onTap: busy ? null : pickPlace,
+  );
+
+  /// Google / Apple sign-up: the identity is verified, so only the profile is completed here. No password: the
+  /// provider password is never asked for and never reaches the app.
+  List<Widget> _socialProfile(BuildContext context) {
+    final age = StoreScope.of(context).minimumAge;
+    final provider = widget.social!.provider == 'apple' ? 'Apple' : 'Google';
+    return [
+      const SizedBox(height: 10),
+      AuthTitle(
+        tr('Profilini tamamla'),
+        trf('{0} hesabın doğrulandı. Birkaç bilgi kaldı.', [provider]),
+      ),
+      const SizedBox(height: 16),
+      if (email.text.isNotEmpty)
+        AuthNotice(
+          trf('{0} ile doğrulanan e-posta: {1}', [provider, email.text]),
+        ),
+      _banner(),
+      Form(
+        key: form,
+        autovalidateMode: submitted
+            ? AutovalidateMode.onUserInteraction
+            : AutovalidateMode.disabled,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AuthField(
+              'Ad Soyad',
+              Icons.badge_outlined,
+              controller: name,
+              enabled: !busy,
+              autofillHints: const [AutofillHints.name],
+              validator: (v) => (v ?? '').trim().isEmpty
+                  ? 'Adını yaz.'
+                  : (v!.trim().length > 100
+                        ? 'Adın en fazla 100 karakter olabilir.'
+                        : null),
+            ),
+            AuthField(
+              'Kullanıcı Adı',
+              Icons.person_outline_rounded,
+              controller: handle,
+              enabled: !busy,
+              autofillHints: const [AutofillHints.newUsername],
+              validator: (v) =>
+                  RegExp(r'^[a-zA-Z0-9_\.]{3,24}$')
+                      .hasMatch((v ?? '').replaceFirst('@', ''))
+                  ? null
+                  : '3–24 harf, rakam, nokta veya alt çizgi kullan.',
+            ),
+            AuthSelectField(
+              label: 'Doğum Tarihi',
+              icon: Icons.calendar_month_outlined,
+              value: birthday == null ? null : _date(birthday!),
+              errorText: birthdayError,
+              onTap: busy ? null : pickBirthday,
+            ),
+            _placeField(),
+          ],
+        ),
+      ),
+      const SizedBox(height: 4),
+      AuthPrimaryButton(
+        busy ? 'Lütfen bekle…' : 'Devam Et',
+        icon: Icons.arrow_forward_rounded,
+        busy: busy,
+        onPressed: busy ? null : submit,
+      ),
+      const SizedBox(height: 16),
+      ..._terms(age),
+      const SizedBox(height: 10),
+      Center(
+        child: TextButton(
+          onPressed: busy
+              ? null
+              : () => Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  '/welcome',
+                  (_) => false,
+                ),
+          child: const Text('Vazgeç'),
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _terms(int age) => [
+    Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 28,
+          height: 28,
+          child: Checkbox(
+            value: accepted,
+            activeColor: AppColors.brandPurple,
+            side: const BorderSide(color: AppColors.borderStrong, width: 1.5),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
+            onChanged: busy
+                ? null
+                : (v) => setState(() {
+                    accepted = v ?? false;
+                    if (accepted) termsError = null;
+                  }),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 5),
+            child: AuthRichText(
+              "{0} yaşını doldurdum; {1} ve {2}'nı okudum, kabul ediyorum.",
+              [
+                '$age',
+                AuthLink(
+                  'Kullanım Koşulları',
+                  () => showLegal(context, 'Kullanım Koşulları'),
+                ),
+                AuthLink(
+                  'Gizlilik Politikası',
+                  () => showLegal(context, 'Gizlilik Politikası'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ),
+    if (termsError != null)
+      Padding(
+        padding: const EdgeInsets.only(top: 6, left: 36),
+        child: Text(
+          termsError!,
+          style: const TextStyle(color: AppColors.red, fontSize: 12.5),
+        ),
+      ),
+  ];
+
   @override
   Widget build(BuildContext context) => PopScope(
     canPop: !busy,
     child: AuthScaffold(
-      children: widget.register ? _register(context) : _login(context),
+      children: !widget.register
+          ? _login(context)
+          : completingSocial
+          ? _socialProfile(context)
+          : _register(context),
     ),
   );
 }
@@ -1238,6 +1400,9 @@ class _CompleteProfilePageState extends State<CompleteProfilePage>
     with AccountAction<CompleteProfilePage> {
   late final TextEditingController bio, occupation, name, handle;
   late String city, photo;
+
+  /// A place picked in this form (null until the person changes it).
+  ChosenPlace? chosen;
   late Set<String> connections;
   bool visible = true, suggest = true, initialized = false, leaving = false;
   late Object originalForm;
@@ -1269,7 +1434,7 @@ class _CompleteProfilePageState extends State<CompleteProfilePage>
     occupation = TextEditingController(text: me.occupation);
     name = TextEditingController(text: me.name);
     handle = TextEditingController(text: me.handle);
-    city = me.city;
+    city = store.account?.place?.label ?? me.city;
     photo = me.photo;
     visible = me.visible;
     connections = {...store.connections};
@@ -1305,8 +1470,10 @@ class _CompleteProfilePageState extends State<CompleteProfilePage>
           'username': handle.text.trim(),
           'bio': bio.text.trim(),
           'occupation_school': occupation.text.trim(),
-          if (city != store.account!.city.name)
-            'city_id': await store.cityId(city),
+          if (chosen != null) ...{
+            'city_id': chosen!.city.id,
+            'place_id': ?chosen!.placeId,
+          },
           'connections': [
             for (final entry in AppStore.connectionChoices.entries)
               if (connections.contains(entry.value)) entry.key,
@@ -1324,7 +1491,7 @@ class _CompleteProfilePageState extends State<CompleteProfilePage>
       ..handle = handle.text.trim()
       ..bio = bio.text.trim()
       ..occupation = occupation.text.trim()
-      ..city = city
+      ..city = chosen?.city.name ?? store.me.city
       ..photo = photo
       ..visible = visible;
     store.connections
@@ -1344,7 +1511,8 @@ class _CompleteProfilePageState extends State<CompleteProfilePage>
         toast(context, 'Profilin güncellendi.');
       });
     } else {
-      Navigator.pushReplacementNamed(context, '/interests', arguments: true);
+      // Pushed (not replaced): Back on the next step returns here with this form as it was.
+      Navigator.pushNamed(context, '/interests', arguments: true);
     }
   }
 
@@ -1430,6 +1598,8 @@ class _CompleteProfilePageState extends State<CompleteProfilePage>
   @override
   Widget build(BuildContext context) {
     final store = StoreScope.of(context);
+    final page = _page(context, store);
+    if (!widget.edit) return SetupBack(busy: busy, child: page);
     return PopScope(
       canPop: !busy && (!widget.edit || !hasChanges || leaving),
       onPopInvokedWithResult: (didPop, _) async {
@@ -1447,200 +1617,235 @@ class _CompleteProfilePageState extends State<CompleteProfilePage>
           if (mounted) Navigator.pop(context);
         });
       },
-      child: AppPage(
-        title: widget.edit ? 'Profil Düzenle' : 'Profilini Tamamla',
-        child: SingleChildScrollView(
-          padding: Space.page,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (!widget.edit) ...[
-                const SetupProgress(step: 1),
-                const InfoBanner(
-                  'Profilini Tamamla',
-                  'İlk izlenim önemli.',
-                  icon: Icons.person_outline_rounded,
-                ),
-                const SizedBox(height: Space.xl),
-              ],
-              Center(
-                child: Column(
-                  children: [
-                    GestureDetector(
-                      onTap: busy
-                          ? null
-                          : store.connected
-                          ? () => pickAvatar(store)
-                          : () => showModalBottomSheet<void>(
-                              context: context,
-                              builder: (ctx) => SafeArea(
-                                child: Padding(
-                                  padding: Space.page,
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        'Bir profil fotoğrafı seç',
-                                        style: Theme.of(ctx)
-                                            .textTheme
-                                            .titleLarge,
-                                      ),
-                                      const SizedBox(height: Space.lg),
-                                      Wrap(
-                                        spacing: 16,
-                                        runSpacing: 16,
-                                        children: store.people
-                                            .take(6)
-                                            .map(
-                                              (p) => GestureDetector(
-                                                onTap: () {
-                                                  setState(
-                                                    () => photo = p.photo,
-                                                  );
-                                                  Navigator.pop(ctx);
-                                                },
-                                                child: Avatar(p, size: 65),
-                                              ),
-                                            )
-                                            .toList(),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                      child: Stack(
-                        children: [
-                          CircleAvatar(
-                            radius: 51,
-                            backgroundColor: AppColors.pale,
-                            backgroundImage: profileImage(photo),
-                            onBackgroundImageError: photo.isEmpty
-                                ? null
-                                : (_, _) {},
-                            child: photo.isEmpty
-                                ? const Icon(
-                                    Icons.person_outline,
-                                    color: AppColors.blue,
-                                    size: 55,
-                                  )
-                                : null,
-                          ),
-                          const Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: CircleAvatar(
-                              radius: 14,
-                              backgroundColor: AppColors.action,
-                              child: Icon(
-                                Icons.add,
-                                color: Colors.white,
-                                size: 21,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: Space.sm),
-                    const Text(
-                      'Fotoğraf ekle',
-                      style: TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: Space.xl),
-              if (widget.edit) ...[
-                if (store.connected)
-                  SettingsRow(
-                    'Kapak Fotoğrafı',
-                    Icons.image_outlined,
-                    subtitle: (store.account?.cover ?? '').isEmpty
-                        ? 'Profilinin üst görselini ekle'
-                        : 'Değiştir veya kaldır',
-                    onTap: busy ? null : () => changeCover(store),
-                  ),
-                Field('Ad Soyad', Icons.person_outline, controller: name),
-                Field(
-                  'Kullanıcı Adı',
-                  Icons.alternate_email,
-                  controller: handle,
-                ),
-              ],
-              Field(
-                'Kısa Biyografi',
-                Icons.edit_outlined,
-                controller: bio,
-                maxLines: 3,
-                maxLength: 160,
-              ),
-              Field(
-                'Meslek / Okul',
-                Icons.work_outline,
-                controller: occupation,
-              ),
-              SettingsRow(
-                'Yaşadığın Şehir',
-                Icons.location_on_outlined,
-                subtitle: city,
-                onTap: busy
-                    ? null
-                    : () async {
-                        final v = await chooseCity(context, city);
-                        if (mounted && v != null) {
-                          setState(() => city = v);
-                        }
-                      },
-              ),
-              const SectionHeader(
-                'Aradığın bağlantılar',
-                icon: Icons.favorite_border,
-              ),
-              BalancedChoiceGrid(
-                options: AppStore.connectionChoices.values.toList(),
-                enabled: !busy,
-                isSelected: connections.contains,
-                onToggle: (c, v) => setState(
-                  () => v ? connections.add(c) : connections.remove(c),
-                ),
-              ),
-              PreferenceRow(
-                'Konumumu şehir içinde göster',
-                visible,
-                busy ? null : (v) => setState(() => visible = v),
-              ),
-              PreferenceRow(
-                'Yakınımdaki karşılaşmaları öner',
-                suggest,
-                busy ? null : (v) => setState(() => suggest = v),
-              ),
-              if (widget.edit)
-                SettingsRow(
-                  'İlgi Alanlarım',
-                  Icons.interests_outlined,
-                  subtitle: store.me.interests.join(', '),
-                  onTap: busy
-                      ? null
-                      : () => openPage(context, '/interests', false),
-                ),
-              const SizedBox(height: Space.lg),
-              PrimaryButton(
-                busy
-                    ? 'Kaydediliyor…'
-                    : widget.edit
-                    ? 'Değişiklikleri Kaydet'
-                    : 'Devam Et',
-                onPressed: busy ? null : save,
-                icon: widget.edit ? Icons.check : Icons.arrow_forward,
-              ),
-              const SizedBox(height: Space.xl),
-            ],
-          ),
-        ),
-      ),
+      child: page,
     );
   }
+
+  Widget _page(BuildContext context, AppStore store) => AppPage(
+    title: widget.edit ? 'Profil Düzenle' : 'Profilini Tamamla',
+    child: SingleChildScrollView(
+      padding: Space.page,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!widget.edit) ...[
+            const SetupProgress(step: 1),
+            const InfoBanner(
+              'Profilini Tamamla',
+              'İlk izlenim önemli.',
+              icon: Icons.person_outline_rounded,
+            ),
+            const SizedBox(height: Space.xl),
+          ],
+          Center(
+            child: Column(
+              children: [
+                GestureDetector(
+                  onTap: busy
+                      ? null
+                      : store.connected
+                      ? () => pickAvatar(store)
+                      : () => showModalBottomSheet<void>(
+                          context: context,
+                          builder: (ctx) => SafeArea(
+                            child: Padding(
+                              padding: Space.page,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Bir profil fotoğrafı seç',
+                                    style: Theme.of(ctx).textTheme.titleLarge,
+                                  ),
+                                  const SizedBox(height: Space.lg),
+                                  Wrap(
+                                    spacing: 16,
+                                    runSpacing: 16,
+                                    children: store.people
+                                        .take(6)
+                                        .map(
+                                          (p) => GestureDetector(
+                                            onTap: () {
+                                              setState(() => photo = p.photo);
+                                              Navigator.pop(ctx);
+                                            },
+                                            child: Avatar(p, size: 65),
+                                          ),
+                                        )
+                                        .toList(),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                  child: Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 51,
+                        backgroundColor: AppColors.pale,
+                        backgroundImage: profileImage(photo),
+                        onBackgroundImageError: photo.isEmpty
+                            ? null
+                            : (_, _) {},
+                        child: photo.isEmpty
+                            ? const Icon(
+                                Icons.person_outline,
+                                color: AppColors.blue,
+                                size: 55,
+                              )
+                            : null,
+                      ),
+                      const Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: CircleAvatar(
+                          radius: 14,
+                          backgroundColor: AppColors.action,
+                          child: Icon(Icons.add, color: Colors.white, size: 21),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: Space.sm),
+                const Text(
+                  'Fotoğraf ekle',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: Space.xl),
+          if (widget.edit) ...[
+            if (store.connected)
+              SettingsRow(
+                'Kapak Fotoğrafı',
+                Icons.image_outlined,
+                subtitle: (store.account?.cover ?? '').isEmpty
+                    ? 'Profilinin üst görselini ekle'
+                    : 'Değiştir veya kaldır',
+                onTap: busy ? null : () => changeCover(store),
+              ),
+            Field('Ad Soyad', Icons.person_outline, controller: name),
+            Field('Kullanıcı Adı', Icons.alternate_email, controller: handle),
+          ],
+          Field(
+            'Kısa Biyografi',
+            Icons.edit_outlined,
+            controller: bio,
+            maxLines: 3,
+            maxLength: 160,
+          ),
+          Field('Meslek / Okul', Icons.work_outline, controller: occupation),
+          SettingsRow(
+            'Konumun',
+            Icons.location_on_outlined,
+            subtitle: city,
+            onTap: busy
+                ? null
+                : () async {
+                    final v = await choosePlace(context, current: city);
+                    if (mounted && v != null) {
+                      setState(() {
+                        chosen = v;
+                        city = v.label;
+                      });
+                    }
+                  },
+          ),
+          const SectionHeader(
+            'Aradığın bağlantılar',
+            icon: Icons.favorite_border,
+          ),
+          BalancedChoiceGrid(
+            options: AppStore.connectionChoices.values.toList(),
+            enabled: !busy,
+            isSelected: connections.contains,
+            onToggle: (c, v) =>
+                setState(() => v ? connections.add(c) : connections.remove(c)),
+          ),
+          PreferenceRow(
+            'Konumumu şehir içinde göster',
+            visible,
+            busy ? null : (v) => setState(() => visible = v),
+          ),
+          PreferenceRow(
+            'Yakınımdaki karşılaşmaları öner',
+            suggest,
+            busy ? null : (v) => setState(() => suggest = v),
+          ),
+          if (widget.edit)
+            SettingsRow(
+              'İlgi Alanlarım',
+              Icons.interests_outlined,
+              subtitle: store.me.interests.map(tr).join(', '),
+              onTap: busy ? null : () => openPage(context, '/interests', false),
+            ),
+          const SizedBox(height: Space.lg),
+          PrimaryButton(
+            busy
+                ? 'Kaydediliyor…'
+                : widget.edit
+                ? 'Değişiklikleri Kaydet'
+                : 'Devam Et',
+            onPressed: busy ? null : save,
+            icon: widget.edit ? Icons.check : Icons.arrow_forward,
+          ),
+          const SizedBox(height: Space.xl),
+        ],
+      ),
+    ),
+  );
+}
+
+/// Back inside the first-run setup (Android back button, iOS back gesture and the back arrow alike): one step back
+/// with everything picked so far kept. When the previous step is not under this page (the app was reopened in the
+/// middle of setup) it is opened again. On the first step Back offers to leave setup and sign out, so the person
+/// is never stuck and the app never closes by surprise.
+class SetupBack extends StatelessWidget {
+  const SetupBack({
+    super.key,
+    required this.busy,
+    required this.child,
+    this.previous,
+    this.previousArgument,
+  });
+
+  final bool busy;
+  final Widget child;
+  final String? previous;
+  final Object? previousArgument;
+
+  @override
+  Widget build(BuildContext context) => PopScope(
+    canPop: !busy && previous != null && Navigator.of(context).canPop(),
+    onPopInvokedWithResult: (didPop, _) async {
+      if (didPop || busy) return;
+      if (previous != null) {
+        Navigator.of(context)
+            .pushReplacementNamed(previous!, arguments: previousArgument);
+        return;
+      }
+      final leave = await confirmAction(
+        context,
+        title: 'Kurulumdan çıkılsın mı?',
+        message: 'Hesabın oluşturuldu. Çıkış yaparsan bir sonraki girişte kaldığın yerden devam edersin.',
+        action: 'Çıkış Yap',
+      );
+      if (!leave || !context.mounted) return;
+      final store = StoreScope.of(context);
+      try {
+        await store.signOut();
+      } catch (_) {
+        // Signing out locally is enough to leave setup.
+      }
+      if (context.mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil('/welcome', (_) => false);
+      }
+    },
+    child: child,
+  );
 }
 
 class InterestsPage extends StatefulWidget {
@@ -1675,17 +1880,22 @@ class _InterestsPageState extends State<InterestsPage>
       if (!mounted) return;
       setState(() {
         catalog = items;
-        selected.addAll(
-          items
-              .where(
-                (item) =>
-                    store.account?.interests.any(
-                      (interest) => interest.id == item.id,
-                    ) ??
-                    store.me.interests.contains(item.name),
-              )
-              .map((item) => item.id),
-        );
+        final draft = widget.setup ? store.draftInterests : null;
+        if (draft != null) {
+          selected.addAll(draft.where((id) => items.any((i) => i.id == id)));
+        } else {
+          selected.addAll(
+            items
+                .where(
+                  (item) =>
+                      store.account?.interests.any(
+                        (interest) => interest.id == item.id,
+                      ) ??
+                      store.me.interests.contains(item.name),
+                )
+                .map((item) => item.id),
+          );
+        }
         loading = false;
       });
     } on ApiFailure catch (error) {
@@ -1706,170 +1916,170 @@ class _InterestsPageState extends State<InterestsPage>
               turkishSearchKey(item.name).contains(turkishSearchKey(query)),
         )
         .toList();
-    return PopScope(
-      canPop: !busy,
-      child: AppPage(
-        title: widget.setup ? 'Hobilerini Seç' : 'İlgi Alanlarım',
-        bottom: PrimaryButton(
-          busy
-              ? 'Kaydediliyor…'
-              : widget.setup
-              ? 'Devam Et'
-              : trf('Kaydet ({0})', [selected.length]),
-          onPressed: busy || selected.length < 5
-              ? null
-              : () => runAccountAction(() async {
-                  await store.saveAccountInterests(
-                    catalog!
-                        .where((item) => selected.contains(item.id))
-                        .toList(),
-                  );
-                  if (!context.mounted) return;
-                  if (widget.setup) {
-                    Navigator.pushReplacementNamed(context, '/permissions');
-                  } else {
-                    Navigator.pop(context);
-                  }
-                }),
-        ),
-        child: CustomScrollView(
-          slivers: [
-            SliverPadding(
-              padding: Space.page,
-              sliver: SliverList.list(
+    final page = AppPage(
+      title: widget.setup ? 'Hobilerini Seç' : 'İlgi Alanlarım',
+      bottom: PrimaryButton(
+        busy
+            ? 'Kaydediliyor…'
+            : widget.setup
+            ? 'Devam Et'
+            : trf('Kaydet ({0})', [selected.length]),
+        onPressed: busy || selected.length < 5
+            ? null
+            : () => runAccountAction(() async {
+                await store.saveAccountInterests(
+                  catalog!.where((item) => selected.contains(item.id)).toList(),
+                );
+                if (!context.mounted) return;
+                store.draftInterests = null;
+                if (widget.setup) {
+                  // Pushed: Back on the last step returns to these choices.
+                  Navigator.pushNamed(context, '/permissions');
+                } else {
+                  Navigator.pop(context);
+                }
+              }),
+      ),
+      child: CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: Space.page,
+            sliver: SliverList.list(
+              children: [
+                if (widget.setup) const SetupProgress(step: 2),
+                const Center(
+                  child: CircleAvatar(
+                    radius: 34,
+                    backgroundColor: AppColors.pale,
+                    child: Icon(
+                      Icons.favorite_border,
+                      size: 38,
+                      color: AppColors.blue,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: Space.lg),
+                Text(
+                  'Seni sen yapan şeyler.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                const SizedBox(height: Space.sm),
+                const Text(
+                  'İlgi alanların sana uygun paylaşımları bulmak için kullanılır; profilinde herkese gösterilmez.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.muted),
+                ),
+                const SizedBox(height: Space.lg),
+                TextField(
+                  onChanged: (v) => setState(() => query = v),
+                  decoration: InputDecoration(
+                    hintText: tr('Hobi ara'),
+                    prefixIcon: const Icon(Icons.search),
+                  ),
+                ),
+                const SizedBox(height: Space.md),
+                InfoNote(
+                  trf('{0} ilgi alanı seçtin. En az 5 seçim yap.', [
+                    selected.length,
+                  ]),
+                ),
+                const SizedBox(height: Space.md),
+              ],
+            ),
+          ),
+          if (loading)
+            const SliverToBoxAdapter(child: LoadingState())
+          else if (loadError != null)
+            SliverToBoxAdapter(
+              child: Column(
                 children: [
-                  if (widget.setup) const SetupProgress(step: 2),
-                  const Center(
-                    child: CircleAvatar(
-                      radius: 34,
-                      backgroundColor: AppColors.pale,
-                      child: Icon(
-                        Icons.favorite_border,
-                        size: 38,
-                        color: AppColors.blue,
-                      ),
-                    ),
+                  Text(loadError!),
+                  TextButton(
+                    onPressed: loadCatalog,
+                    child: const Text('Tekrar Dene'),
                   ),
-                  const SizedBox(height: Space.lg),
-                  Text(
-                    'Seni sen yapan şeyler.',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: Space.sm),
-                  const Text(
-                    'İlgi alanların sana uygun paylaşımları bulmak için kullanılır; profilinde herkese gösterilmez.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColors.muted),
-                  ),
-                  const SizedBox(height: Space.lg),
-                  TextField(
-                    onChanged: (v) => setState(() => query = v),
-                    decoration: InputDecoration(
-                      hintText: tr('Hobi ara'),
-                      prefixIcon: const Icon(Icons.search),
-                    ),
-                  ),
-                  const SizedBox(height: Space.md),
-                  InfoNote(
-                    trf('{0} ilgi alanı seçtin. En az 5 seçim yap.', [
-                      selected.length,
-                    ]),
-                  ),
-                  const SizedBox(height: Space.md),
                 ],
               ),
-            ),
-            if (loading)
-              const SliverToBoxAdapter(child: LoadingState())
-            else if (loadError != null)
-              SliverToBoxAdapter(
-                child: Column(
-                  children: [
-                    Text(loadError!),
-                    TextButton(
-                      onPressed: loadCatalog,
-                      child: const Text('Tekrar Dene'),
-                    ),
-                  ],
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              sliver: SliverGrid.builder(
+                gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 230,
+                  mainAxisExtent:
+                      50 +
+                      36 *
+                          (MediaQuery.textScalerOf(context)
+                                  .scale(1)
+                                  .clamp(1.0, 3.0)
+                                  .toDouble() -
+                              1),
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 8,
                 ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                sliver: SliverGrid.builder(
-                  gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 230,
-                    mainAxisExtent:
-                        50 +
-                        36 *
-                            (MediaQuery.textScalerOf(context)
-                                    .scale(1)
-                                    .clamp(1.0, 3.0)
-                                    .toDouble() -
-                                1),
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 8,
-                  ),
-                  itemCount: results.length,
-                  itemBuilder: (_, i) {
-                    final h = results[i], active = selected.contains(h.id);
-                    return Semantics(
-                      selected: active,
-                      button: true,
-                      enabled: !busy,
-                      child: InkWell(
-                        borderRadius: AppShape.rounded,
-                        onTap: busy
-                            ? null
-                            : () => setState(
-                                () => active
-                                    ? selected.remove(h.id)
-                                    : selected.add(h.id),
-                              ),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: AppShape.card(
-                            color: active ? AppColors.action : Colors.white,
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                interestIcon(h.name),
-                                size: 21,
-                                color: active ? Colors.white : AppColors.navy,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  h.name,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w800,
-                                    color: active
-                                        ? Colors.white
-                                        : AppColors.navy,
-                                  ),
+                itemCount: results.length,
+                itemBuilder: (_, i) {
+                  final h = results[i], active = selected.contains(h.id);
+                  return Semantics(
+                    selected: active,
+                    button: true,
+                    enabled: !busy,
+                    child: InkWell(
+                      borderRadius: AppShape.rounded,
+                      onTap: busy
+                          ? null
+                          : () => setState(() {
+                              active
+                                  ? selected.remove(h.id)
+                                  : selected.add(h.id);
+                              if (widget.setup) {
+                                store.draftInterests = {...selected};
+                              }
+                            }),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: AppShape.card(
+                          color: active ? AppColors.action : Colors.white,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              interestIcon(h.name),
+                              size: 21,
+                              color: active ? Colors.white : AppColors.navy,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                h.name,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: active ? Colors.white : AppColors.navy,
                                 ),
                               ),
-                              if (active)
-                                const Icon(
-                                  Icons.check,
-                                  color: Colors.white,
-                                  size: 16,
-                                ),
-                            ],
-                          ),
+                            ),
+                            if (active)
+                              const Icon(
+                                Icons.check,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                          ],
                         ),
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  );
+                },
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
+    if (!widget.setup) return PopScope(canPop: !busy, child: page);
+    return SetupBack(busy: busy, previous: '/complete', child: page);
   }
 }
 
@@ -1907,8 +2117,10 @@ class _PermissionsPageState extends State<PermissionsPage>
   Widget build(BuildContext context) {
     final store = StoreScope.of(context);
     location ??= store.account?.cityDiscovery ?? true;
-    return PopScope(
-      canPop: !busy,
+    return SetupBack(
+      busy: busy,
+      previous: '/interests',
+      previousArgument: true,
       child: AppPage(
         title: 'Kontrol Sende',
         bottom: PrimaryButton(
@@ -2031,6 +2243,7 @@ class _SocialLoginPageState extends State<SocialLoginPage>
                           widget.provider,
                           store.auth!,
                         );
+                        if (credential == null) return;
                         try {
                           await store.signIn(
                             'social/${credential.provider}',
@@ -2078,14 +2291,20 @@ class _SocialLoginPageState extends State<SocialLoginPage>
 }
 
 class ForgotPage extends StatefulWidget {
-  const ForgotPage({super.key});
+  const ForgotPage({super.key, this.email, this.create = false});
+
+  /// Prefilled address (the signed-in account's own).
+  final String? email;
+
+  /// A Google / Apple account choosing its own app password (through the same e-mailed code as a reset).
+  final bool create;
   @override
   State<ForgotPage> createState() => _ForgotPageState();
 }
 
 class _ForgotPageState extends State<ForgotPage>
     with AccountAction<ForgotPage> {
-  final email = TextEditingController();
+  late final email = TextEditingController(text: widget.email);
   bool sent = false;
   @override
   void dispose() {
@@ -2097,7 +2316,7 @@ class _ForgotPageState extends State<ForgotPage>
   Widget build(BuildContext context) => PopScope(
     canPop: !busy,
     child: AppPage(
-      title: 'Şifremi Unuttum',
+      title: widget.create ? 'Uygulama Şifresi Oluştur' : 'Şifremi Unuttum',
       child: ListView(
         padding: Space.page,
         children: [
@@ -2109,11 +2328,21 @@ class _ForgotPageState extends State<ForgotPage>
           ),
           const SizedBox(height: Space.xl),
           Text(
-            sent ? 'İsteğin alındı' : 'Yeniden bağlanalım.',
+            sent
+                ? 'İsteğin alındı'
+                : widget.create
+                ? 'Kendi uygulama şifreni belirle.'
+                : 'Yeniden bağlanalım.',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.headlineMedium,
           ),
           const SizedBox(height: Space.lg),
+          if (widget.create && !sent) ...[
+            const InfoNote(
+              'Google / Apple şifren burada istenmez ve kullanılmaz. E-posta adresine bir kod göndereceğiz; kodla SenMiydin? için ayrı bir uygulama şifresi belirlersin. Şifreyi belirledikten sonra yeniden giriş yapman istenir.',
+            ),
+            const SizedBox(height: Space.lg),
+          ],
           if (sent) ...[
             const InfoNote(
               'Bu adresle kayıtlı bir hesap varsa şifre sıfırlama kodu e-posta ile gönderilir.',
@@ -2121,8 +2350,11 @@ class _ForgotPageState extends State<ForgotPage>
             const SizedBox(height: Space.lg),
             PrimaryButton(
               'Kodu Gir',
-              onPressed: () =>
-                  openPage(context, '/reset-password', email.text.trim()),
+              onPressed: () => openPage(
+                context,
+                widget.create ? '/set-app-password' : '/reset-password',
+                email.text.trim(),
+              ),
             ),
           ] else ...[
             Field(
@@ -2132,7 +2364,11 @@ class _ForgotPageState extends State<ForgotPage>
               keyboardType: TextInputType.emailAddress,
             ),
             PrimaryButton(
-              busy ? 'Gönderiliyor…' : 'Sıfırlama Kodu İste',
+              busy
+                  ? 'Gönderiliyor…'
+                  : widget.create
+                  ? 'Kod Gönder'
+                  : 'Sıfırlama Kodu İste',
               onPressed: busy
                   ? null
                   : () {
@@ -2150,8 +2386,11 @@ class _ForgotPageState extends State<ForgotPage>
             TextButton(
               onPressed: busy
                   ? null
-                  : () =>
-                        openPage(context, '/reset-password', email.text.trim()),
+                  : () => openPage(
+                      context,
+                      widget.create ? '/set-app-password' : '/reset-password',
+                      email.text.trim(),
+                    ),
               child: const Text('Sıfırlama Kodum Var'),
             ),
           ],
@@ -2211,6 +2450,16 @@ class _PasswordPageState extends State<PasswordPage>
       if (!mounted) return;
       toast(context, 'Şifren güncellendi.');
       if (reset) {
+        // A reset closes every session (also this one, when an app password was just created while signed in).
+        final store = StoreScope.of(context);
+        if (store.authenticated) {
+          try {
+            await store.signOut();
+          } catch (_) {
+            // The server already ended the session.
+          }
+        }
+        if (!mounted) return;
         Navigator.pushNamedAndRemoveUntil(context, '/login', (_) => false);
       } else {
         Navigator.pop(context);

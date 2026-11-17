@@ -25,23 +25,33 @@ class AuthController extends Controller
     {
         self::normalize($request, 'username');
         self::normalize($request, 'email');
+        // A Google / Apple identity that was just verified needs no password: the provider is the proof of identity,
+        // and the app never sees (or asks for) the provider password. Older app versions still send an app password
+        // of their own with a social sign-up; it is kept, so those accounts work exactly as before.
+        $social = $request->attributes->get('social_identity');
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'username' => [...self::usernameRules(), Rule::unique('users')],
             'email' => ['required', 'email', 'max:254', Rule::unique('users')],
-            'password' => self::newPasswordRules(),
+            'password' => $social ? ['nullable', ...array_slice(self::newPasswordRules(), 1)] : self::newPasswordRules(),
             'birth_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:1900-01-01',
                 'before_or_equal:'.now('Europe/Istanbul')->subYearsNoOverflow(app(\App\Administration\Settings::class)->get('minimum_age'))->toDateString()],
-            'city_id' => ['required', 'integer', Rule::exists('cities', 'id')->where('is_active', true)],
+            ...PlaceController::rules(),
             'accepted_terms' => ['accepted'],
         ], self::validationMessages());
+        PlaceController::apply($data);
 
         try {
-            return DB::transaction(function () use ($data, $request) {
+            return DB::transaction(function () use ($data, $social) {
                 unset($data['accepted_terms']);
-                $data['password'] = Hash::make($data['password']);
+                // Without an app password the account gets a random secret nobody knows; `has_password` records that.
+                $passwordless = $social && blank($data['password'] ?? null);
+                $data['password'] = Hash::make($passwordless ? Str::random(64) : $data['password']);
                 $user = User::create($data);
-                if ($identity = $request->attributes->get('social_identity')) {
+                if ($passwordless) {
+                    $user->forceFill(['has_password' => false])->save();
+                }
+                if ($identity = $social) {
                     DB::table('social_identities')->insert($identity + ['user_id' => $user->id, 'created_at' => now(), 'updated_at' => now()]);
                 }
 
@@ -116,7 +126,7 @@ class AuthController extends Controller
             User::where('email', $data['email'])->lockForUpdate()->first();
 
             return Password::reset([...$data, 'account_status' => 'active'], function (User $user, string $password): void {
-                $user->forceFill(['password' => Hash::make($password), 'remember_token' => Str::random(60)])->save();
+                $user->forceFill(['password' => Hash::make($password), 'remember_token' => Str::random(60), 'has_password' => true])->save();
                 $user->tokens()->delete();
                 event(new PasswordReset($user));
                 \Illuminate\Support\Facades\Mail::to($user->email)->queue((new \App\Mail\SecurityNotice('Hesabının şifresi sıfırlandı.'))->afterCommit());
@@ -143,7 +153,7 @@ class AuthController extends Controller
             if (! Hash::check($data['current_password'], $user->password)) {
                 throw ValidationException::withMessages(['current_password' => 'Mevcut şifren hatalı.']);
             }
-            $user->forceFill(['password' => Hash::make($data['password']), 'remember_token' => Str::random(60)])->save();
+            $user->forceFill(['password' => Hash::make($data['password']), 'remember_token' => Str::random(60), 'has_password' => true])->save();
             $user->tokens()->whereKeyNot($request->user()->currentAccessToken()->id)->delete();
             DB::table('password_reset_tokens')->where('email', $user->email)->delete();
             Inbox::add($user->id, null, 'system');
@@ -159,7 +169,7 @@ class AuthController extends Controller
 
         return ApiResponse::ok([
             'token' => $user->createToken('mobile')->plainTextToken,
-            'user' => new ProfileResource($user->fresh(['city', 'interests'])),
+            'user' => new ProfileResource($user->fresh(['city', 'place', 'interests'])),
         ], $status === 201 ? 'Hesabın oluşturuldu.' : 'Giriş yapıldı.', $status);
     }
 

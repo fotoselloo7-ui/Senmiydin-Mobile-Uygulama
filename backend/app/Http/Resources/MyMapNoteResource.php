@@ -24,7 +24,7 @@ class MyMapNoteResource extends JsonResource
             // As others see it: the owner's own name on an open letter, nothing on an anonymous one.
             'author' => $this->is_anonymous ? null : new PublicUserResource($this->author),
             'city' => $this->city->only('id', 'name', 'slug'),
-            'place_label' => $this->place_label,
+            'place_label' => \App\Http\ApiResponse::localize((string) $this->place_label),
             // The letter's optional photo is served by id through its own visibility-checked route; no file name leaves the server.
             'image' => $this->imageUrl(),
             'share_url' => \App\Sharing\PublicShare::noteUrl($this->resource),

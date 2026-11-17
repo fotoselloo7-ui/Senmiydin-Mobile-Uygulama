@@ -15,7 +15,7 @@ class User extends Authenticatable
     use HasApiTokens, Notifiable;
 
     protected $fillable = [
-        'name', 'username', 'email', 'password', 'birth_date', 'city_id',
+        'name', 'username', 'email', 'password', 'birth_date', 'city_id', 'place_id',
         'bio', 'occupation_school', 'connections', 'nearby_visible',
         'encounter_suggestions', 'city_discovery', 'location_history_enabled',
         'message_privacy', 'show_activity', 'push_preferences', 'preferred_locale', 'last_locale',
@@ -38,6 +38,7 @@ class User extends Authenticatable
             'city_discovery' => 'boolean',
             'location_history_enabled' => 'boolean',
             'onboarding_step' => 'integer',
+            'has_password' => 'boolean',
         ];
     }
 
@@ -61,6 +62,12 @@ class User extends Authenticatable
     public function city(): BelongsTo
     {
         return $this->belongsTo(City::class);
+    }
+
+    /** The home place the person chose (may be as fine as a neighbourhood); private to the owner. */
+    public function place(): BelongsTo
+    {
+        return $this->belongsTo(Place::class);
     }
 
     public function interests(): BelongsToMany

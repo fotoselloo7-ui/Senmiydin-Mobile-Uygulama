@@ -1003,4 +1003,73 @@ const enCatalog = <String, String>{
   'Görsel Kart Olarak Paylaş': 'Share as Image Card',
   'Bağlantıyı Kopyala': 'Copy Link',
   'Diğer…': 'More…',
+  // Global places, Google / Apple profile completion, onboarding back navigation, app password.
+  'Konum servisleri kapalı. Yeri aramayla seçebilirsin.':
+      'Location services are off. You can choose the place by searching.',
+  'Konum izni verilmedi. Yeri aramayla seçebilirsin.':
+      'Location permission wasn’t given. You can choose the place by searching.',
+  'Konumun şu anda bulunamadı. Yeri aramayla seçebilirsin.':
+      'Your location couldn’t be found right now. You can choose the place by searching.',
+  'Yolculuğun varış yerini seç.': 'Choose where your journey arrives.',
+  'Profilini tamamla': 'Complete your profile',
+  '{0} hesabın doğrulandı. Birkaç bilgi kaldı.':
+      'Your {0} account is verified. Just a few details left.',
+  '{0} ile doğrulanan e-posta: {1}': 'Email verified with {0}: {1}',
+  'Adını yaz.': 'Enter your name.',
+  'Adın en fazla 100 karakter olabilir.':
+      'Your name can be up to 100 characters.',
+  'Kurulumdan çıkılsın mı?': 'Leave setup?',
+  'Hesabın oluşturuldu. Çıkış yaparsan bir sonraki girişte kaldığın yerden devam edersin.':
+      'Your account has been created. If you sign out, you’ll continue where you left off next time you sign in.',
+  'Uygulama Şifresi Oluştur': 'Create App Password',
+  'Kendi uygulama şifreni belirle.': 'Set your own app password.',
+  'Google / Apple şifren burada istenmez ve kullanılmaz. E-posta adresine bir kod göndereceğiz; kodla SenMiydin? için ayrı bir uygulama şifresi belirlersin. Şifreyi belirledikten sonra yeniden giriş yapman istenir.':
+      'Your Google / Apple password is never asked for or used here. We’ll send a code to your email; with it you set a separate app password for SenMiydin?. After setting it you’ll be asked to sign in again.',
+  'Kod Gönder': 'Send Code',
+  'Konumunu seç.': 'Choose your location.',
+  'Silmeyi onaylamak için {0} ile yeniden doğrulaman istenecek. {0} şifren uygulamaya gönderilmez.':
+      'To confirm the deletion you’ll be asked to verify again with {0}. Your {0} password is never sent to the app.',
+  'Uygulama şifresi oluştur': 'Create app password',
+  'İsteğe bağlı · Google / Apple şifren istenmez':
+      'Optional · Your Google / Apple password isn’t asked for',
+  'Konumunu seç': 'Choose your location',
+  'Aramak için en az 2 harf yaz.': 'Type at least 2 letters to search.',
+  'Konumun kullanılsın mı?': 'Use your location?',
+  'Bulunduğun mahalle veya ilçeyi bulmak için cihaz konumun bir kez kullanılır. Konum yaklaşık 1 km’ye yuvarlanarak gönderilir ve bu adımda kaydedilmez. İzin vermezsen yeri aramayla seçebilirsin.':
+      'Your device location is used once to find your neighbourhood or district. It is rounded to about 1 km before it’s sent and isn’t stored in this step. If you don’t allow it, you can choose the place by searching.',
+  'Bulunduğun yer tanınamadı. Yeri aramayla seçebilirsin.':
+      'Your place couldn’t be recognized. You can choose it by searching.',
+  'Şu an: {0}': 'Current: {0}',
+  'Şehir, ilçe veya mahalle ara': 'Search city, district or neighbourhood',
+  'Mevcut konumumu kullan': 'Use my current location',
+  'Bulunduğun mahalle veya ilçe önerilir.':
+      'Your neighbourhood or district is suggested.',
+  '“{0}” için sonuç bulunamadı. Farklı bir yazım veya daha büyük bir yer dene.':
+      'No results for “{0}”. Try another spelling or a larger place.',
+  '© OpenStreetMap katkıcıları': '© OpenStreetMap contributors',
+  'Kalkış yerini seç': 'Choose the departure place',
+  'Yer seç': 'Choose a place',
+  'Varış yerini seç': 'Choose the arrival place',
+  'Konumun': 'Your location',
+  'Devam': 'Continue',
+  // Interest names (server catalogue, Turkish source names).
+  'Müzik': 'Music',
+  'Kitap': 'Books',
+  'Seyahat': 'Travel',
+  'Sahil yürüyüşü': 'Beach walks',
+  'Sinema': 'Cinema',
+  'Fitness': 'Fitness',
+  'Kamp': 'Camping',
+  'Yemek': 'Food',
+  'Bisiklet': 'Cycling',
+  'Kediler': 'Cats',
+  'Köpekler': 'Dogs',
+  'Oyun': 'Games',
+  'Girişimcilik': 'Entrepreneurship',
+  'Teknoloji': 'Technology',
+  'Sanat': 'Art',
+  'Doğa': 'Nature',
+  'Spor': 'Sports',
+  'Etkinlik': 'Events',
+  'Gece yürüyüşü': 'Night walks',
 };

@@ -42,6 +42,7 @@ class AppStore extends ChangeNotifier {
        auth = api == null ? null : AuthService(api),
        _profiles = api == null ? null : ProfileService(api),
        _catalog = api == null ? null : CatalogService(api),
+       _places = api == null ? null : PlaceService(api),
        _social = api == null ? null : SocialService(api) {
     api?.onUnauthorized = _clearAccount;
     if (api != null) {
@@ -281,6 +282,14 @@ class AppStore extends ChangeNotifier {
   final AuthService? auth;
   final ProfileService? _profiles;
   final CatalogService? _catalog;
+  final PlaceService? _places;
+
+  /// Areas met through the place picker, by name (most recent wins), so code that still works with area names
+  /// (feeds, compose) can find their ids.
+  final _knownCities = <String, CatalogItem>{};
+
+  /// Interests picked during onboarding but not saved yet: kept when the person goes back a step and returns.
+  Set<int>? draftInterests;
   final SocialService? _social;
   LocationService? location;
   CatalogItem? activeCity;
@@ -307,6 +316,7 @@ class AppStore extends ChangeNotifier {
         ? CatalogItem.fromJson(data['city'] as Map<String, dynamic>)
         : null;
     if (resolved != null) {
+      rememberCity(resolved);
       activeCity = resolved;
       _cityChosen = false;
       city = resolved.name;
@@ -709,6 +719,7 @@ class AppStore extends ChangeNotifier {
     required bool cityWide,
     required String location,
     required String requestId,
+    int? placeId,
     bool attachLocation = false,
     PostPlaceSelection? place,
     DateTime? occurredAt,
@@ -726,6 +737,7 @@ class AppStore extends ChangeNotifier {
           'body': body.trim(),
           'type': kind.value,
           'city_id': await cityId(location),
+          'place_id': ?placeId,
           'visibility': cityWide ? 'city' : 'private',
           'is_anonymous': anonymous ? 1 : 0,
           'request_id': requestId,
@@ -1037,9 +1049,13 @@ class AppStore extends ChangeNotifier {
     _applyAccount(await auth!.signIn(action, fields));
   }
 
-  Future<void> eraseAccount(String password) async {
+  /// [password] for accounts with an app password; otherwise [proof] from a fresh Google / Apple sign-in.
+  Future<void> eraseAccount(
+    String? password, {
+    Map<String, Object?>? proof,
+  }) async {
     final id = _account?.id;
-    await auth!.erase(password);
+    await auth!.erase(password: password, proof: proof);
     // Account deletion also removes whatever draft (and draft photos) that account left on this device.
     if (id != null) {
       try {
@@ -1102,7 +1118,73 @@ class AppStore extends ChangeNotifier {
     return _cities ??= await _catalog!.cities();
   }
 
+  /// Remembers the area of a chosen place so the rest of the app can address it by name.
+  void rememberCity(CatalogItem city) {
+    _knownCities.remove(city.name);
+    _knownCities[city.name] = city;
+  }
+
+  /// Place search through the API. Explicit searches only (a search button), never one call per keystroke.
+  Future<List<PlaceResult>> searchPlaces(String query) =>
+      _places!.search(query.trim(), country: _account?.place?.countryCode);
+
+  /// Stores the picked search result on the server and returns it with its area.
+  Future<ChosenPlace> resolvePlace(PlaceResult result) async {
+    final chosen = await _places!.resolve(result.token);
+    rememberCity(chosen.city);
+    return chosen;
+  }
+
+  /// The neighbourhood / district around the device. The coordinate goes only to the SenMiydin API, which rounds it
+  /// to about 1 km before asking the map provider; nothing is stored. Throws a readable [ApiFailure] when location is
+  /// off or not allowed, so the picker can fall back to search.
+  Future<PlaceResult?> placeAtDevice() async {
+    final device = location?.device ?? const LocationDevice();
+    try {
+      if (!await device.enabled()) {
+        throw const ApiFailure(
+          'Konum servisleri kapalı. Yeri aramayla seçebilirsin.',
+        );
+      }
+      var permission = await device.permission();
+      if (permission == LocationPermission.denied) {
+        permission = await device.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever ||
+          permission == LocationPermission.unableToDetermine) {
+        throw const ApiFailure(
+          'Konum izni verilmedi. Yeri aramayla seçebilirsin.',
+        );
+      }
+      final point = await device.lastKnown() ?? await device.current();
+      return await _places!.reverse(point.latitude, point.longitude);
+    } on ApiFailure {
+      rethrow;
+    } on TimeoutException {
+      throw const ApiFailure(
+        'Konumun şu anda bulunamadı. Yeri aramayla seçebilirsin.',
+      );
+    } catch (_) {
+      throw const ApiFailure(
+        'Konumun şu anda bulunamadı. Yeri aramayla seçebilirsin.',
+      );
+    }
+  }
+
+  /// True while the operating system has not been asked for location yet (a short explanation is shown first).
+  Future<bool> locationPermissionUndecided() async {
+    try {
+      return await (location?.device ?? const LocationDevice()).permission() ==
+          LocationPermission.denied;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<int> cityId(String name) async {
+    final known = _knownCities[name];
+    if (known != null) return known.id;
     final city = (await loadCities())
         .where((item) => item.name == name)
         .firstOrNull;
@@ -1129,6 +1211,9 @@ class AppStore extends ChangeNotifier {
 
   void _applyAccount(AccountProfile profile) {
     final previous = _account;
+    // Areas created from the place picker are not in the old catalogue list: remember the account's own.
+    rememberCity(profile.city);
+    if (profile.activeCity != null) rememberCity(profile.activeCity!);
     if (previous == null && profile.activeCitySource == 'manual') {
       _cityChosen = true;
     }
@@ -1183,6 +1268,7 @@ class AppStore extends ChangeNotifier {
     manualCityRequired = false;
     _cityChosen = false;
     _nearbyCache.clear();
+    draftInterests = null;
     _account = null;
     _accountPerson = null;
     _reviewInviteReady = false;
@@ -1280,7 +1366,8 @@ class AppStore extends ChangeNotifier {
     if (!connected || account == null) return;
     try {
       await reviews.recordAction(account.id);
-      if (await reviews.isEligible(account.id, account.createdAt) && !_reviewInviteReady) {
+      if (await reviews.isEligible(account.id, account.createdAt) &&
+          !_reviewInviteReady) {
         _reviewInviteReady = true;
         notifyListeners();
       }
@@ -1295,6 +1382,7 @@ class AppStore extends ChangeNotifier {
     final account = _account;
     if (account != null) await reviews.markShown(account.id);
   }
+
   Person person(String id) => id == _accountPerson?.id
       ? _accountPerson!
       : _remotePeople[id] ?? people.firstWhere((p) => p.id == id);
@@ -1438,7 +1526,7 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setCity(String value) async {
+  Future<void> setCity(String value, {int? placeId}) async {
     if (!connected) {
       _cityChosen = true;
       city = value;
@@ -1448,12 +1536,15 @@ class AppStore extends ChangeNotifier {
     final data = await _social!.object(
       'PUT',
       'active-city',
-      body: {'city_id': await cityId(value)},
+      body: placeId != null
+          ? {'place_id': placeId}
+          : {'city_id': await cityId(value)},
     );
     if (_disposed || !authenticated) return;
     _cityChosen = true;
     manualCityRequired = false;
     activeCity = CatalogItem.fromJson(data['city'] as Map<String, dynamic>);
+    rememberCity(activeCity!);
     city = activeCity!.name;
     locationVersion++;
     _nearbyCache.clear();

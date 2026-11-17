@@ -59,6 +59,9 @@ class _ComposePageState extends State<ComposePage>
   PostKind kind = PostKind.memory;
   final List<String> images = [];
   String? taggedId, city;
+
+  /// The place picked with the location picker (as fine as a neighbourhood); its area is [city].
+  ChosenPlace? chosenPlace;
   bool anonymous = false, cityWide = true, submitted = false;
 
   // ---- Local draft ----------------------------------------------------------------------------
@@ -85,6 +88,7 @@ class _ComposePageState extends State<ComposePage>
     anonymous: anonymous,
     cityWide: cityWide,
     city: city,
+    chosenPlace: chosenPlace,
     attachLocation: attachLocation,
     place: place,
     occurredAt: occurredAt,
@@ -155,6 +159,10 @@ class _ComposePageState extends State<ComposePage>
       anonymous = draft.anonymous;
       cityWide = draft.cityWide;
       city = draft.city;
+      chosenPlace = draft.chosenPlace;
+      if (draft.chosenPlace != null) {
+        StoreScope.of(context).rememberCity(draft.chosenPlace!.city);
+      }
       attachLocation = draft.attachLocation;
       place = draft.place;
       occurredAt = draft.occurredAt;
@@ -169,6 +177,8 @@ class _ComposePageState extends State<ComposePage>
         ..vehicleIdentifier = draft.travel.vehicleIdentifier
         ..origin = draft.travel.origin
         ..destination = draft.travel.destination
+        ..originPlace = draft.travel.originPlace
+        ..destinationPlace = draft.travel.destinationPlace
         ..departureAt = draft.travel.departureAt;
       images
         ..clear()
@@ -401,6 +411,8 @@ class _ComposePageState extends State<ComposePage>
         ? TravelDetails(
             transport: travelDraft.transport,
             origin: CatalogItem(0, travelDraft.origin ?? city ?? store.city),
+            originLabel: travelDraft.origin,
+            destinationLabel: travelDraft.destination,
             destination: CatalogItem(0, travelDraft.destination!),
             departureAt: travelDraft.departureAt,
             operatorName: travelDraft.operatorName,
@@ -435,6 +447,9 @@ class _ComposePageState extends State<ComposePage>
               anonymous: anonymous,
               cityWide: cityWide,
               location: entry?.source?.city ?? city ?? store.city,
+              placeId: entry == null && chosenPlace?.city.name == city
+                  ? chosenPlace?.placeId
+                  : null,
               requestId: requestId,
               attachLocation: place == null && attachLocation,
               place: place,
@@ -738,13 +753,21 @@ class _ComposePageState extends State<ComposePage>
                     ),
                 ],
                 SettingsRow(
-                  'Şehir',
+                  'Konum',
                   Icons.location_city_outlined,
-                  subtitle: city ?? store.city,
+                  subtitle: chosenPlace?.city.name == (city ?? store.city)
+                      ? chosenPlace!.label
+                      : city ?? store.city,
                   onTap: () async {
-                    final c = await chooseCity(context, city ?? store.city);
+                    final c = await choosePlace(
+                      context,
+                      current: chosenPlace?.label ?? city ?? store.city,
+                    );
                     if (c != null) {
-                      setState(() => city = c);
+                      setState(() {
+                        chosenPlace = c;
+                        city = c.city.name;
+                      });
                     }
                   },
                 ),

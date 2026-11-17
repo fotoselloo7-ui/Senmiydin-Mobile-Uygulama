@@ -22,7 +22,7 @@ final class PostPlace
             if (!isset($data['place_latitude'], $data['place_longitude'])) $this->fail('Haritadan yaklaşık bir yer seç.');
             $point = (object) ['latitude' => $data['place_latitude'], 'longitude' => $data['place_longitude'], 'city_id' => $data['city_id']];
             $resolved = app(CityResolver::class)->resolve($point->latitude, $point->longitude);
-            if ($resolved && (int)$resolved !== (int)$data['city_id']) $this->fail('Seçtiğin yerin şehrini seç.');
+            if (! \App\Places\Areas::accepts((int) $data['city_id'], (float) $point->latitude, (float) $point->longitude, $resolved)) $this->fail('Seçtiğin yerin şehrini seç.');
         } else {
             $point = LocationData::active($user);
             if (!$point || $point->accuracy > 5000 || !$point->city_id || (int)$point->city_id !== (int)$data['city_id']) {

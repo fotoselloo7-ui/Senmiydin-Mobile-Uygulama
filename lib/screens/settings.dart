@@ -10,6 +10,7 @@ import '../core/release_info.dart';
 import '../core/navigation.dart';
 import '../data/app_store.dart';
 import '../data/communication_api.dart';
+import '../data/social_sign_in.dart';
 import '../data/models.dart';
 import '../widgets/account_action.dart';
 import '../widgets/common.dart';
@@ -87,7 +88,19 @@ class _SettingsPageState extends State<SettingsPage>
             Icons.interests_outlined,
             onTap: () => openPage(context, '/interests', false),
           ),
-          if (store.connected)
+          if (store.connected && store.account?.hasPassword == false)
+            // A Google / Apple account has no app password; it can choose one (never the provider password).
+            SettingsRow(
+              'Uygulama şifresi oluştur',
+              Icons.lock_outline,
+              subtitle: 'İsteğe bağlı · Google / Apple şifren istenmez',
+              onTap: () => openPage(
+                context,
+                '/create-password',
+                store.account?.email ?? '',
+              ),
+            )
+          else if (store.connected)
             SettingsRow(
               'Şifre Değiştir',
               Icons.lock_outline,
@@ -381,9 +394,12 @@ class _PreferencesPageState extends State<PreferencesPage>
               Icons.location_on_outlined,
               subtitle: store.city,
               onTap: () async {
-                final city = await chooseCity(context, store.city);
-                if (city != null) {
-                  await runAccountAction(() => store.setCity(city));
+                final place = await choosePlace(context, current: store.city);
+                if (place != null) {
+                  await runAccountAction(
+                    () =>
+                        store.setCity(place.city.name, placeId: place.placeId),
+                  );
                 }
               },
             ),
@@ -671,6 +687,15 @@ class _DeleteAccountPageState extends State<DeleteAccountPage>
     super.dispose();
   }
 
+  /// "Google" / "Apple" for an account without an app password; null when the app password confirms deletion.
+  String? get reverifyProvider {
+    final account = StoreScope.of(context).account;
+    if (account == null || account.hasPassword) return null;
+    if (account.socialProviders.contains('google')) return 'Google';
+    if (account.socialProviders.contains('apple')) return 'Apple';
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) => AppPage(
     title: tr('Hesabımı Sil'),
@@ -694,7 +719,15 @@ class _DeleteAccountPageState extends State<DeleteAccountPage>
           'Hesabın kalıcı olarak kapatılır. Profilin ve içeriklerin görünmez olur; oturumların, kayıtlı cihazların ve konum verilerin temizlenir. Bu işlem geri alınamaz. İlişkilerin bütünlüğü için kimlik bilgisi içermeyen kayıtlar kalabilir.',
         ),
         const SizedBox(height: Space.xl),
-        if (StoreScope.of(context).connected) ...[
+        if (StoreScope.of(context).connected && reverifyProvider != null) ...[
+          InfoNote(
+            trf(
+              'Silmeyi onaylamak için {0} ile yeniden doğrulaman istenecek. {0} şifren uygulamaya gönderilmez.',
+              [reverifyProvider],
+            ),
+          ),
+          const SizedBox(height: Space.lg),
+        ] else if (StoreScope.of(context).connected) ...[
           Field(
             'Şifre',
             Icons.lock_outline,
@@ -724,7 +757,23 @@ class _DeleteAccountPageState extends State<DeleteAccountPage>
               ? null
               : () => runAccountAction(() async {
                   final store = StoreScope.of(context);
-                  if (store.connected) {
+                  final provider = reverifyProvider;
+                  if (store.connected && provider != null) {
+                    // A fresh sign-in with the linked provider is the proof (the app never sees its password).
+                    final credential = await SocialSignIn.authenticate(
+                      provider,
+                      store.auth!,
+                    );
+                    if (credential == null) return;
+                    await store.eraseAccount(
+                      null,
+                      proof: {
+                        'provider': credential.provider,
+                        'id_token': credential.fields['id_token'],
+                        'nonce': ?credential.fields['nonce'],
+                      },
+                    );
+                  } else if (store.connected) {
                     await store.eraseAccount(password.text);
                   } else {
                     store.deleteAccount();

@@ -91,6 +91,22 @@ Destek: `destek@senmiydin.tr`, genel / KVKK iletişimi: `info@senmiydin.tr`. Ür
 - **Google giriş (Android) yapılandırması doğru:** Firebase/GCP projesi `pelagic-core-448613-p0`; Android SHA-1 debug `CF:F1…`, upload `E2:CC…`, Play App Signing `F9:CE…` ve üç SHA-256 Firebase'de kayıtlı; GCP'de bu üçü için Android OAuth istemcisi + Web istemcisi `…0e7q…` + iOS istemcisi `…830h…` var; başka projenin kimliği yok. Uygulama Firebase Auth kullanmıyor; ID token'ı backend doğruluyor (`GOOGLE_CLIENT_IDS`, `.env.example` doldu). **Kök neden:** üretim backend'i (`senmiydin.tr/api`) yayında değil, token doğrulanacak sunucu yok.
 - **iOS Google giriş kök nedeni (düzeltildi, yeni build gerekli):** `GOOGLE_IOS_CLIENT_ID` dart-define'ı ve `GOOGLE_REVERSED_CLIENT_ID` URL şeması eksikti (buton kapalıydı / dönüş URL'si `com.senmiydin.app` idi). Gerçek plist değerleriyle `config/production.local.json` ve `ios/Flutter/OAuth.xcconfig` (git-ignored) güncellendi, CI secret'ları yenilendi. Apple ile giriş: `APPLE_SIGN_IN_ENABLED` ve backend Apple anahtarı (Key ID / .p8) yok → kapalı.
 
+## Global konum, sosyal kayıt, yerelleştirme (17 Kasım 2026)
+
+- **Konum modeli:** Statik Türkiye şehir listesi kullanıcıya gösterilmez. Konum seçici `GET /api/v1/places/search`,
+  `GET /api/v1/places/reverse`, `POST /api/v1/places/resolve` üzerinden OpenStreetMap verisiyle mahalle / ilçe /
+  şehir / ülke seçer. Sağlayıcı `PLACES_PROVIDER` ve `PLACES_NOMINATIM_URL` ile kod değişmeden değiştirilir; varsayılan
+  genel Nominatim sunucusu politikasına uyulur (saniyede en fazla 1 istek, kimlik bildiren User-Agent, önbellek, tuşa
+  basışta arama yok, yalnız "Ara"). Trafik büyüdüğünde barındırılan / kendi Nominatim adresine geçilmeli.
+- **Alan (feed) yapısı:** `cities` tablosu feed alanı olarak kalır, hiçbir kayıt silinmedi. Türkiye'de bir yer eski
+  katalogdaki ilçe satırına (Alanya) yoksa iline (Kadıköy -> İstanbul) bağlanır; yurt dışında şehir / kasaba kendi alanı
+  olur ve ilk seçimde bir kez oluşturulur. İnce yer `places` tablosunda; kullanıcı, gönderi ve yolculuk kayıtlarında
+  `place_id` alanları boş olabilir (eski kayıtlar etkilenmez, eski uygulama `city_id` göndermeye devam edebilir).
+- **Google / Apple ilk giriş:** Şifre istenmez (`users.has_password = false`). Hesap silme sağlayıcıyla yeniden doğrulama
+  ister; isteyen kullanıcı e-posta koduyla kendi "uygulama şifresi"ni oluşturabilir.
+- **Mesajlar:** Sunucu cümlelerinin İngilizcesi `lang/en/messages.php` ve `lang/en/message_patterns.php`; yeni cümleler
+  `ApiMessageLocaleTest` tarafından otomatik denetlenir.
+
 ## Üretim backend'i yayında (16 Kasım 2026)
 
 - **Sunucu:** TürkTicaret cPanel (`cpanel16-web-host-cl`, hesap `alac6ayazilimtr`, paylaşımlı IP 31.186.11.46). Addon domain `senmiydin.tr`, PHP **ea-php83**.

@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
 
+import 'account_api.dart';
 import 'models.dart';
 import 'post_context.dart';
 
@@ -16,6 +17,7 @@ class ComposeDraft {
     this.anonymous = false,
     this.cityWide = true,
     this.city,
+    this.chosenPlace,
     this.attachLocation = false,
     this.place,
     this.occurredAt,
@@ -33,6 +35,7 @@ class ComposeDraft {
   bool anonymous, cityWide, attachLocation;
   String? city, taggedId, requestId;
   PostPlaceSelection? place;
+  ChosenPlace? chosenPlace;
   DateTime? occurredAt;
   TravelDraft travel;
 
@@ -55,6 +58,7 @@ class ComposeDraft {
     'anonymous': anonymous,
     'city_wide': cityWide,
     'city': city,
+    'chosen_place': chosenPlace?.toDraft(),
     'attach_location': attachLocation,
     'place': place == null
         ? null
@@ -79,6 +83,8 @@ class ComposeDraft {
       'vehicle': travel.vehicleIdentifier,
       'origin': travel.origin,
       'destination': travel.destination,
+      'origin_place': travel.originPlace?.toDraft(),
+      'destination_place': travel.destinationPlace?.toDraft(),
       'departure_at': travel.departureAt?.toIso8601String(),
     },
     'images': imageNames,
@@ -102,6 +108,8 @@ class ComposeDraft {
           ..vehicleIdentifier = t['vehicle'] as String? ?? ''
           ..origin = t['origin'] as String?
           ..destination = t['destination'] as String?
+          ..originPlace = ChosenPlace.fromDraft(t['origin_place'])
+          ..destinationPlace = ChosenPlace.fromDraft(t['destination_place'])
           ..departureAt = date(t['departure_at']);
       }
       PostPlaceSelection? place;
@@ -127,6 +135,7 @@ class ComposeDraft {
         anonymous: raw['anonymous'] == true,
         cityWide: raw['city_wide'] != false,
         city: raw['city'] as String?,
+        chosenPlace: ChosenPlace.fromDraft(raw['chosen_place']),
         attachLocation: raw['attach_location'] == true,
         place: place,
         occurredAt: date(raw['occurred_at']),

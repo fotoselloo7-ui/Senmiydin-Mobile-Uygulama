@@ -24,3 +24,5 @@ SenMiydin? · Geçtiğim Yerler
 SenMiydin? · Places I Passed
 Sohbet @${p.handle}
 SenMiydin? · ${post.city} · ${post.kind.label}
+https://tile.openstreetmap.org/{z}/{x}/{y}.png
+OpenStreetMap contributors

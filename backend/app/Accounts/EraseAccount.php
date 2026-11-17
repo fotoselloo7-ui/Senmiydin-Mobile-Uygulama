@@ -81,7 +81,7 @@ final class EraseAccount
             $user->forceFill([
                 'name' => 'Silinmiş hesap', 'username' => 'deleted_'.Str::lower(Str::random(16)),
                 'email' => Str::uuid().'@deleted.invalid', 'password' => Str::random(64),
-                'birth_date' => '1900-01-01', 'city_id' => DB::table('cities')->min('id'),
+                'birth_date' => '1900-01-01', 'city_id' => DB::table('cities')->min('id'), 'place_id' => null, 'has_password' => true,
                 'avatar' => null, 'cover_image' => null, 'bio' => '', 'occupation_school' => '',
                 'connections' => [], 'account_status' => 'deleted', 'last_seen_at' => null,
                 'nearby_visible' => false, 'encounter_suggestions' => false, 'city_discovery' => false,

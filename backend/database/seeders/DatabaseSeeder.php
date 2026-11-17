@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
         DB::table('cities')->upsert(array_map(fn ($name) => [
             'name' => $name, 'slug' => Str::slug($name, '-', 'tr'),
         ], $cities), ['slug'], ['name']);
+        \App\Places\Areas::describeLegacy();
 
         $interests = [
             'Kahve' => 'coffee', 'Müzik' => 'music', 'Kitap' => 'book', 'Seyahat' => 'travel',

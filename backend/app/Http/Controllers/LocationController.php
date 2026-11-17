@@ -32,7 +32,8 @@ class LocationController extends Controller
 
     public function selectCity(Request $request): JsonResponse
     {
-        $data = $request->validate(['city_id' => ['required', 'integer', Rule::exists('cities', 'id')->where('is_active', true)]]);
+        $data = $request->validate(PlaceController::rules());
+        PlaceController::apply($data);
         $request->user()->forceFill(['active_city_id' => $data['city_id'], 'active_city_source' => 'manual'])->save();
         return ApiResponse::ok(['city' => DB::table('cities')->select('id', 'name', 'slug')->find($data['city_id'])]);
     }
@@ -45,7 +46,7 @@ class LocationController extends Controller
             ->orderByDesc('h.recorded_at')->orderByDesc('h.id')->select('h.id', 'h.city_id', 'cities.name', 'h.recorded_at')->simplePaginate(20);
         return ApiResponse::ok(['items' => collect($page->items())->map(fn ($item) => [
             'id' => $item->id, 'city_id' => $item->city_id, 'city_name' => $item->name,
-            'label' => $item->name.' · Yaklaşık bölge',
+            'label' => ApiResponse::localize($item->name.' · Yaklaşık bölge'),
             'recorded_at' => \Illuminate\Support\Carbon::parse($item->recorded_at)->startOfHour()->toISOString(),
         ]), 'next_page' => $page->hasMorePages() ? $page->currentPage()+1 : null]);
     }

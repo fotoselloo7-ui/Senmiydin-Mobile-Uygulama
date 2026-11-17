@@ -284,6 +284,9 @@ class _SenMiydinAppState extends State<SenMiydinApp> {
       '/register' => const AuthPage(register: true),
       '/login' => const AuthPage(),
       '/forgot' => const ForgotPage(),
+      '/create-password' => ForgotPage(email: arg as String?, create: true),
+      // The code step of /create-password: reachable while signed in (unlike /reset-password).
+      '/set-app-password' => PasswordPage(resetEmail: arg as String? ?? ''),
       '/reset-password' => PasswordPage(resetEmail: arg as String? ?? ''),
       '/change-password' => const PasswordPage(),
       '/social' => SocialLoginPage(arg as String? ?? 'Google'),

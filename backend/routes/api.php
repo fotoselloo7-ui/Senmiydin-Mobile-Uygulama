@@ -23,6 +23,10 @@ Route::prefix('v1')->group(function (): void {
     Route::get('app-config', App\Http\Controllers\AppConfigController::class);
     Route::get('cities', [CatalogController::class, 'cities']);
     Route::get('interests', [CatalogController::class, 'interests']);
+    // Global places (city / district / neighbourhood). The app reaches the place provider only through these.
+    Route::get('places/search', [App\Http\Controllers\PlaceController::class, 'search'])->middleware('throttle:places');
+    Route::get('places/reverse', [App\Http\Controllers\PlaceController::class, 'reverse'])->middleware('throttle:places');
+    Route::post('places/resolve', [App\Http\Controllers\PlaceController::class, 'resolve'])->middleware('throttle:places');
     Route::get('avatars/{filename}', [ProfileController::class, 'image'])
         ->where('filename', '[0-9a-f-]{36}\.jpg')->name('avatars.show');
     Route::get('covers/{filename}', [ProfileController::class, 'cover'])

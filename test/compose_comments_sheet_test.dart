@@ -258,8 +258,9 @@ void main() {
           }
 
           // Location wording.
-          expect(find.text('Şehir'), findsOneWidget);
-          expect(find.text('Konum'), findsNothing);
+          // One "Konum" row (a real place, as fine as a neighbourhood, chosen with the location picker).
+          expect(find.text('Konum'), findsOneWidget);
+          expect(find.text('Şehir'), findsNothing);
           expect(find.text('Haritada yer seç'), findsOneWidget);
           expect(
             find.text('İsteğe bağlı yaklaşık bir nokta seç'),

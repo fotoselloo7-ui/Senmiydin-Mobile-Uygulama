@@ -313,12 +313,23 @@ void main() {
             'data': {'minimum_age': 16},
           });
         }
-        if (path.endsWith('/cities')) {
+        if (path.endsWith('/places/search')) {
           return json(200, {
             'success': true,
-            'data': [
-              {'id': 1, 'name': 'Alanya'},
-            ],
+            'data': {
+              'items': [
+                {'token': 'alanya', 'name': 'Alanya', 'context': 'Antalya · Türkiye'},
+              ],
+            },
+          });
+        }
+        if (path.endsWith('/places/resolve')) {
+          return json(200, {
+            'success': true,
+            'data': {
+              'place': {'id': 3, 'name': 'Alanya', 'label': 'Alanya, Antalya, Türkiye'},
+              'city': {'id': 1, 'name': 'Alanya'},
+            },
           });
         }
         return json(422, {
@@ -338,6 +349,15 @@ void main() {
       await tester.tap(find.text('Doğum Tarihi'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      // The location is a real place chosen in the picker (no silent default city).
+      await tester.ensureVisible(find.byKey(const Key('register-place')));
+      await tester.tap(find.byKey(const Key('register-place')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('place-search')), 'Alanya');
+      await tester.tap(find.byKey(const Key('place-search-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('place-result-0')));
       await tester.pumpAndSettle();
       await tester.tap(find.byType(Checkbox));
       await tester.pump();

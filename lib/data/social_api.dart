@@ -54,7 +54,8 @@ class SocialService {
   }
 }
 
-String socialTime(String value) => relativeTime(DateTime.parse(value).toLocal());
+String socialTime(String value) =>
+    relativeTime(DateTime.parse(value).toLocal());
 
 Person socialPerson(Map<String, dynamic> json) => Person(
   id: 'account-${json['id']}',
@@ -113,7 +114,9 @@ Post socialPost(Map<String, dynamic> json, String authorId) => Post(
   commentCount: json['comments_count'] as int,
   commentsEnabled: json['comments_enabled'] == true,
   distanceMeters: json['distance_meters'] as int?,
-  locationLabel: json['location_label'] as String?,
+  locationLabel:
+      json['location_label'] as String? ??
+      (json['place'] as Map<String, dynamic>?)?['label'] as String?,
   encounterConfirmed: json['encounter_confirmed'] == true,
   encounterRequestId: json['encounter_request_id']?.toString(),
   encounterRequestStatus: json['encounter_request_status'] as String?,

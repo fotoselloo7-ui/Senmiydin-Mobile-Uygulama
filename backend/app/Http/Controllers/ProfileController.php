@@ -36,7 +36,7 @@ class ProfileController extends Controller
             'username' => ['sometimes', ...AuthController::usernameRules(), Rule::unique('users')->ignore($request->user()->id)],
             'bio' => ['sometimes', 'nullable', 'string', 'max:160'],
             'occupation_school' => ['sometimes', 'nullable', 'string', 'max:120'],
-            'city_id' => ['sometimes', 'required', 'integer', Rule::exists('cities', 'id')->where('is_active', true)],
+            ...PlaceController::rules(required: false),
             'connections' => ['sometimes', 'array', 'list', 'max:4'],
             'connections.*' => ['distinct', Rule::in(config('mobile.connections'))],
             'nearby_visible' => ['sometimes', 'boolean'],
@@ -52,6 +52,9 @@ class ProfileController extends Controller
             'finish_setup' => ['sometimes', 'boolean'],
         ], AuthController::validationMessages());
 
+        if (array_key_exists('place_id', $data) || array_key_exists('city_id', $data)) {
+            PlaceController::apply($data);
+        }
         try {
             $user = DB::transaction(function () use ($request, $data) {
                 $user = User::lockForUpdate()->findOrFail($request->user()->id);
@@ -257,6 +260,6 @@ class ProfileController extends Controller
 
     private function profile(User $user, string $message = 'İşlem tamamlandı.'): JsonResponse
     {
-        return ApiResponse::ok(new ProfileResource($user->load(['city', 'interests'])), $message);
+        return ApiResponse::ok(new ProfileResource($user->load(['city', 'place', 'interests'])), $message);
     }
 }

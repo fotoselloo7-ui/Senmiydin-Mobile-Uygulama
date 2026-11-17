@@ -53,8 +53,15 @@ class TravelDetails {
     this.serviceCode = '',
     this.vehicleIdentifier = '',
     this.isPublic = false,
+    this.originPlaceId,
+    this.destinationPlaceId,
+    this.originLabel,
+    this.destinationLabel,
   });
   factory TravelDetails.fromJson(Map<String, dynamic> json) => TravelDetails(
+    originLabel: (json['origin'] as Map<String, dynamic>)['label'] as String?,
+    destinationLabel:
+        (json['destination'] as Map<String, dynamic>)['label'] as String?,
     transport: json['transport_type'] as String,
     origin: CatalogItem.fromJson(json['origin'] as Map<String, dynamic>),
     destination: CatalogItem.fromJson(
@@ -69,12 +76,20 @@ class TravelDetails {
   );
   final String transport, operatorName, serviceCode, vehicleIdentifier;
   final CatalogItem origin, destination;
+
+  /// The places picked for departure / arrival (as fine as a neighbourhood); null on older journeys.
+  final int? originPlaceId, destinationPlaceId;
+  final String? originLabel, destinationLabel;
+  String get originText => originLabel ?? origin.name;
+  String get destinationText => destinationLabel ?? destination.name;
   final DateTime? departureAt;
   final bool isPublic;
   Map<String, Object?> toJson() => {
     'transport_type': transport,
     'origin_city_id': origin.id,
     'destination_city_id': destination.id,
+    'origin_place_id': ?originPlaceId,
+    'destination_place_id': ?destinationPlaceId,
     if (departureAt != null)
       'departure_at': departureAt!.toUtc().toIso8601String(),
     'operator_name': operatorName,
@@ -90,7 +105,10 @@ class TravelDraft {
       operatorName = '',
       serviceCode = '',
       vehicleIdentifier = '';
+
+  /// Labels shown in the form; [originPlace] / [destinationPlace] hold the places picked with the location picker.
   String? origin, destination;
+  ChosenPlace? originPlace, destinationPlace;
   DateTime? departureAt;
   Future<TravelDetails?> resolve(
     Future<int> Function(String) cityId,
@@ -98,15 +116,23 @@ class TravelDraft {
   ) async {
     if (!enabled) return null;
     if (destination == null) {
-      throw const ApiFailure('Yolculuğun varış şehrini seç.');
+      throw const ApiFailure('Yolculuğun varış yerini seç.');
     }
     return TravelDetails(
       transport: transport,
-      origin: CatalogItem(
-        await cityId(origin ?? defaultCity),
-        origin ?? defaultCity,
-      ),
-      destination: CatalogItem(await cityId(destination!), destination!),
+      origin:
+          originPlace?.city ??
+          CatalogItem(
+            await cityId(origin ?? defaultCity),
+            origin ?? defaultCity,
+          ),
+      destination:
+          destinationPlace?.city ??
+          CatalogItem(await cityId(destination!), destination!),
+      originPlaceId: originPlace?.placeId,
+      destinationPlaceId: destinationPlace?.placeId,
+      originLabel: originPlace?.label,
+      destinationLabel: destinationPlace?.label,
       departureAt: departureAt,
       operatorName: operatorName.trim(),
       serviceCode: serviceCode.trim(),

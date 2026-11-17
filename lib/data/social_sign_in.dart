@@ -16,10 +16,14 @@ class SocialCredential {
     this.fields, {
     this.email = '',
     this.name = '',
+    this.photoUrl,
   });
   final String provider;
   final Map<String, Object?> fields;
   final String email, name;
+
+  /// The provider profile photo (Google only), used to prefill the new profile.
+  final String? photoUrl;
 }
 
 abstract final class SocialSignIn {
@@ -31,7 +35,9 @@ abstract final class SocialSignIn {
   static bool configured(String provider) =>
       ServiceAvailability.social(provider);
 
-  static Future<SocialCredential> authenticate(
+  /// Signs in with the provider. Returns null when the person cancels (nothing to report). The provider password is
+  /// entered only in the provider's own sheet: the app never sees it.
+  static Future<SocialCredential?> authenticate(
     String provider,
     AuthService auth,
   ) async {
@@ -56,6 +62,7 @@ abstract final class SocialSignIn {
           {'id_token': token},
           email: user.email,
           name: user.displayName ?? '',
+          photoUrl: user.photoUrl,
         );
       }
       final challenge = await auth.client.send(
@@ -97,6 +104,19 @@ abstract final class SocialSignIn {
       );
     } on ApiFailure {
       rethrow;
+    } on GoogleSignInException catch (error) {
+      if (error.code == GoogleSignInExceptionCode.canceled ||
+          error.code == GoogleSignInExceptionCode.interrupted) {
+        return null;
+      }
+      throw const ApiFailure(
+        'Giriş tamamlanamadı. Tekrar deneyebilir veya e-posta ile giriş yapabilirsin.',
+      );
+    } on SignInWithAppleAuthorizationException catch (error) {
+      if (error.code == AuthorizationErrorCode.canceled) return null;
+      throw const ApiFailure(
+        'Giriş tamamlanamadı. Tekrar deneyebilir veya e-posta ile giriş yapabilirsin.',
+      );
     } catch (_) {
       throw const ApiFailure(
         'Giriş tamamlanamadı. Tekrar deneyebilir veya e-posta ile giriş yapabilirsin.',

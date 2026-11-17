@@ -14,7 +14,13 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->scoped(\App\Administration\Settings::class);
-        $this->app->bind(CityResolver::class, \App\Location\BoundaryCityResolver::class);
+        $this->app->bind(CityResolver::class, \App\Places\PlaceCityResolver::class);
+        // Which place provider answers is configuration only (PLACES_PROVIDER); the app never knows.
+        $this->app->bind(\App\Places\PlaceSearchProvider::class, fn () => match (config('places.provider')) {
+            'nominatim' => new \App\Places\NominatimProvider,
+            default => new \App\Places\NoPlaceProvider,
+        });
+        $this->app->singleton(\App\Places\PlaceDirectory::class);
     }
 
     public function boot(): void
@@ -41,6 +47,8 @@ class AppServiceProvider extends ServiceProvider
                 Limit::perMinute(5)->by('identity:'.hash('sha256', $identity).'|'.$request->ip()),
             ];
         });
+        // Place search is explicit (a search button, never per keystroke): 20 calls a minute are plenty for a person.
+        RateLimiter::for('places', fn (Request $request) => Limit::perMinute(20)->by('places:'.($request->user()?->id ?? $request->ip())));
         RateLimiter::for('password-recovery', fn (Request $request) => Limit::perMinute(5)->by($request->ip()));
         foreach (['post-write' => 15, 'comment-write' => 30, 'reaction' => 120, 'social-search' => 90, 'location-write' => 12, 'location-read' => 60, 'encounter-action' => 30, 'communication-read' => 120, 'message-write' => 40] as $name => $limit) {
             RateLimiter::for($name, fn (Request $request) => Limit::perMinute($limit)->by($request->user()->id));

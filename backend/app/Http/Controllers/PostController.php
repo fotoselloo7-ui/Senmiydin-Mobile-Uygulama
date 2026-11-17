@@ -126,7 +126,8 @@ class PostController extends Controller
         $data = $request->validate([
             'body' => ['nullable', 'required_without:media', 'string', 'max:1000'],
             'type' => ['required', Rule::in(Post::TYPES)],
-            'city_id' => ['required', 'integer', Rule::exists('cities', 'id')->where('is_active', true)],
+            // A place (as fine as a neighbourhood) or, from older apps, a bare city. A place decides the city.
+            ...PlaceController::rules(),
             'visibility' => ['required', Rule::in(['city', 'private'])],
             'is_anonymous' => ['required', 'boolean'],
             'comments_enabled' => ['sometimes', 'boolean'],
@@ -137,10 +138,12 @@ class PostController extends Controller
             'place_latitude' => ['required_if:location_source,map', 'numeric', 'between:-90,90'],
             'place_longitude' => ['required_if:location_source,map', 'numeric', 'between:-180,180'],
             'occurred_at' => ['sometimes', 'nullable', 'date', 'before_or_equal:now', 'after_or_equal:'.LocationData::cutoff()->toISOString()],
-            'travel' => ['sometimes', 'array:transport_type,origin_city_id,destination_city_id,departure_at,operator_name,service_code,vehicle_identifier,is_public', Rule::prohibitedIf($request->input('type') !== 'travel')],
+            'travel' => ['sometimes', 'array:transport_type,origin_city_id,destination_city_id,origin_place_id,destination_place_id,departure_at,operator_name,service_code,vehicle_identifier,is_public', Rule::prohibitedIf($request->input('type') !== 'travel')],
             'travel.transport_type' => ['required_with:travel', Rule::in(['bus', 'train', 'plane', 'ferry', 'other'])],
-            'travel.origin_city_id' => ['required_with:travel', 'integer', Rule::exists('cities', 'id')->where('is_active', true)],
-            'travel.destination_city_id' => ['required_with:travel', 'integer', Rule::exists('cities', 'id')->where('is_active', true)],
+            'travel.origin_place_id' => ['sometimes', 'nullable', 'integer', Rule::exists('places', 'id')],
+            'travel.destination_place_id' => ['sometimes', 'nullable', 'integer', Rule::exists('places', 'id')],
+            'travel.origin_city_id' => [Rule::requiredIf(fn () => $request->has('travel') && ! $request->filled('travel.origin_place_id')), 'integer', Rule::exists('cities', 'id')->where('is_active', true)],
+            'travel.destination_city_id' => [Rule::requiredIf(fn () => $request->has('travel') && ! $request->filled('travel.destination_place_id')), 'integer', Rule::exists('cities', 'id')->where('is_active', true)],
             'travel.departure_at' => ['nullable', 'date', 'after_or_equal:'.LocationData::cutoff()->toISOString(), 'before_or_equal:'.now()->addYear()->toISOString()],
             'travel.operator_name' => ['nullable', 'string', 'max:80'],
             'travel.service_code' => ['nullable', 'string', 'max:40'],
@@ -156,6 +159,11 @@ class PostController extends Controller
             'media.max' => 'En fazla '.$photoLimit.' fotoğraf ekleyebilirsin.',
             'media.*.*' => 'Her fotoğraf JPEG, PNG veya WebP biçiminde, en fazla 5 MB ve 2048 piksel olmalı.',
         ]);
+        PlaceController::apply($data);
+        if (isset($data['travel'])) {
+            PlaceController::apply($data['travel'], 'origin_place_id', 'origin_city_id');
+            PlaceController::apply($data['travel'], 'destination_place_id', 'destination_city_id');
+        }
         if (!empty($data['occurred_at'])) $data['occurred_at'] = \Illuminate\Support\Carbon::parse($data['occurred_at'])->utc();
         if (!empty($data['travel']['departure_at'])) $data['travel']['departure_at'] = \Illuminate\Support\Carbon::parse($data['travel']['departure_at'])->utc();
         $viewer = $request->user();
@@ -207,6 +215,7 @@ class PostController extends Controller
                     $data['visibility'] = 'private';
                     $data['comments_enabled'] = true;
                     $data['city_id'] = $joint->invitation->source()->withTrashed()->value('city_id') ?? $viewer->city_id;
+                    $data['place_id'] = null;
                 }
                 $storyTitle = $data['story_title'] ?? null;
                 unset($data['media'], $data['attach_location'], $data['encounter_id'], $data['encounter_target_id'], $data['story_title'],

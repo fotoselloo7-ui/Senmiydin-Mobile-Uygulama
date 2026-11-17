@@ -388,9 +388,15 @@ class TravelFields extends StatelessWidget {
           Icons.trip_origin,
           subtitle: draft.origin ?? city,
           onTap: () async {
-            final v = await chooseCity(context, draft.origin ?? city);
+            final v = await choosePlace(
+              context,
+              current: draft.origin ?? city,
+              title: 'Kalkış yerini seç',
+            );
             if (v != null) {
-              draft.origin = v;
+              draft
+                ..origin = v.label
+                ..originPlace = v;
               onChanged();
             }
           },
@@ -398,11 +404,17 @@ class TravelFields extends StatelessWidget {
         SettingsRow(
           'Varış',
           Icons.place_outlined,
-          subtitle: draft.destination ?? 'Şehir seç',
+          subtitle: draft.destination ?? 'Yer seç',
           onTap: () async {
-            final v = await chooseCity(context, draft.destination ?? city);
+            final v = await choosePlace(
+              context,
+              current: draft.destination,
+              title: 'Varış yerini seç',
+            );
             if (v != null) {
-              draft.destination = v;
+              draft
+                ..destination = v.label
+                ..destinationPlace = v;
               onChanged();
             }
           },
@@ -450,7 +462,7 @@ class TravelFields extends StatelessWidget {
             child: TextFormField(
               initialValue: item.$2,
               maxLength: item.$3,
-              decoration: InputDecoration(labelText: item.$1),
+              decoration: InputDecoration(labelText: tr(item.$1)),
               onChanged: (v) {
                 item.$4(v);
                 onChanged();
@@ -492,7 +504,7 @@ class TravelSummary extends StatelessWidget {
         ),
         const SizedBox(height: Space.xs),
         Text(
-          '${details.origin.name} → ${details.destination.name}',
+          '${details.originText} → ${details.destinationText}',
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         if (details.departureAt != null)

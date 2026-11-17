@@ -33,13 +33,39 @@ final class ApiResponse
     /** English text for a Turkish API message when the request language is English; otherwise (or unknown) unchanged. */
     public static function localize(string $message): string
     {
-        static $english = null;
+        static $english = null, $patterns = null;
         if (app()->getLocale() !== 'en') {
             return $message;
         }
         $english ??= require lang_path('en/messages.php');
+        if (isset($english[$message])) {
+            return $english[$message];
+        }
+        // Sentences that carry a number or a place name ("En fazla 4 fotoğraf ...", "Alanya · Yaklaşık bölge").
+        $patterns ??= require lang_path('en/message_patterns.php');
+        foreach ($patterns as $pattern => $replacement) {
+            if (preg_match($pattern, $message)) {
+                return preg_replace($pattern, $replacement, $message);
+            }
+        }
 
-        return $english[$message] ?? $message;
+        return $message;
+    }
+
+    /**
+     * Field errors in the request language. Laravel's own English sentences ("The q field is required.") are only
+     * produced for rules without a written message; a Turkish reader gets one clear Turkish sentence instead of them.
+     */
+    public static function fieldErrors(array $errors): array
+    {
+        if (app()->getLocale() === 'en') {
+            return $errors;
+        }
+
+        return array_map(fn ($messages) => array_map(
+            fn ($message) => is_string($message) && preg_match('/^The [\x20-\x7E]+$/', $message) ? 'Bu bilgi geçerli değil. Kontrol edip tekrar dene.' : $message,
+            (array) $messages,
+        ), $errors);
     }
 
     private static function localizeAll(array $errors): array

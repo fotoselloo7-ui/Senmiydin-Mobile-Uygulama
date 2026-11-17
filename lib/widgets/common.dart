@@ -1,6 +1,7 @@
 import '../core/brand_assets.dart';
 
 import 'package:flutter/material.dart' hide Text;
+import 'package:flutter/material.dart' as material show Text;
 
 import 'translated_text.dart';
 
@@ -1100,15 +1101,262 @@ class InterestChip extends StatelessWidget {
   }
 }
 
-Future<String?> chooseCity(BuildContext context, String current) {
+/// The location picker used everywhere a place is chosen (registration, profile, active area, posts, journeys).
+/// Real places come from the SenMiydin API (OpenStreetMap data): city, district, town, suburb, neighbourhood, worldwide.
+/// Searching is explicit (the search button or the keyboard's search key), never one request per keystroke.
+Future<ChosenPlace?> choosePlace(
+  BuildContext context, {
+  String? current,
+  String title = 'Konumunu seç',
+}) {
   final store = StoreScope.of(context);
-  return showModalBottomSheet<String>(
+  return showModalBottomSheet<ChosenPlace>(
     context: context,
     isScrollControlled: true,
-    builder: (_) => _CityPicker(store, current),
+    builder: (_) => store.connected
+        ? PlacePicker(store, title: title, current: current)
+        : _CityPicker(store, current ?? ''),
   );
 }
 
+/// [choosePlace] for screens that only need the area name.
+Future<String?> chooseCity(BuildContext context, String current) async =>
+    (await choosePlace(context, current: current))?.city.name;
+
+class PlacePicker extends StatefulWidget {
+  const PlacePicker(this.store, {super.key, required this.title, this.current});
+  final AppStore store;
+  final String title;
+  final String? current;
+
+  @override
+  State<PlacePicker> createState() => _PlacePickerState();
+}
+
+class _PlacePickerState extends State<PlacePicker> {
+  final query = TextEditingController();
+  List<PlaceResult>? results;
+  String? error, searched;
+  bool searching = false, locating = false, resolving = false;
+
+  @override
+  void dispose() {
+    query.dispose();
+    super.dispose();
+  }
+
+  bool get busy => searching || locating || resolving;
+
+  Future<void> search() async {
+    final text = query.text.trim();
+    if (busy) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    if (text.characters.length < 2) {
+      setState(() {
+        error = 'Aramak için en az 2 harf yaz.';
+        results = null;
+      });
+      return;
+    }
+    setState(() {
+      searching = true;
+      error = null;
+    });
+    try {
+      final found = await widget.store.searchPlaces(text);
+      if (!mounted) return;
+      setState(() {
+        results = found;
+        searched = text;
+      });
+    } on ApiFailure catch (failure) {
+      if (mounted) setState(() => error = failure.detail);
+    } finally {
+      if (mounted) setState(() => searching = false);
+    }
+  }
+
+  Future<void> useDevice() async {
+    if (busy) return;
+    if (await widget.store.locationPermissionUndecided()) {
+      if (!mounted) return;
+      final allowed = await confirmAction(
+        context,
+        title: 'Konumun kullanılsın mı?',
+        message: 'Bulunduğun mahalle veya ilçeyi bulmak için cihaz konumun bir kez kullanılır. Konum yaklaşık 1 km’ye yuvarlanarak gönderilir ve bu adımda kaydedilmez. İzin vermezsen yeri aramayla seçebilirsin.',
+        action: 'Devam',
+        scrollable: true,
+      );
+      if (!allowed || !mounted) return;
+    }
+    setState(() {
+      locating = true;
+      error = null;
+    });
+    try {
+      final place = await widget.store.placeAtDevice();
+      if (!mounted) return;
+      if (place == null) {
+        setState(
+          () =>
+              error = 'Bulunduğun yer tanınamadı. Yeri aramayla seçebilirsin.',
+        );
+        return;
+      }
+      setState(() => locating = false);
+      await pick(place);
+    } on ApiFailure catch (failure) {
+      if (mounted) setState(() => error = failure.detail);
+    } finally {
+      if (mounted) setState(() => locating = false);
+    }
+  }
+
+  Future<void> pick(PlaceResult place) async {
+    if (resolving) return;
+    setState(() {
+      resolving = true;
+      error = null;
+    });
+    try {
+      final chosen = await widget.store.resolvePlace(place);
+      if (mounted) Navigator.pop(context, chosen);
+    } on ApiFailure catch (failure) {
+      if (mounted) setState(() => error = failure.detail);
+    } finally {
+      if (mounted) setState(() => resolving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final found = results;
+    return SafeArea(
+      child: Padding(
+        padding:
+            Space.page +
+            EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * .8,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(widget.title, style: Theme.of(context).textTheme.titleLarge),
+              if ((widget.current ?? '').isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  trf('Şu an: {0}', [widget.current]),
+                  style: const TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 12.5,
+                  ),
+                ),
+              ],
+              const SizedBox(height: Space.sm),
+              TextField(
+                key: const Key('place-search'),
+                controller: query,
+                enabled: !resolving,
+                textInputAction: TextInputAction.search,
+                onSubmitted: (_) => search(),
+                decoration: InputDecoration(
+                  hintText: tr('Şehir, ilçe veya mahalle ara'),
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: IconButton(
+                    key: const Key('place-search-button'),
+                    tooltip: tr('Ara'),
+                    onPressed: busy ? null : search,
+                    icon: const Icon(Icons.arrow_forward_rounded),
+                  ),
+                ),
+              ),
+              ListTile(
+                key: const Key('place-use-device'),
+                contentPadding: EdgeInsets.zero,
+                enabled: !busy,
+                leading: locating
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2.4),
+                      )
+                    : const Icon(
+                        Icons.my_location_rounded,
+                        color: AppColors.blue,
+                      ),
+                title: const Text('Mevcut konumumu kullan'),
+                subtitle: const Text('Bulunduğun mahalle veya ilçe önerilir.'),
+                onTap: useDevice,
+              ),
+              if (error != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: Space.sm),
+                  child: Text(
+                    error!,
+                    key: const Key('place-error'),
+                    style: const TextStyle(color: AppColors.red, fontSize: 13),
+                  ),
+                ),
+              if (searching || resolving)
+                const Padding(
+                  padding: EdgeInsets.all(Space.lg),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (found != null && found.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: Space.md),
+                  child: Text(
+                    trf(
+                      '“{0}” için sonuç bulunamadı. Farklı bir yazım veya daha büyük bir yer dene.',
+                      [searched],
+                    ),
+                    style: const TextStyle(color: AppColors.muted),
+                  ),
+                )
+              else if (found != null)
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: found.length,
+                    itemBuilder: (context, index) {
+                      final place = found[index];
+                      return ListTile(
+                        key: Key('place-result-$index'),
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(
+                          Icons.location_on_outlined,
+                          color: AppColors.blue,
+                        ),
+                        // Place names are shown exactly as the map data gives them, never translated here.
+                        title: material.Text(
+                          place.name,
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                        subtitle: place.context.isEmpty
+                            ? null
+                            : material.Text(place.context),
+                        onTap: () => pick(place),
+                      );
+                    },
+                  ),
+                ),
+              const SizedBox(height: Space.sm),
+              const Text(
+                '© OpenStreetMap katkıcıları',
+                style: TextStyle(color: AppColors.muted, fontSize: 11),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Offline preview (no server): the small built-in list.
 class _CityPicker extends StatefulWidget {
   const _CityPicker(this.store, this.current);
   final AppStore store;
@@ -1120,14 +1368,11 @@ class _CityPicker extends StatefulWidget {
 
 class _CityPickerState extends State<_CityPicker> {
   late Future<List<CatalogItem>> cities = widget.store.loadCities();
-  String query = '';
 
   @override
   Widget build(BuildContext context) => SafeArea(
     child: Padding(
-      padding:
-          Space.page +
-          EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      padding: Space.page,
       child: ConstrainedBox(
         constraints: BoxConstraints(
           maxHeight: MediaQuery.sizeOf(context).height * .56,
@@ -1136,58 +1381,35 @@ class _CityPickerState extends State<_CityPicker> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Şehrini seç', style: Theme.of(context).textTheme.titleLarge),
+            Text('Konumunu seç', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: Space.sm),
-            if (widget.store.connected)
-              TextField(
-                decoration: InputDecoration(
-                  hintText: tr('Şehir ara'),
-                  prefixIcon: Icon(Icons.search),
-                ),
-                onChanged: (value) => setState(() => query = value),
-              ),
             Flexible(
               child: FutureBuilder(
                 future: cities,
                 builder: (context, snapshot) {
-                  if (snapshot.hasError) {
-                    return TextButton(
-                      onPressed: () =>
-                          setState(() => cities = widget.store.loadCities()),
-                      child: const Text('Şehirler yüklenemedi. Tekrar dene.'),
-                    );
-                  }
                   if (!snapshot.hasData) {
                     return const Center(child: CircularProgressIndicator());
                   }
-                  final results = snapshot.data!
-                      .where(
-                        (city) =>
-                            turkishSearchKey(city.name)
-                                .contains(turkishSearchKey(query)),
-                      )
-                      .toList();
-                  if (results.isEmpty) return const Text('Şehir bulunamadı.');
-                  return ListView.builder(
+                  return ListView(
                     shrinkWrap: true,
-                    itemCount: results.length,
-                    itemBuilder: (context, index) {
-                      final name = results[index].name;
-                      return ListTile(
-                        leading: const Icon(
-                          Icons.location_on_outlined,
-                          color: AppColors.blue,
+                    children: [
+                      for (final city in snapshot.data!)
+                        ListTile(
+                          leading: const Icon(
+                            Icons.location_on_outlined,
+                            color: AppColors.blue,
+                          ),
+                          title: material.Text(city.name),
+                          trailing: widget.current == city.name
+                              ? const Icon(
+                                  Icons.check_circle,
+                                  color: AppColors.blue,
+                                )
+                              : null,
+                          onTap: () =>
+                              Navigator.pop(context, ChosenPlace(city)),
                         ),
-                        title: Text(name),
-                        trailing: widget.current == name
-                            ? const Icon(
-                                Icons.check_circle,
-                                color: AppColors.blue,
-                              )
-                            : null,
-                        onTap: () => Navigator.pop(context, name),
-                      );
-                    },
+                    ],
                   );
                 },
               ),

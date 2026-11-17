@@ -986,9 +986,15 @@ class _FeedControls extends StatelessWidget {
         child: TextButton(
           key: const Key('feed-city'),
           onPressed: () async {
-            final selected = await chooseCity(context, store.city);
+            final selected = await choosePlace(context, current: store.city);
             if (selected != null && context.mounted) {
-              await socialAction(context, () => store.setCity(selected));
+              await socialAction(
+                context,
+                () => store.setCity(
+                  selected.city.name,
+                  placeId: selected.placeId,
+                ),
+              );
             }
           },
           style: TextButton.styleFrom(

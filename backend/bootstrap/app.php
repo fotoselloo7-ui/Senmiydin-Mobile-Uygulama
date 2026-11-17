@@ -43,7 +43,7 @@ return Application::configure(basePath: dirname(__DIR__))
             // Authentication runs before the language middleware: decide the language here as well.
             app()->setLocale(App\Http\Middleware\SetLocale::forRequest($request));
             if ($error instanceof ValidationException) {
-                return ApiResponse::error('Bilgilerini kontrol et.', 422, $error->errors());
+                return ApiResponse::error('Bilgilerini kontrol et.', 422, ApiResponse::fieldErrors($error->errors()));
             }
             if ($error instanceof AuthenticationException) {
                 return ApiResponse::error('Oturumun sona erdi. Tekrar giriş yap.', 401);
