@@ -83,7 +83,7 @@
                 <dt>Durum</dt><dd>{{ Records::REPORT_STATES[$record->status] ?? $record->status }}</dd>
                 <dt>İçerik sahibi</dt><dd>@if($owner)<a href="{{ route('admin.detail', ['users',$owner->id]) }}">{{ $owner->name }}</a>@else — @endif</dd></dl>
             <p class="preserve">{{ $record->description }}</p>
-            @if($target && in_array($record->target_type, ['post','encounter_story','comment','message','map_note','map_note_reply'], true))
+            @if($target && in_array($record->target_type, ['post','encounter_story','comment','message','map_note','map_note_reply','memory'], true))
                 <h3>Şikâyet edilen içerik</h3><blockquote class="preserve">{{ $target->body }}</blockquote>
                 @if($record->target_type === 'message' && $target->image_path)
                     <img class="report-image" src="{{ route('admin.report.image', $record->id) }}" alt="Şikâyet edilen mesaj görseli" loading="lazy">
@@ -93,6 +93,8 @@
                     <a href="{{ route('admin.detail', ['comments',$target->id]) }}">Yorumu incele →</a>
                 @elseif($target instanceof \App\Models\MapNote)
                     <a href="{{ route('admin.map-notes.detail', $target->id) }}">Notu incele →</a>
+                @elseif($target instanceof \App\Models\Memory)
+                    <a href="{{ route('admin.memories.detail', $target->id) }}">Anıyı incele →</a>
                 @elseif($target instanceof \App\Models\MapNoteReply)
                     <a href="{{ route('admin.map-notes.detail', $target->map_note_id) }}">Notun yanıt zincirini incele →</a>
                 @endif

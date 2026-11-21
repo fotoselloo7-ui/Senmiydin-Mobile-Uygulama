@@ -11,7 +11,7 @@ final class Audit
     {
         [$target, $verb] = explode('.', $action, 2) + [1 => ''];
         $type = ['user'=>'Kullanıcı','post'=>'Paylaşım','comment'=>'Yorum','encounter'=>'Karşılaşma',
-            'report'=>'Şikâyet','map_note'=>'Harita notu','map_note_reply'=>'Harita notu yanıtı','featured'=>'Öne çıkan','settings'=>'Ayarlar','interest'=>'Hobi',
+            'report'=>'Şikâyet','map_note'=>'Harita notu','memory'=>'Anı','map_note_reply'=>'Harita notu yanıtı','featured'=>'Öne çıkan','settings'=>'Ayarlar','interest'=>'Hobi',
             'city'=>'Şehir','legal'=>'Web içeriği','announcement'=>'Duyuru','support'=>'Destek talebi'][$target] ?? $target;
         $label = ['suspend'=>'askıya alındı','ban'=>'yasaklandı','restore'=>'geri açıldı','revoke'=>'oturumları kapatıldı',
             'remove'=>'kaldırıldı','note'=>'not eklendi','update'=>'güncellendi','create'=>'oluşturuldu',

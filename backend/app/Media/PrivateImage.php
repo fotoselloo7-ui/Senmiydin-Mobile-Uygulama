@@ -74,6 +74,59 @@ final class PrivateImage
 
 
 
+    /**
+     * Same re-encode as [jpeg] for bytes that are already on the server (a photo copied from a post or a map note into a
+     * memory): decoded for real, turned upright, written again without any metadata.
+     *
+     * @return array{0:string,1:int,2:int} bytes, width, height
+     */
+    public static function jpegFromBytes(string $source, string $field): array
+    {
+        $image = @imagecreatefromstring($source);
+        if ($image === false) {
+            throw ValidationException::withMessages([$field => 'Fotoğraf okunamadı.']);
+        }
+        $image = self::upright($image, self::orientation($source));
+        ob_start();
+        try {
+            $encoded = imagejpeg($image, null, 85);
+        } finally {
+            $bytes = ob_get_clean();
+        }
+        abort_unless($encoded && is_string($bytes) && $bytes !== '', 500);
+
+        return [$bytes, imagesx($image), imagesy($image)];
+    }
+
+    /**
+     * A smaller JPEG of an image this class already re-encoded (so it carries no metadata either): the longest edge is
+     * [$edge] pixels. Lists load this instead of the full photo.
+     *
+     * @return array{0:string,1:int,2:int} bytes, width, height
+     */
+    public static function thumbnail(string $jpeg, int $edge): array
+    {
+        $image = @imagecreatefromstring($jpeg);
+        abort_if($image === false, 500);
+        $width = imagesx($image);
+        $height = imagesy($image);
+        $scale = min(1, $edge / max($width, $height));
+        if ($scale < 1) {
+            $resized = imagescale($image, max(1, (int) round($width * $scale)), max(1, (int) round($height * $scale)), IMG_BICUBIC);
+            abort_if($resized === false, 500);
+            $image = $resized;
+        }
+        ob_start();
+        try {
+            $encoded = imagejpeg($image, null, 80);
+        } finally {
+            $bytes = ob_get_clean();
+        }
+        abort_unless($encoded && is_string($bytes) && $bytes !== '', 500);
+
+        return [$bytes, imagesx($image), imagesy($image)];
+    }
+
     /** EXIF orientation (1–8) of a JPEG, 1 when absent or unreadable. Parsed by hand: no extension needed. */
 
     public static function orientation(string $bytes): int

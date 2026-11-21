@@ -132,3 +132,17 @@ Gerçek backend → API → Flutter → kullanıcı akışı olarak incelendi; y
 | Paylaşım taslağı | Compose'dan çıkınca "taslağın silinecek" — içerik kaybolurdu | **COMPLETE** — özel depolamada, debounce, fotoğraf kopyası, Yolculuk dahil tüm alanlar, hesap ayrımı, bozuk dosya toleransı, yayın / silme / hesap silme temizliği, **süreç öldürme sonrası geri yükleme** | 8 depolama + 6 composer testi, Pixel `draft-restore-prompt.png`, `draft-restored.png` |
 | Taslakta bulunan hata (düzeltildi) | — | İlk uygulamada boş Compose, "taslağın var" sorusu cevaplanmadan saklı taslağı ezebiliyordu; gerçek cihazda yakalandı, soru açıkken kayıt kilitlendi | regresyon testi |
 | Dış bağımlılıklar | — | Değişmedi: destek e-postası, mağaza URL'leri, operatör bilgisi (EXTERNAL) | — |
+
+## Anılar — 21 Kasım 2026
+
+**Durum: uygulandı.** Profilde kalıcı Anılar bölümü; kaynaklar Harita Notu, gönderi ve doğrudan ekleme. Ayrıntılı ürün kuralları `SENMIYDIN_URUN_TANIMI.md` → 42.
+
+**Mimari.** `memories` (bağımsız snapshot; `source_type/source_id` yalnızca tekrarı önlemek için, **yabancı anahtar yok**), `memory_media` (≤5, sıra, genişlik / yükseklik / oran, küçük görsel yolu), `users.memory_default_visibility`. Kesin koordinat hiç tutulmaz: yalnızca alan (`city_id`), isteğe bağlı `place_id`, etiket ve ızgaraya yuvarlanmış iç nokta; API bunların hiçbirini koordinat olarak döndürmez. Yetki tek yerde, SQL'de: `Memory::visibleTo()` (engel + yaş bandı → silinmiş / moderasyonlu / pasif sahip → sahibi → gizli değil ve görünürlük kuralı).
+
+**Gizlilik matrisi** (ayrıntı: ürün tanımı 42): private yalnız sahibi; followers takip edenler; public herkes (oturum açmış); area ev alanı veya cihazın yerleştirdiği alan eşleşenler (elle seçilen şehir sayılmaz). Engel ve yaş bandı her seviyeden güçlüdür.
+
+**Kapanan boşluklar:** kaynaktan bağımsız kalıcı yer (Harita Notu 7 günde kalkıyordu); gönderi ve notun tek tuşla anıya dönmesi; fotoğraf oranı seçimi (9:16 / 4:5 / 16:9) ortak kırpma ile; Feed'in 4:5'ten dar fotoğrafları kırpmadan göstermesi (9:16).
+
+**Bilinçli sınırlar.** Mesaj fotoğrafı kırpılmaz. Ortak karşılaşma hikâyesi anıya eklenemez (iki kişiye aittir). Anı için herkese açık web bağlantısı yoktur. Anılar bildirim üretmez ve aramada çıkmaz. Kırpma sonucu `dart:ui` yalnız PNG kodlayabildiği için PNG gider; sunucu zaten her yüklemeyi metadata'sız JPEG'e çevirir. "Bu Bölgedekiler", yalnızca ev alanı veya cihaz alanı ile eşleşir; GPS kapalı ve başka şehirde yaşayan biri o bölgenin anılarını göremez.
+
+**Doğrulanamayanlar.** iOS'ta derlenmedi / çalıştırılmadı (yalnız Android Pixel 6a). Üretim sunucusunda migration henüz uygulanmadı; TestFlight derlemesi üretim API'sine bakar, sunucu güncellenene kadar Anılar orada çalışmaz.

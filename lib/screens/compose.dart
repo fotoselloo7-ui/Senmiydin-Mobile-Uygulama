@@ -23,6 +23,7 @@ import '../widgets/account_action.dart';
 import '../data/models.dart';
 import '../data/mock_data.dart';
 import '../widgets/common.dart';
+import '../widgets/media_crop.dart';
 import '../widgets/social.dart';
 import '../core/app_locale.dart';
 
@@ -378,9 +379,12 @@ class _ComposePageState extends State<ComposePage>
             limit: 10 - images.length,
           );
         }
+        if (selected.isEmpty || !mounted) return;
+        // The shared crop step (9:16 / 4:5 / 16:9) runs before a photo is added to the post.
+        final cropped = await cropPhotos(context, selected);
         if (!mounted) return;
         setState(() {
-          for (final image in selected) {
+          for (final image in cropped) {
             if (images.length == 10) break;
             if (!images.contains(image.path)) images.add(image.path);
           }

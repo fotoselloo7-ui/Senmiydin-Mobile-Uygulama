@@ -144,14 +144,14 @@ void main() {
   );
 
   group('Private media authorization', () {
-    test('The token is sent for post photos, message photos, voice messages and letter photos, and for nothing else', () async {
+    test('The token is sent for post photos, message photos, voice messages and letter photos, memory photos, and for nothing else', () async {
       final store = await quietStore();
       addTearDown(store.dispose);
       String url(String path) => ApiClient.mediaUrl('/api/v1/$path');
-      for (final path in ['post-media/3', 'message-images/9', 'message-audio/115', 'map-notes/16/image']) {
+      for (final path in ['post-media/3', 'message-images/9', 'message-audio/115', 'map-notes/16/image', 'memory-media/12', 'memory-media/12/thumb']) {
         expect(store.mediaHeaders(url(path)), {'Authorization': 'Bearer t'}, reason: path);
       }
-      for (final path in ['avatars/x.jpg', 'map-notes/16', 'map-notes/16/image/extra', 'map-notes/abc/image', 'users/1']) {
+      for (final path in ['avatars/x.jpg', 'map-notes/16', 'map-notes/16/image/extra', 'map-notes/abc/image', 'users/1', 'memories/12', 'memory-media/abc', 'memory-media/12/other']) {
         expect(store.mediaHeaders(url(path)), isEmpty, reason: path);
       }
       expect(store.mediaHeaders('https://evil.example/api/v1/message-audio/1'), isEmpty, reason: 'Never another origin.');
@@ -227,11 +227,24 @@ void main() {
       return (store, sent);
     }
 
-    Future<void> choosePhoto(WidgetTester tester, [Key source = const Key('map-note-photo-gallery')]) async {
+    /// Picks a photo and, like a person would, accepts the shared crop step (9:16 / 4:5 / 16:9) that follows.
+    Future<void> choosePhoto(WidgetTester tester, [Key source = const Key('map-note-photo-gallery'), bool crop = true]) async {
       await tester.ensureVisible(find.byKey(const Key('map-note-photo-add')));
       await tester.tap(find.byKey(const Key('map-note-photo-add')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(source));
+      if (!crop) {
+        await tester.pumpAndSettle();
+        return;
+      }
+      await tester.pump();
+      await until(tester, () => find.byKey(const Key('crop-frame')).evaluate().isNotEmpty);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('crop-ratio-9:16')), findsOneWidget);
+      expect(find.byKey(const Key('crop-ratio-4:5')), findsOneWidget);
+      expect(find.byKey(const Key('crop-ratio-16:9')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('crop-confirm')));
+      await until(tester, () => find.byKey(const Key('crop-confirm')).evaluate().isEmpty);
       await tester.pumpAndSettle();
     }
 
@@ -270,7 +283,7 @@ void main() {
     testWidgets('A picker failure leaves the composer intact and says so', (tester) async {
       await composer(tester);
       pickerFails = true;
-      await choosePhoto(tester);
+      await choosePhoto(tester, const Key('map-note-photo-gallery'), false);
       expect(find.text('Fotoğraf seçilemedi. Tekrar dene.'), findsOneWidget);
       expect(find.byKey(const Key('map-note-photo-add')), findsOneWidget);
     });

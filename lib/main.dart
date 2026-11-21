@@ -28,6 +28,8 @@ import 'screens/compose.dart';
 import 'screens/post.dart';
 import 'screens/profile.dart';
 import 'screens/map_notes.dart';
+import 'screens/memories.dart';
+import 'widgets/memory_widgets.dart' show MemoryFormArgs;
 import 'screens/messages.dart';
 import 'screens/direct_chat.dart';
 import 'screens/live_notifications.dart';
@@ -326,6 +328,8 @@ class _SenMiydinAppState extends State<SenMiydinApp> {
         _ => MapNotePointPage(arg as String),
       },
       '/map-note' => MapNoteDetailPage(int.parse('$arg')),
+      '/memory' => MemoryDetailPage(int.parse('$arg')),
+      '/memory-form' => MemoryFormPage(arg as MemoryFormArgs),
       '/my-letters' => const MyLettersPage(),
       '/my-letter' => MapNoteDetailPage(int.parse('$arg'), mine: true),
       '/map-note-compose' => switch (arg) {

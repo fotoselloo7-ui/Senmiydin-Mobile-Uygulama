@@ -35,6 +35,7 @@ class ProfileResource extends JsonResource
             'created_at' => $this->created_at?->toISOString(),
             'last_seen_at' => $this->last_seen_at?->toISOString(),
             'message_privacy' => $this->message_privacy,
+            'memory_default_visibility' => $this->memory_default_visibility ?? 'private',
             'show_activity' => $this->show_activity,
             'preferred_locale' => $this->preferred_locale,
             'push_preferences' => ($this->push_preferences ?? []) + Inbox::DEFAULTS,

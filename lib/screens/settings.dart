@@ -10,11 +10,13 @@ import '../core/release_info.dart';
 import '../core/navigation.dart';
 import '../data/app_store.dart';
 import '../data/communication_api.dart';
+import '../data/memories_api.dart';
 import '../data/social_sign_in.dart';
 import '../data/models.dart';
 import '../widgets/account_action.dart';
 import '../widgets/common.dart';
 import '../widgets/location_ui.dart';
+import '../widgets/memory_widgets.dart';
 import '../widgets/social_page.dart';
 
 /// Language picker: "Türkçe" / "English". The choice is saved on the device (and on the account when signed in).
@@ -304,6 +306,20 @@ class _PreferencesPageState extends State<PreferencesPage>
     }
   }
 
+  /// The visibility a NEW memory starts with. Existing memories keep theirs.
+  Future<void> memoryDefault(AppStore store) async {
+    final chosen = await chooseMemoryVisibility(
+      context,
+      MemoryVisibility.parse(store.account?.memoryDefaultVisibility) ??
+          MemoryVisibility.private,
+      title: 'Yeni anıların varsayılan görünürlüğü',
+    );
+    if (chosen == null || !mounted) return;
+    runAccountAction(
+      () => store.saveAccountProfile({'memory_default_visibility': chosen.value}),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final store = StoreScope.of(context);
@@ -373,6 +389,14 @@ class _PreferencesPageState extends State<PreferencesPage>
                       ),
               ),
             ],
+            if (store.connected)
+              SettingsRow(
+                'Anılar',
+                Icons.auto_stories_outlined,
+                subtitle:
+                    '${tr('Yeni anılar')}: ${tr(MemoryVisibility.parse(store.account?.memoryDefaultVisibility)?.label ?? MemoryVisibility.private.label)}',
+                onTap: busy ? null : () => memoryDefault(store),
+              ),
             const InfoNote(
               'Kesin koordinatın, açık adresin ve canlı rotan diğer kullanıcılara gösterilmez.',
             ),

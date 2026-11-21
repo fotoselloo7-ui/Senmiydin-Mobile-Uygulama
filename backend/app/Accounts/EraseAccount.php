@@ -39,6 +39,18 @@ final class EraseAccount
                     $this->media(config('mobile.post_media_disk'), $item->image_path);
                 }
             });
+            // Memories are the person's own content: every row and file goes with the account.
+            $memories = DB::table('memories')->where('user_id', $id)->select('id');
+            DB::table('memory_media')->whereIn('memory_id', $memories)->orderBy('id')->chunkById(100, function ($items): void {
+                foreach ($items as $item) {
+                    $this->media($item->disk, $item->path);
+                    if ($item->thumb_path) {
+                        $this->media($item->disk, $item->thumb_path);
+                    }
+                }
+            });
+            DB::table('memory_media')->whereIn('memory_id', $memories)->delete();
+            DB::table('memories')->where('user_id', $id)->delete();
             DB::table('location_matches')->whereIn('post_id', $posts)->delete();
             DB::table('post_media')->whereIn('post_id', $posts)->delete();
             DB::table('post_travel_details')->whereIn('post_id', $posts)->delete();

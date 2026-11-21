@@ -277,10 +277,10 @@ class ApiClient {
     return json['data'];
   }
 
-  /// Private media (post photos, message photos, voice messages, letter photos) is only served with the account's
+  /// Private media (post photos, message photos, voice messages, letter photos, memory photos) is only served with the account's
   /// token, and the token is only ever sent to the API's own origin for exactly those paths.
   static final _privateMedia = RegExp(
-    r'^(post-media|message-images|message-audio)/|^map-notes/\d+/image$',
+    r'^(post-media|message-images|message-audio)/|^map-notes/\d+/image$|^memory-media/\d+(/thumb)?$',
   );
 
   Map<String, String> mediaHeaders(String url) {
@@ -508,6 +508,8 @@ class AccountProfile {
       connections = List<String>.from(json['connections'] as List),
       nearbyVisible = json['nearby_visible'] as bool,
       messagePrivacy = json['message_privacy'] as String? ?? 'everyone',
+      memoryDefaultVisibility =
+          json['memory_default_visibility'] as String? ?? 'private',
       showActivity = json['show_activity'] == true,
       pushPreferences = Map<String, bool>.from(
         json['push_preferences'] as Map? ?? const {},
@@ -529,6 +531,9 @@ class AccountProfile {
   final String? preferredLocale;
 
   final String messagePrivacy;
+
+  /// The visibility a NEW memory starts with (`private` | `followers` | `public` | `area`).
+  final String memoryDefaultVisibility;
   final bool showActivity;
   final Map<String, bool> pushPreferences;
   final int id, onboardingStep;

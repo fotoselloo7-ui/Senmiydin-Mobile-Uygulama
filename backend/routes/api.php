@@ -8,6 +8,7 @@ use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\EncounterController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\MapNoteController;
+use App\Http\Controllers\MemoryController;
 use App\Http\Controllers\SavedCollectionController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
@@ -114,6 +115,17 @@ Route::prefix('v1')->group(function (): void {
         Route::delete('posts/{post}/comments/{comment}', [PostController::class, 'deleteComment'])->whereNumber(['post', 'comment'])->middleware('throttle:comment-write');
         Route::get('users/{username}', [SocialUserController::class, 'show']);
         Route::get('users/{username}/posts', [SocialUserController::class, 'posts']);
+        // Anılar (memories): owner-curated profile snapshots. Visibility is decided server-side (App\Models\Memory::visibleTo).
+        Route::get('users/{username}/memories', [MemoryController::class, 'index'])->middleware('throttle:communication-read');
+        Route::get('memories/prefill', [MemoryController::class, 'prefill'])->middleware('throttle:communication-read');
+        Route::post('memories', [MemoryController::class, 'store'])->middleware(['throttle:memory-create', 'throttle:memory-write']);
+        Route::get('memories/{memory}', [MemoryController::class, 'show'])->whereNumber('memory')->middleware('throttle:communication-read');
+        Route::post('memories/{memory}', [MemoryController::class, 'update'])->whereNumber('memory')->middleware('throttle:memory-write');
+        Route::post('memories/{memory}/hide', [MemoryController::class, 'hide'])->whereNumber('memory')->middleware('throttle:memory-write');
+        Route::post('memories/{memory}/unhide', [MemoryController::class, 'unhide'])->whereNumber('memory')->middleware('throttle:memory-write');
+        Route::delete('memories/{memory}', [MemoryController::class, 'destroy'])->whereNumber('memory')->middleware('throttle:memory-write');
+        Route::get('memory-media/{media}', [MemoryController::class, 'media'])->whereNumber('media')->name('memories.media')->middleware('throttle:communication-read');
+        Route::get('memory-media/{media}/thumb', [MemoryController::class, 'thumb'])->whereNumber('media')->name('memories.thumb')->middleware('throttle:communication-read');
         Route::get('users/{username}/followers', [SocialUserController::class, 'followers']);
         Route::get('users/{username}/following', [SocialUserController::class, 'following']);
         Route::match(['POST', 'DELETE'], 'users/{username}/follow', [SocialUserController::class, 'follow'])->middleware('throttle:reaction');

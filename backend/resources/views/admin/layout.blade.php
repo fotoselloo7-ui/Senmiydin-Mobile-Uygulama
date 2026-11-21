@@ -21,7 +21,7 @@
     <nav aria-label="Yönetim">
         <a href="{{ route('admin.dashboard') }}" @if(request()->routeIs('admin.dashboard')) aria-current="page" @endif>Genel bakış</a>
         @foreach(\App\Http\Controllers\Admin\RecordsController::SECTIONS as $key => $label)
-            @continue(!auth('admin')->user()->canManageSystem() && !in_array($key, ['users', 'posts', 'comments', 'encounters', 'reports', 'blocks'], true))
+            @continue(!auth('admin')->user()->canManageSystem() && !in_array($key, ['users', 'posts', 'comments', 'encounters', 'memories', 'reports', 'blocks'], true))
             <a href="{{ route('admin.index', $key) }}" @if(($section ?? null) === $key) aria-current="page" @endif>{{ $label }}</a>
         @endforeach
     </nav>

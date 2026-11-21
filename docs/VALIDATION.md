@@ -2,6 +2,50 @@
 
 > **Güncel kaynak bu dosyanın ilk bölümüdür (15 Kasım 2026, auth yeniden tasarımı ve release düzeltmeleri).** Altındaki bölümler önceki turların tarihsel kayıtlarıdır; oradaki sayılar güncel durum değildir.
 
+## Anılar + ortak fotoğraf kırpma — 21 Kasım 2026 (en güncel)
+
+Başlangıç: `9bfd552`, working tree temiz.
+
+| Kontrol | Sonuç |
+|---|---|
+| Laravel (tüm paket) | **324 test / 6180 assertion geçti** (yeni: `MemoriesTest` 28 test / 455 assertion) |
+| `flutter analyze` | **sorun yok** |
+| Flutter (tüm paket) | **488 test geçti** (yeni: `memories_test` 41, `media_crop_test` 22; `map_note_image_test` kırpma adımını izleyecek şekilde güncellendi, `release_candidate` l10n denetimi temiz) |
+| Pixel 6a E2E (gerçek UI, gerçek yerel API) | aşağıda; 23 adım + 3 kırpma oranı |
+
+**Backend kapsamı (`MemoriesTest`):** CRUD, kaynak snapshot'ı, not → anı, gönderi → anı, tekrar önleme (`source` + `request_id`), 5 fotoğraf sınırı, sıra / yeniden sıralama / silme, private, followers, public, area (ev alanı + cihaz alanı; elle seçilen şehir sayılmaz), engel (iki yönde, tüm görünürlükler), yaş bandı (16–17 ↔ 18+, çapraz takip dahil), rapor (kendi ve görünmeyen anı reddi), admin moderasyonu (gerçek sahip, kaldır / geri aç, denetim günlüğü, rapordan kaldırma), hesap silme (satırlar + `media_deletions` + temizlik), kesin konum sızıntısı (yanıtlarda koordinat / iç alan yok), kaynak silinince bağımsızlık, medya temizliği (raporsuz anında, raporlu 30 gün sonra `memories:purge`), yetkisiz medya erişimi (anonim 401, görünmeyen 404), sayfalama (20 + sıra), güvenli yükleme hattı (EXIF / GPS yok, UUID ad, SVG / çift uzantı / sahte dosya / büyük dosya reddi, küçük görsel).
+
+**Flutter kapsamı:** profil Anılar sekmesi, boş durum, tek fotoğraf, 5 fotoğraflı carousel ve `1/5` sayacı, listede yalnız küçük görsel, Media Viewer, anı ekleme / düzenleme / gizle / sil, görünürlük seçimi, Ayarlar → Gizlilik → Anılar, not → anı, gönderi → anı (+ "Anılarında"), kırpma seçici, 9:16 / 4:5 / 16:9 (çıktı oranı ve boyutu), feed'de oran korunması, 320 / 360 / 390 / 430 dp × 1× / 1.5× yazı (taşma yok, etiketler tek satır), İngilizce metin denetimi.
+
+### Pixel 6a E2E (Pixel_6a, emulator-5556; Nefes_Test ve diğer AVD'lere dokunulmadı)
+
+İzole bir sqlite veritabanı + `php -S` yerel API'si (projenin MySQL veri klasörü Syncthing `sync-conflict` kopyaları yüzünden açılmadığı için; o klasöre dokunulmadı). Hesaplar: Demo, Elif (`elifdemo`), `demo_ahmet`, `demo_arda` (Antalya). Ekran görüntüleri: `docs/screenshots/memories/`.
+
+| # | Adım | Sonuç |
+|---|---|---|
+| 1 | Demo girişi | ✓ `01-demo-login` |
+| 2 | Harita → Notlar | ✓ `02-map-notes` |
+| 3 | Fotoğraflı yeni not (galeri → kırpma 9:16 → yayın) | ✓ `04`–`06` |
+| 4 | Notu Mektuplarım'dan "Anılarıma Ekle" | ✓ form metin / tarih / yer / fotoğraf ile hazır geldi `09`; kayıttan sonra düğme "Anılarında" oldu `10`, kartta da görünür `31` |
+| 5–6 | Profil → Anılar, anıyı aç | ✓ `11`, `12`, `13` |
+| 7 | Fotoğraf tam ekran Media Viewer | ✓ `14-media-viewer` |
+| 8 | 2. ve 3. fotoğraf (galeri çoklu seçim → "Fotoğraf 1 / 2": 4:5, "2 / 2": 16:9) | ✓ `15`–`17` |
+| 9 | Carousel kaydırma 1/3 → 2/3 → 3/3 | ✓ `18`–`20` |
+| 10 | Herkes | ✓ |
+| 11 | Elif hesabından görme (cihazda Elif girişi) | ✓ `22-elif-sees-public`; API: Elif / Ahmet / Arda 200, küçük görsel 200 |
+| 12–13 | Takipçilerim; takip etmeyen hesaplar | ✓ Elif / Ahmet / Arda **404**; Elif takip edince 200, takibi bırakınca yine 404 |
+| 14 | Bu Bölgedekiler | ✓ Alanya'daki Elif / Ahmet 200, Antalya'daki Arda **404** `26` |
+| 15–16 | Sadece Ben | ✓ yalnız sahibi 200, diğer üçü 404 `27` |
+| 17 | Düzenle (metin) | ✓ sunucuda metin güncellendi |
+| 18–19 | Gizle / Tekrar Göster | ✓ gizliyken (Herkes olsa da) diğerleri 404; geri gösterince 200 `29`, `30` |
+| 20–21 | Kaynak notu haritadan kaldır, sonra kalıcı sil | ✓ not satırı ve fotoğrafı yok; anı ve 3 fotoğrafı yerinde, başkaları hâlâ görüyor `32`, `33` |
+| 22–23 | Anıyı sil, medya temizliği | ✓ `memories`/`memory_media` 0 satır, diskte 6 dosya (3 tam + 3 küçük) 0'a indi; kaynak içerik etkilenmedi `34`, `35` |
+| — | Üç kırpma oranı | ✓ 9:16 (not), 4:5 ve 16:9 (anı) cihazda birer kez denendi |
+
+**E2E'nin yakaladığı gerçek hata:** Anı fotoğrafları `memory-media/…` yolu oturum belirtecini (token) gönderilen özel medya listesinde olmadığı için 401 alıyor, kartta kırık görsel çıkıyordu (widget testleri bunu göremezdi). `ApiClient.mediaHeaders` listesine eklendi ve `map_note_image_test` içindeki belirteç testi bu yollarla genişletildi.
+
+**Doğrulanamayanlar / sınırlar:** iOS (derleme / cihaz) yok. Kamera ile fotoğraf çekme Pixel'de denenmedi (galeri yolu denendi). Üretim sunucusunda migration uygulanmadı. Cihaz dili İngilizce idi; Türkçe arayüz widget testleriyle doğrulandı, cihazda ayrıca izlenmedi. Pinch-zoom mevcut Media Viewer'ın kendi davranışıdır (değiştirilmedi, bu turda cihazda yeniden denenmedi).
+
 ## Splash logo küçültme (15 Kasım 2026)
 
 Uygulamanın kendi (Flutter) splash ekranında logo çok büyüktü. `tool/make_splash_art_small.py` logo grubunu (yırtık kâğıt işareti + yazı) %74'e küçültür ve işaretin merkezinde tutar; arka plan sanatın kendi düzgün gradyanından yeniden kurulur, orijinal `tool/source_art/splash_eyeless_full.png` olarak saklanır. `SplashPage` içindeki göz bebeği / sklera koordinatları aynı ölçekle (`_logoScale`, `_logoCenter`) dönüştürülür. Android sistem splash'ı (native) değişmedi. Doğrulama: `flutter analyze` temiz; `ui_quality_test`, `widget_test`, `android_splash_test` geçti (36 test); Pixel emülatörde logo ortalı ve küçük, göz bebekleri hareket ediyor (`docs/screenshots/ui-audit/splash-animated-small-logo.png`).

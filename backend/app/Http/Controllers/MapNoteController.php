@@ -304,7 +304,7 @@ class MapNoteController extends Controller
         $notes = MapNote::where('map_notes.user_id', $viewer->id)->whereNull('map_notes.moderated_at')
             ->with(['city', 'author'])
             ->withCount(['replies' => fn ($replies) => $replies->visibleTo($viewer)])
-            ->addSelect(['map_notes.*', 'has_live_repost' => $this->liveRepostSubquery()]);
+            ->addSelect(['map_notes.*', 'has_live_repost' => $this->liveRepostSubquery(), 'memory_id' => $this->memorySubquery()]);
         if (($data['scope'] ?? 'active') === 'active') {
             $notes->whereNull('map_notes.archived_at')->where('map_notes.expires_at', '>', now())
                 ->orderByDesc('map_notes.created_at')->orderByDesc('map_notes.id');
@@ -384,8 +384,16 @@ class MapNoteController extends Controller
     {
         $viewer = $request->user();
 
-        return new MyMapNoteResource(MapNote::with(['city', 'author'])->addSelect(['map_notes.*', 'has_live_repost' => $this->liveRepostSubquery()])
+        return new MyMapNoteResource(MapNote::with(['city', 'author'])->addSelect(['map_notes.*', 'has_live_repost' => $this->liveRepostSubquery(), 'memory_id' => $this->memorySubquery()])
             ->withCount(['replies' => fn ($replies) => $replies->visibleTo($viewer)])->findOrFail($id));
+    }
+
+    /** The id of the owner's memory made from this letter, if any (the memory is independent: it outlives the letter). */
+    private function memorySubquery(): \Illuminate\Database\Query\Builder
+    {
+        return DB::table('memories')->select('memories.id')->whereColumn('memories.source_id', 'map_notes.id')
+            ->where('memories.source_type', 'map_note')->whereColumn('memories.user_id', 'map_notes.user_id')
+            ->whereNull('memories.deleted_at')->orderByDesc('memories.id')->limit(1);
     }
 
     /** 1 when a later publication of this letter is public right now (aliased: the relation points back at the same table). */

@@ -58,7 +58,7 @@ class ModerationController
         return back()->with('status', 'Moderasyon işlemi kaydedildi.');
     }
 
-    private function changeContent(Request $request, Post|PostComment|EncounterRequest|Message|\App\Models\MapNote|\App\Models\MapNoteReply $record, string $type, string $action, ?string $note): void
+    private function changeContent(Request $request, Post|PostComment|EncounterRequest|Message|\App\Models\MapNote|\App\Models\MapNoteReply|\App\Models\Memory $record, string $type, string $action, ?string $note): void
     {
         if ($record instanceof Message) {
             abort_unless($action === 'remove', 422);

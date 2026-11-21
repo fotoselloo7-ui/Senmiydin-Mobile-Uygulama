@@ -10,6 +10,7 @@ import '../data/account_api.dart';
 import '../data/models.dart';
 import '../data/mock_data.dart';
 import '../widgets/common.dart';
+import '../widgets/memory_widgets.dart';
 import '../widgets/social.dart';
 import '../widgets/social_page.dart';
 import 'encounters.dart';
@@ -575,6 +576,12 @@ class _ProfileContentState extends State<ProfileContent> {
                     Icons.photo_library_outlined,
                     Icons.photo_library_rounded,
                   ),
+                  if (store.connected && (own || p.remote))
+                    _buildProfileTab(
+                      'Anılar',
+                      Icons.auto_stories_outlined,
+                      Icons.auto_stories_rounded,
+                    ),
                   if (own)
                     _buildProfileTab(
                       'Kaydedilenler',
@@ -591,6 +598,12 @@ class _ProfileContentState extends State<ProfileContent> {
               'Bu profil engellendi.',
               'Paylaşımlar gizlendi.',
               icon: Icons.block,
+            )
+          else if (tab == 'Anılar' && store.connected)
+            MemoriesSection(
+              username: own ? store.account?.username ?? p.handle : p.handle,
+              own: own,
+              refreshVersion: refreshVersion,
             )
           else if (tab == 'Karşılaşmalar' && p.remote)
             PublishedEncountersList(username: p.handle, embedded: true)

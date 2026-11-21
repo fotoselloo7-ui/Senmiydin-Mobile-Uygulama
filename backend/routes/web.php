@@ -50,6 +50,10 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::post('logout', [SessionController::class, 'destroy'])->name('logout');
         Route::get('media/{media}', [RecordsController::class, 'media'])->whereNumber('media')->name('media');
         Route::get('reports/{report}/image', [RecordsController::class, 'reportImage'])->whereNumber('report')->name('report.image');
+        Route::get('memories', [\App\Http\Controllers\Admin\MemoriesController::class, 'index'])->name('memories.index');
+        Route::get('memories/{id}', [\App\Http\Controllers\Admin\MemoriesController::class, 'detail'])->whereNumber('id')->name('memories.detail');
+        Route::post('memories/{id}/moderate', [\App\Http\Controllers\Admin\MemoriesController::class, 'moderate'])->whereNumber('id')->name('memories.moderate');
+        Route::get('memory-media/{media}', [\App\Http\Controllers\Admin\MemoriesController::class, 'media'])->whereNumber('media')->name('memories.media');
         Route::get('map-notes', [MapNotesController::class, 'index'])->name('map-notes.index');
         Route::get('map-notes/{id}', [MapNotesController::class, 'detail'])->whereNumber('id')->name('map-notes.detail');
         Route::post('map-notes/{id}/moderate', [MapNotesController::class, 'moderate'])->whereNumber('id')->name('map-notes.moderate');

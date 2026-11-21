@@ -22,6 +22,8 @@ import '../widgets/account_action.dart';
 import '../widgets/common.dart';
 import '../widgets/map_attribution.dart';
 import '../widgets/map_note_widgets.dart';
+import '../widgets/media_crop.dart';
+import '../widgets/memory_widgets.dart';
 import '../widgets/share_sheet.dart';
 import '../widgets/social_page.dart';
 import '../core/app_locale.dart';
@@ -386,6 +388,32 @@ class _MapNoteDetailPageState extends State<MapNoteDetailPage>
                                 ),
                                 label: Text(tr('Paylaş')),
                               ),
+                            if (item.mine && StoreScope.of(context).memories != null)
+                              TextButton.icon(
+                                key: const Key('memory-map-note'),
+                                onPressed: busy
+                                    ? null
+                                    : () async {
+                                        await addSourceToMemories(
+                                          context,
+                                          sourceType: 'map_note',
+                                          sourceId: item.id,
+                                        );
+                                        if (mounted) await load();
+                                      },
+                                icon: const Icon(
+                                  Icons.auto_stories_outlined,
+                                  size: 18,
+                                ),
+                                label: Text(
+                                  item.memoryId != null
+                                      ? 'Anılarında'
+                                      : 'Anılarıma Ekle',
+                                ),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: AppColors.brandPurple,
+                                ),
+                              ),
                             if (item.mine && item.isActive)
                               TextButton.icon(
                                 key: const Key('archive-map-note'),
@@ -642,9 +670,12 @@ class _MapNoteComposePageState extends State<MapNoteComposePage>
         maxHeight: 2048,
         imageQuality: 88,
       );
-      if (chosen != null && mounted) {
+      if (chosen == null || !mounted) return;
+      // The shared crop step (9:16 / 4:5 / 16:9); a cancelled crop leaves the letter without a photo change.
+      final cropped = await cropPhoto(context, chosen);
+      if (cropped != null && mounted) {
         setState(() {
-          photo = chosen;
+          photo = cropped;
           error = null;
         });
       }

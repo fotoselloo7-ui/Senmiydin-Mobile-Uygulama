@@ -45,6 +45,11 @@ Artisan::command('map-notes:purge', function (): void {
 })->purpose('Permanently remove map notes (and their replies) once the admin retention window after expiry has passed');
 Schedule::command('map-notes:purge')->daily()->withoutOverlapping();
 
+Artisan::command('memories:purge', function (): void {
+    $this->info(App\Models\Memory::purgeExpired().' memories purged.');
+})->purpose('Permanently remove memories (and their photos) once the review window after a report-deletion or moderation has passed');
+Schedule::command('memories:purge')->daily()->withoutOverlapping();
+
 Schedule::call(fn () => app(App\Administration\Announcements::class)->run())
     ->name('announcements.publish')->everyMinute()->withoutOverlapping();
 

@@ -50,7 +50,7 @@ class AppServiceProvider extends ServiceProvider
         // Place search is explicit (a search button, never per keystroke): 20 calls a minute are plenty for a person.
         RateLimiter::for('places', fn (Request $request) => Limit::perMinute(20)->by('places:'.($request->user()?->id ?? $request->ip())));
         RateLimiter::for('password-recovery', fn (Request $request) => Limit::perMinute(5)->by($request->ip()));
-        foreach (['post-write' => 15, 'comment-write' => 30, 'reaction' => 120, 'social-search' => 90, 'location-write' => 12, 'location-read' => 60, 'encounter-action' => 30, 'communication-read' => 120, 'message-write' => 40] as $name => $limit) {
+        foreach (['post-write' => 15, 'comment-write' => 30, 'reaction' => 120, 'social-search' => 90, 'location-write' => 12, 'location-read' => 60, 'encounter-action' => 30, 'communication-read' => 120, 'message-write' => 40, 'memory-write' => 40] as $name => $limit) {
             RateLimiter::for($name, fn (Request $request) => Limit::perMinute($limit)->by($request->user()->id));
         }
 
@@ -59,6 +59,7 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('map-note-reply', fn (Request $request) => [
             Limit::perMinute(10)->by('reply-m:'.$request->user()->id), Limit::perHour(60)->by('reply-h:'.$request->user()->id),
         ]);
+        RateLimiter::for('memory-create', fn (Request $request) => Limit::perHour((int) config('memories.create_per_hour'))->by($request->user()->id));
         RateLimiter::for('account-deletion', fn (Request $request) => Limit::perMinute(3)->by($request->user()->id));
         RateLimiter::for('password-change', fn (Request $request) => Limit::perMinute(5)->by($request->user()->id));
     }

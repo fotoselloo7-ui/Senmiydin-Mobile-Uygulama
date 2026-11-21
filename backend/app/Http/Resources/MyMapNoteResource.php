@@ -40,6 +40,8 @@ class MyMapNoteResource extends JsonResource
             'archived_at' => $this->archived_at?->toISOString(),
             'republished' => $this->reposted_from_id !== null,
             'has_live_repost' => $live,
+            // The owner's memory made from this letter ("Anılarında"), when there is one.
+            'memory_id' => ($this->memory_id ?? null) === null ? null : (int) $this->memory_id,
             'can_repost' => $state !== 'active' && ! $live,
             'seconds_left' => $state === 'active' ? max(0, (int) now()->diffInSeconds($this->expires_at, false)) : null,
         ];

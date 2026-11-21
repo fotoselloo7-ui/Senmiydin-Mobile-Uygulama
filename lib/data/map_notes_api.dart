@@ -66,6 +66,7 @@ class MapNoteItem {
       state = json['state'] as String? ?? 'active',
       hasLiveRepost = json['has_live_repost'] == true,
       canRepost = json['can_repost'] == true,
+      memoryId = (json['memory_id'] as num?)?.toInt(),
       archivedAt = json['archived_at'] == null
           ? null
           : DateTime.parse(json['archived_at'] as String);
@@ -90,6 +91,7 @@ class MapNoteItem {
       state = other.state,
       hasLiveRepost = other.hasLiveRepost,
       canRepost = other.canRepost,
+      memoryId = other.memoryId,
       archivedAt = other.archivedAt;
 
   MapNoteItem withReplyCount(int count) => MapNoteItem._(this, count);
@@ -115,6 +117,9 @@ class MapNoteItem {
   /// Mektuplarım only: active (public now), archived (taken off the map), expired (its public days are over).
   final String state;
   final bool hasLiveRepost, canRepost;
+
+  /// Mektuplarım only: the owner's memory made from this letter ("Anılarında"), when there is one.
+  final int? memoryId;
   final DateTime? archivedAt;
 
   bool get isActive => state == 'active';

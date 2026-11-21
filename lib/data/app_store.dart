@@ -25,6 +25,7 @@ import 'location_api.dart';
 import 'location_service.dart';
 import 'compose_draft.dart';
 import 'map_notes_api.dart';
+import 'memories_api.dart';
 import 'mock_data.dart';
 import 'social_api.dart';
 
@@ -48,6 +49,7 @@ class AppStore extends ChangeNotifier {
     if (api != null) {
       communication = CommunicationApi(api, _rememberPerson);
       mapNotes = MapNotesApi(api, _rememberPerson);
+      memories = MemoriesApi(api, _rememberPerson);
       push = PushClient(communication!, () => _account?.id);
       location = LocationService(
         device: locationDevice ?? const LocationDevice(),
@@ -72,6 +74,15 @@ class AppStore extends ChangeNotifier {
 
   CommunicationApi? communication;
   MapNotesApi? mapNotes;
+
+  /// Anılar (memories). Bumped when one is created, edited, hidden or deleted so profile lists reload.
+  MemoriesApi? memories;
+  int memoriesVersion = 0;
+
+  void memoriesChanged() {
+    memoriesVersion++;
+    notifyListeners();
+  }
 
   /// Bumped when a note is created or removed so the map reloads its envelope markers.
   int mapNotesVersion = 0;

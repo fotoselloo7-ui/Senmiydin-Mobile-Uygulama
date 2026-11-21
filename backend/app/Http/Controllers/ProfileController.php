@@ -44,6 +44,7 @@ class ProfileController extends Controller
             'city_discovery' => ['sometimes', 'boolean'],
             'location_history_enabled' => ['sometimes', 'boolean'],
             'message_privacy' => ['sometimes', Rule::in(['everyone', 'following', 'encounters'])],
+            'memory_default_visibility' => ['sometimes', Rule::in(\App\Models\Memory::VISIBILITIES)],
             'show_activity' => ['sometimes', 'boolean'],
             'preferred_locale' => ['sometimes', Rule::in(['tr', 'en'])],
             'push_preferences' => ['sometimes', 'array:'.implode(',', array_keys(Inbox::DEFAULTS))],

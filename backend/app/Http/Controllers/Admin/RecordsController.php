@@ -21,7 +21,7 @@ class RecordsController
 {
     public const SECTIONS = [
         'users' => 'Kullanıcılar', 'posts' => 'Paylaşımlar', 'comments' => 'Yorumlar',
-        'encounters' => 'Karşılaşmalar', 'map-notes' => 'Harita Notları', 'featured' => 'Öne çıkanlar', 'reports' => 'Şikâyetler',
+        'encounters' => 'Karşılaşmalar', 'map-notes' => 'Harita Notları', 'memories' => 'Anılar', 'featured' => 'Öne çıkanlar', 'reports' => 'Şikâyetler',
         'blocks' => 'Engellemeler', 'interests' => 'Hobiler', 'cities' => 'Şehirler', 'types' => 'İçerik türleri',
         'modules' => 'Ana sayfa modülleri', 'announcements' => 'Duyurular', 'settings' => 'Ayarlar',
         'legal' => 'Web içerikleri', 'requests' => 'Destek talepleri', 'roles' => 'Yöneticiler ve roller',
@@ -32,7 +32,7 @@ class RecordsController
     public const STATES = ['active' => 'Aktif', 'suspended' => 'Askıda', 'banned' => 'Yasaklı', 'deleted' => 'Silindi'];
     public const REPORT_STATES = ['pending' => 'Bekliyor', 'reviewing' => 'İnceleniyor', 'resolved' => 'Çözüldü', 'rejected' => 'Reddedildi'];
     public const ENCOUNTER_STATES = ['pending' => 'Bekliyor', 'accepted' => 'Onaylandı', 'rejected' => 'Reddedildi', 'cancelled' => 'İptal edildi'];
-    public const TARGETS = ['user' => 'Kullanıcı', 'post' => 'Paylaşım', 'comment' => 'Yorum', 'message' => 'Mesaj', 'encounter_story' => 'Ortak hikâye', 'map_note' => 'Harita notu', 'map_note_reply' => 'Harita notu yanıtı', 'system' => 'Uygulama'];
+    public const TARGETS = ['user' => 'Kullanıcı', 'post' => 'Paylaşım', 'comment' => 'Yorum', 'message' => 'Mesaj', 'encounter_story' => 'Ortak hikâye', 'map_note' => 'Harita notu', 'map_note_reply' => 'Harita notu yanıtı', 'memory' => 'Anı', 'system' => 'Uygulama'];
     public const REASONS = ['harassment' => 'Taciz', 'spam' => 'Spam', 'fake' => 'Sahte hesap', 'inappropriate' => 'Uygunsuz içerik', 'hate' => 'Nefret veya tehdit', 'privacy' => 'Gizlilik ihlali', 'other' => 'Diğer'];
 
     public static function time(\DateTimeInterface|string|null $value, bool $withTime = true): string
@@ -229,7 +229,7 @@ class RecordsController
         return $this->image(config('mobile.post_media_disk'), $message->image_path);
     }
 
-    public function reportedTarget(object $report): User|Post|PostComment|Message|\App\Models\MapNote|\App\Models\MapNoteReply|null
+    public function reportedTarget(object $report): User|Post|PostComment|Message|\App\Models\MapNote|\App\Models\MapNoteReply|\App\Models\Memory|null
     {
         return match ($report->target_type) {
             'user' => User::find($report->target_id),
@@ -238,6 +238,7 @@ class RecordsController
             'message' => Message::find($report->target_id),
             'map_note' => \App\Models\MapNote::withTrashed()->find($report->target_id),
             'map_note_reply' => \App\Models\MapNoteReply::withTrashed()->find($report->target_id),
+            'memory' => \App\Models\Memory::withTrashed()->find($report->target_id),
             default => null,
         };
     }

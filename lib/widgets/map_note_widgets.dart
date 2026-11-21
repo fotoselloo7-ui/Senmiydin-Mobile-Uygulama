@@ -531,6 +531,28 @@ class MyLetterCard extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (note.memoryId != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Row(
+                      key: ValueKey('my-letter-memory-${note.id}'),
+                      children: [
+                        const Icon(
+                          Icons.auto_stories_outlined,
+                          size: 14,
+                          color: AppColors.brandPurple,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Anılarında',
+                          style: AppTypography.metadata.copyWith(
+                            color: AppColors.brandPurple,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 if (note.republished || note.hasLiveRepost)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),

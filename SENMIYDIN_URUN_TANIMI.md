@@ -979,3 +979,39 @@ Akışta (Akış, Popüler, Yakın, Takip) **7. organik gönderiden sonra bir, s
 ## 50. Public web (TR / EN) ve yasal sayfalar
 
 Türkçe kök, **English `/en`** (`/en/how-it-works`, `/features`, `/safety`, `/privacy`, `/kvkk`, `/terms`, `/community-guidelines`, `/contact`, `/delete-account`); başlıkta TR / EN anahtarı, `hreflang` alternatifleri, çift dilli sitemap. Ana sayfa mevcut hikâye akışını korur; Takip akışı, yorum sohbetleri ve beğeniler, koleksiyonlar, Mektuplarım / arşiv / yakın mektup bildirimi, mesajlaşma (kamera, emoji, yaklaşık konum) ve yaş grupları doğal olarak mevcut bölümlere eklendi. **KVKK, Gizlilik, Kullanım Koşulları, Topluluk Kuralları, Hesap Silme ve İletişim** ana sitenin tasarım sisteminde: üst bilgi, içindekiler, bölümler, TR / EN, alt bilgi. İçerik gerçek veri akışına göre yazıldı (hesap, doğum tarihi / yaş, profil, UGC, fotoğraf, mesaj, yaklaşık konum, Geçtiğim Yerler, cihaz / push belirteci, denetim kayıtları, AdMob; amaçlar, hukuki sebepler, alıcılar, yurt dışı aktarım, saklama, hesap silme, haklar, başvuru). **Operatör kimliği uydurulmaz:** unvan / adres / sicil / KVKK e-postası Yönetim → Ayarlar'dan gelir; eksikse sayfa bunu açıkça söyler ve production-check **MISSING** verir. Yönetici düzenlediği Türkçe metin (legal CMS) önceliklidir ve kaçışlıdır. Mağaza metinleri: `docs/store/localization/`.
+
+## 42. Anılar
+
+Profilde kalıcı, sahibinin düzenlediği bir **Anılar** bölümü vardır (sekme sırası: Paylaşımlar · Karşılaşmalar · Medya · **Anılar** · Kaydedilenler). Yeni bir sosyal ağ değildir: mevcut profil, Mektuplarım, PostCard, Media Viewer, global yer seçici, takip, engel / rapor / moderasyon ve hesap silme sistemlerini kullanır.
+
+### Anı nasıl oluşur
+1. **Harita Notu → "Anılarıma Ekle"**: Mektuplarım → Aktif / Arşiv'deki mektup detayında. Mektup 7 gün sonra haritadan kalksa bile anı kalır.
+2. **Normal gönderi → "Anılarıma Ekle"**: kendi gönderisinin ⋮ menüsünde (ortak karşılaşma hikâyeleri hariç: iki kişiye aittir).
+3. **Profil → Anılar → "+ Anı Ekle"**: metin, olay tarihi, yaklaşık yer (mevcut global yer seçici), 0–5 fotoğraf, görünürlük.
+
+Kaynaktan gelen **metin, olay tarihi, yaklaşık yer ve fotoğraflar forma hazır gelir; kaydetmeden önce değiştirilebilir**. Anı bağımsız bir **snapshot**'tır: fotoğraflar sunucuda yeniden kodlanıp anıya ait ayrı dosyalara kopyalanır; kaynak not / gönderi silinse, süresi dolsa ya da arşivlense anı olduğu gibi kalır; anıyı düzenlemek veya silmek kaynağı değiştirmez. Aynı kaynak ikinci kez kopyalanmaz (mevcut anı açılır; Mektuplarım kartında ve detayında **"Anılarında"** görünür). Anonim bir kaynaktan gelen anı her zaman **Sadece Ben** ile başlar.
+
+### Görünürlük
+`private` Sadece Ben · `followers` Takipçilerim · `public` Herkes · `area` Bu Bölgedekiler. **Ayarlar → Gizlilik → Anılar** yalnızca *yeni* anıların varsayılanını belirler (geçmiş anılar değişmez); her anı ayrıca değiştirilebilir. Gizle / Tekrar Göster: anı sahibine kalır, başkalarına kapanır. Karar yalnızca sunucuda (`Memory::visibleTo`) verilir; istemci süzme yapmaz.
+
+| Görüntüleyen | private | followers | public | area |
+|---|---|---|---|---|
+| Sahibi | ✓ (gizli olanlar dahil) | ✓ | ✓ | ✓ |
+| Takip eden | ✗ | ✓ | ✓ | alan eşleşirse ✓ |
+| Başka hesap | ✗ | ✗ | ✓ | alan eşleşirse ✓ |
+| Engelli (iki yönde) / karşı yaş bandı (16–17 ↔ 18+) | ✗ | ✗ | ✗ | ✗ |
+| Gizlenmiş / moderasyonla kaldırılmış / askıdaki sahip | sahibi hariç ✗ | ✗ | ✗ | ✗ |
+
+**"Bu Bölgedekiler"** kesin konum kullanmaz: görüntüleyenin kayıtlı ev alanı veya cihazın son yerleştirdiği alan, anının alanıyla (`cities` satırı) aynıysa erişim verilir. Uygulamada elle seçilen bir şehir kişiyi o bölgeye *sokmaz*. Başkasının kesin konum geçmişi hiçbir yerde açığa çıkmaz.
+
+### Gizlilik / API
+Public Memory yanıtı hiçbir zaman kesin enlem-boylam (hiç koordinat yok), konum geçmişi id'leri, kaynağın id'si, moderasyon alanları, içerik özeti veya istek anahtarı döndürmez. Görünürlük, gizli durumu ve kaynak türü yalnız sahibine söylenir. Fotoğraflar `memory-media/{id}` (tam) ve `memory-media/{id}/thumb` (≈480 px küçük) rotalarından, **anıyı görmeye hakkı olan** oturuma sunulur; profil listesi yalnızca küçük görseli yükler.
+
+### Fotoğraflar ve ortak kırpma
+Mevcut güvenli hat: MIME + gerçek decode, 5 MB, 2048 px, çift uzantı ve SVG reddi, EXIF / GPS temizliği (yeniden JPEG kodlama), rastgele UUID dosya adı, özel disk. Kırpma, tüm fotoğraf yüklemelerinde ortak `MediaCropPage`'dir: **9:16 Dikey · 4:5 Portre · 16:9 Yatay**, canlı önizleme, sürükle / yakınlaştır; sunucuya kırpılmış sonuç gider. Normal gönderi, Anılar ve Harita Notu kullanır; mesaj fotoğrafı bilerek kırpılmaz (olduğu gibi gönderilir). Feed / PostCard fotoğrafı seçilen oranda, kareye veya sabit yüksekliğe zorlanmadan gösterilir (9:16 → 1.91:1 aralığı).
+
+### Liste, detay, düzenleme
+Profil listesi 20'şerli sayfalanır, olay tarihine göre yeniden eskiye. Kart: tarih, yaklaşık yer, kısa metin, küçük önizleme (2+ fotoğrafta yatay pager + `1/5`), görünürlük (yalnız sahibine), ⋮ menü; fotoğrafa dokununca mevcut tam ekran Media Viewer. Detay: tarih, yer, metin, galeri, sahibi için görünürlük + çok küçük kaynak bilgisi; Düzenle · Gizle / Tekrar Göster · Görünürlüğü Değiştir · Sil. Düzenleme metni, fotoğrafları ve sırasını, görünürlüğü, yeri ve olay tarihini değiştirir.
+
+### Silme, rapor, admin
+Anıyı silmek kaynağı silmez; kaynağı silmek anıyı silmez. Raporlanmamış anı ve fotoğrafları hemen silinir; raporlanmış olan 30 gün incelenebilir kalır (`memories:purge`). Başkasının görünür anısı mevcut raporlama ile raporlanır (`target_type = memory`). Admin → **Anılar**: gerçek sahibi, görünürlük, fotoğraflar (görüntüleme denetim günlüğüne yazılır), raporlar; kaldır / geri aç; her işlem denetim günlüğünde (`memory.remove`, `memory.restore`, `memory.media_viewed`). Hesap silinince kullanıcının tüm anıları ve fotoğraf dosyaları silinir (`media_deletions` kuyruğu).

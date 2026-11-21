@@ -21,6 +21,7 @@ import 'collections.dart';
 import 'comments_sheet.dart';
 import 'common.dart';
 import 'media_viewer.dart';
+import 'memory_widgets.dart';
 import 'social_page.dart';
 import '../core/app_locale.dart';
 
@@ -70,14 +71,14 @@ class ImageCarousel extends StatefulWidget {
   final double height;
 
   /// Photos are shown whole, in the shape they were uploaded: the box takes the first photo's aspect ratio (limited to
-  /// Instagram's range, 4:5 portrait to 1.91:1 landscape) and every photo is fitted inside it without cropping.
+  /// the 9:16 vertical to 1.91:1 landscape range) and every photo is fitted inside it without cropping.
   final bool adaptive;
   @override
   State<ImageCarousel> createState() => _ImageCarouselState();
 }
 
-/// Narrowest (4:5 portrait) and widest (1.91:1 landscape) box a post photo gets.
-const double kPostMinAspect = 4 / 5;
+/// Narrowest (9:16 vertical) and widest (1.91:1 landscape) box a post photo gets; 4:5 and 16:9 sit in between.
+const double kPostMinAspect = 9 / 16;
 const double kPostMaxAspect = 1.91;
 
 class _ImageCarouselState extends State<ImageCarousel> {
@@ -415,6 +416,14 @@ class PostCard extends StatelessWidget {
                       await showAddToCollectionSheet(context, store, post);
                       return;
                     }
+                    if (v == 'memory') {
+                      await addSourceToMemories(
+                        context,
+                        sourceType: 'post',
+                        sourceId: int.parse(post.id),
+                      );
+                      return;
+                    }
                     if (v == 'report') {
                       openPage(
                         context,
@@ -457,6 +466,14 @@ class PostCard extends StatelessWidget {
                       const PopupMenuItem(
                         value: 'collection',
                         child: Text('Koleksiyona Ekle'),
+                      ),
+                    if (post.remote &&
+                        post.mine &&
+                        !post.jointStory &&
+                        store.memories != null)
+                      const PopupMenuItem(
+                        value: 'memory',
+                        child: Text('Anılarıma Ekle'),
                       ),
                     const PopupMenuItem(
                       value: 'report',
