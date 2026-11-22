@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../core/api_config.dart';
 import '../core/app_locale.dart';
+import '../core/photo_optimizer.dart';
 
 class ApiFailure implements Exception {
   const ApiFailure(this.message, {this.status, this.errors = const {}});
@@ -156,14 +157,18 @@ class ApiClient {
             for (final (index, file) in media.indexed) 'media[$index]': file,
         };
         for (final entry in uploads.entries) {
-          final file = entry.value;
-          final length = await file.length();
           final isAudio = entry.key == 'audio';
-          if (length > (isAudio ? 3 : 5) * 1024 * 1024) {
-            throw ApiFailure(
-              isAudio
-                  ? 'Ses kaydı en fazla 3 MB olabilir.'
-                  : 'Her fotoğraf en fazla 5 MB olabilir.',
+          // Photos have no size or pixel limit for the person: every one is scaled and compressed here first.
+          final file = isAudio
+              ? entry.value
+              : await optimizeUploadPhoto(entry.value);
+          final length = await file.length();
+          if (isAudio && length > 3 * 1024 * 1024) {
+            throw const ApiFailure('Ses kaydı en fazla 3 MB olabilir.');
+          }
+          if (!isAudio && length > 20 * 1024 * 1024) {
+            throw const ApiFailure(
+              'Fotoğraf yüklenemedi. Başka bir fotoğraf dene.',
             );
           }
           upload.files.add(

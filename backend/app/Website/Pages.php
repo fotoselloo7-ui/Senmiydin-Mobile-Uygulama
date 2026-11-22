@@ -35,7 +35,8 @@ final class Pages
         ['Harita Notları', 'Haritada yaklaşık bir noktaya 7 gün kalan dijital bir mektup bırak. Açık ya da anonim olabilir; başkaları okuyabilir ve cevap yazabilir.'],
         ['Gerçek hayattaki karşılaşmalar', 'Karşılıklı onaydan sonra doğrulanan karşılaşmaları ortak bir hikâyeye dönüştürebilirsiniz.'],
         ['Konum temelli sosyal keşif', 'Yakındaki paylaşımları ve görünürlük tercihi açık profilleri canlı kişi takibi olmadan, yaklaşık mesafeyle keşfet.'],
-        ['Özel mesajlar', 'İlk mesaj bir istektir. Alıcı kabul ettiğinde sohbet güvenle devam eder.'],
+        ['Anılar', 'Profilinde kendi seçtiğin anılardan bir koleksiyon oluştur: yer, tarih ve fotoğraf ekle, kimin göreceğine sen karar ver. Yakındaki Anılar haritada ve ana sayfada.'],
+        ['Özel mesajlar', 'İlk mesaj bir istektir. Alıcı kabul ettiğinde sohbet devam eder; mesajı kendin için ya da gönderdiysen herkesten silebilir, balon renklerini ve sohbet arka planını Sohbet Teması ile değiştirebilirsin.'],
         ['Gizlilik kontrolleri', 'Konum görünürlüğünü, geçtiğin yerler tercihini ve mesaj izinlerini yönet. Gerektiğinde engelle veya şikâyet et.'],
     ];
 

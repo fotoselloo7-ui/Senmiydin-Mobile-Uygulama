@@ -25,7 +25,7 @@ class WebsiteTest extends TestCase
         $html = $this->get('/')->assertOk()->getContent();
         // Final story flow: hero, what, how, city, encounters, map, map notes, past places, journey, messages, safety, screens, CTA.
         $order = ['data-slider', 'id="nedir"', 'id="nasil-calisir"', 'id="sehir-akisi"', 'id="karsilasma"', 'id="harita"', 'id="harita-notlari"',
-            'id="gectigim-yerler"', 'id="yolculuk"', 'id="mesajlasma"', 'id="guvenlik"', 'id="ekranlar"', 'id="indir"', 'site-footer'];
+            'id="gectigim-yerler"', 'id="yolculuk"', 'id="anilar"', 'id="mesajlasma"', 'id="guvenlik"', 'id="ekranlar"', 'id="indir"', 'site-footer'];
         $previous = -1;
         foreach ($order as $marker) {
             $position = strpos($html, $marker);

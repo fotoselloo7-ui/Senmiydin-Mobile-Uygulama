@@ -110,6 +110,37 @@ class ImagePrivacyTest extends TestCase
         }
     }
 
+    public function test_big_photos_are_accepted_and_scaled_down_so_nobody_meets_a_size_limit(): void
+    {
+        $city = City::where('slug', 'alanya')->value('id');
+        $post = fn (UploadedFile $file) => $this->as($this->sender)->post('/api/v1/posts', [
+            'body' => 'Büyük fotoğraf', 'type' => 'moment', 'city_id' => $city, 'visibility' => 'city', 'is_anonymous' => 0, 'request_id' => (string) Str::uuid(),
+            'media' => [$file],
+        ], ['Accept' => 'application/json']);
+
+        // Heavier than the old 5 MB limit: accepted.
+        $post(UploadedFile::fake()->image('heavy.jpg', 600, 400)->size(6000))->assertCreated();
+
+        // Wider than the old 2048 px cap (a 2200 x 100 strip keeps the decoder tiny): accepted and stored at 2048 px.
+        $wide = imagecreatetruecolor(2200, 100);
+        ob_start();
+        imagejpeg($wide, null, 90);
+        $jpeg = ob_get_clean();
+        imagedestroy($wide);
+        $created = $post(UploadedFile::fake()->createWithContent('wide.jpg', $jpeg))->assertCreated()->json('data');
+        $served = $this->as($this->receiver)->get($created['media'][0]['url'])->assertOk();
+        [$w, $h] = getimagesizefromstring($served->streamedContent() ?: $served->getContent());
+        $this->assertSame(2048, $w, 'the long edge is scaled to 2048');
+        $this->assertEqualsWithDelta(22.0, $w / $h, 0.6, 'the shape is kept');
+
+        $avatar = $this->as($this->sender)->post('/api/v1/profile/avatar', ['avatar' => UploadedFile::fake()->createWithContent('wide.jpg', $jpeg)], ['Accept' => 'application/json']);
+        $avatar->assertSuccessful();
+
+        // The refusal text never talks about megabytes or pixels.
+        $this->assertStringNotContainsString('MB', PrivateImage::MESSAGE);
+        $this->assertStringNotContainsString('piksel', PrivateImage::MESSAGE);
+    }
+
     public function test_post_photos_avatars_and_covers_are_clean_too(): void
     {
         $city = City::where('slug', 'alanya')->value('id');

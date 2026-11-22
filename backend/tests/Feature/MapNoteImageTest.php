@@ -119,7 +119,7 @@ class MapNoteImageTest extends TestCase
         $this->assertDatabaseCount('map_notes', 0);
         $this->assertSame([], Storage::disk('local')->allFiles());
         // Oversized dimensions are refused as well.
-        $huge = imagecreatetruecolor(2100, 10);
+        $huge = imagecreatetruecolor(5001, 10);
         ob_start();
         imagejpeg($huge);
         $this->note(UploadedFile::fake()->createWithContent('wide.jpg', ob_get_clean()))->assertUnprocessable();

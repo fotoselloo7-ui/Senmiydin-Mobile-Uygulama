@@ -53,7 +53,7 @@ class WebsiteLocalizationTest extends TestCase
     {
         $html = $this->get('/en')->assertOk()->getContent();
         $order = ['data-slider', 'id="nedir"', 'id="nasil-calisir"', 'id="sehir-akisi"', 'id="karsilasma"', 'id="harita"', 'id="harita-notlari"',
-            'id="gectigim-yerler"', 'id="yolculuk"', 'id="mesajlasma"', 'id="guvenlik"', 'id="ekranlar"', 'id="indir"', 'site-footer'];
+            'id="gectigim-yerler"', 'id="yolculuk"', 'id="anilar"', 'id="mesajlasma"', 'id="guvenlik"', 'id="ekranlar"', 'id="indir"', 'site-footer'];
         $previous = -1;
         foreach ($order as $marker) {
             $position = strpos($html, $marker);

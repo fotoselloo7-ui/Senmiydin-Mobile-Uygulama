@@ -59,7 +59,8 @@
             ['Map Notes and My Letters', 'Leave a digital letter at an approximate point for 7 days, public or anonymous; others can read and answer. Manage active and archived letters and share an expired one again. Get a small notification when a new letter appears near you.'],
             ['Real-life encounters', 'After mutual approval a verified encounter can become a shared story.'],
             ['Location-based discovery', 'Discover nearby posts and profiles that chose to be visible, by approximate distance and without live tracking.'],
-            ['Private messages', 'The first message is a request; once accepted, chat continues with photos (gallery or camera), emoji and approximate location messages.'],
+            ['Memories', 'Build a collection of the moments you choose on your profile: add a place, a date and photos, and decide who sees them. Nearby Memories on the map and the home screen.'],
+            ['Private messages', 'The first message is a request; once accepted, chat continues with photos (gallery or camera), emoji and approximate location messages. Delete a message for yourself or, if you sent it, for everyone, and change bubble colours and the chat background with Chat Theme.'],
             ['Notifications', 'Likes, comments, replies, follows, messages, encounters and Map Note replies reach you in the app and as push notifications, with settings for each.'],
             ['Privacy and age groups', 'Manage location visibility, Places I Passed and message permissions. Accounts aged 16–17 only meet their own age group.'],
         ] as [$heading, $body])

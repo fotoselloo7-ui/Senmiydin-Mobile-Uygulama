@@ -14,6 +14,8 @@ $gallery = [
     ['app-map', 'Map', 'Approximate places, no live tracking', 540, 1200],
     ['app-encounter', 'Encounter', 'Tag a person, ask for approval', 540, 1200],
     ['app-chat', 'Messages', 'Private, permission-based chat', 540, 1200],
+    ['app-memories', 'Memories', 'The memories on your profile, on a map', 540, 1170],
+    ['app-chat-theme', 'Chat Theme', 'Bubble and background colours', 540, 1170],
 ];
 @endphp
 
@@ -272,6 +274,27 @@ $gallery = [
     </div>
 </section>
 
+{{-- 9b. MEMORIES --}}
+<section class="h-section h-soft" id="anilar" aria-labelledby="anilar-baslik">
+    <div class="wrap h-split">
+        <figure class="h-shot h-visual">
+            <img src="{{ asset('web/screens/app-memories.webp') }}" alt="SenMiydin Memories: the memories on your profile gathered by approximate area on a map" loading="lazy" decoding="async" width="540" height="1170">
+        </figure>
+        <div class="h-copy">
+            <span class="kicker">MEMORIES</span>
+            <h2 id="anilar-baslik">The memories on your profile.</h2>
+            <p>Memories are a calm collection of the moments you choose to keep on your profile. Turn a post or a map note into a memory, add a place, a date and photos, and decide who gets to see it.</p>
+            <ul class="h-checks">
+                <li>Up to five photos, cropped together in a 9:16, 4:5 or 16:9 frame</li>
+                <li>Visibility: only you, your followers, everyone, or people in a chosen area</li>
+                <li>A list and a map view on your profile; Nearby Memories on the home screen and the map</li>
+                <li>Hide, show again or delete whenever you like</li>
+            </ul>
+            <p class="h-note">A memory is not an encounter confirmation; it is simply a moment you tell yourself.</p>
+        </div>
+    </div>
+</section>
+
 {{-- 10. MESSAGING --}}
 <section class="h-section" id="mesajlasma" aria-labelledby="mesaj-baslik">
     <div class="wrap h-split rev">
@@ -286,9 +309,11 @@ $gallery = [
                 <li>Accept or decline a message request</li>
                 <li>Photo messages (from the gallery or the camera), emoji, read receipts and an unread counter</li>
                 <li>You can send an approximate area; there is no live location sharing</li>
+                <li>Delete a message just for yourself, or delete one you sent for everyone</li>
+                <li>Chat Theme: pick the bubble colours and the chat background for your own screen</li>
                 <li>Hide a chat, block a user and report</li>
             </ul>
-            <p class="h-note">There are no group chats or calls; SenMiydin stays focused on simple one-to-one messaging.</p>
+            <p class="h-note">There are no group chats or calls; SenMiydin stays focused on simple one-to-one messaging. Your theme is only visible on your own screen.</p>
         </div>
     </div>
 </section>

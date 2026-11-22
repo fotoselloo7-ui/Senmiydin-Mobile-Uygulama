@@ -131,8 +131,8 @@ class ProfileController extends Controller
     {
         $request->validate([
             'avatar' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png,webp',
-                'extensions:jpg,jpeg,png,webp', 'max:5120', 'dimensions:max_width=2048,max_height=2048'],
-        ], ['avatar.*' => '2048 pikseli ve 5 MB boyutu aşmayan bir JPEG, PNG veya WebP fotoğrafı seç.']);
+                'extensions:jpg,jpeg,png,webp', 'max:20480', 'dimensions:max_width=5000,max_height=5000'],
+        ], ['avatar.*' => \App\Media\PrivateImage::MESSAGE]);
 
         $content = $this->reencode($request->file('avatar')->get(), 'avatar');
 
@@ -163,8 +163,8 @@ class ProfileController extends Controller
     {
         $request->validate([
             'cover' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png,webp',
-                'extensions:jpg,jpeg,png,webp', 'max:8192', 'dimensions:min_width=320,min_height=120,max_width=4096,max_height=4096'],
-        ], ['cover.*' => 'En az 320 piksel genişliğinde, 4096 pikseli ve 8 MB boyutu aşmayan bir JPEG, PNG veya WebP fotoğrafı seç.']);
+                'extensions:jpg,jpeg,png,webp', 'max:20480', 'dimensions:min_width=320,min_height=120,max_width=5000,max_height=5000'],
+        ], ['cover.*' => 'Fotoğraf en az 320 piksel genişliğinde olmalı. JPEG, PNG veya WebP biçiminde başka bir fotoğraf dene.']);
 
         $content = $this->reencode($request->file('cover')->get(), 'cover');
         $disk = Storage::disk(config('mobile.avatar_disk'));
@@ -230,7 +230,7 @@ class ProfileController extends Controller
         if ($image === false) {
             throw ValidationException::withMessages([$field => 'Fotoğraf okunamadı.']);
         }
-        $image = \App\Media\PrivateImage::upright($image, \App\Media\PrivateImage::orientation($binary));
+        $image = \App\Media\PrivateImage::fit(\App\Media\PrivateImage::upright($image, \App\Media\PrivateImage::orientation($binary)));
         $flat = imagecreatetruecolor(imagesx($image), imagesy($image));
         imagefill($flat, 0, 0, imagecolorallocate($flat, 255, 255, 255));
         imagecopy($flat, $image, 0, 0, 0, 0, imagesx($image), imagesy($image));

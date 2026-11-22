@@ -422,7 +422,7 @@ class MemoryController extends Controller
         return [
             'media.max' => 'En fazla '.$photos.' fotoğraf ekleyebilirsin.',
             'layout.max' => 'En fazla '.$photos.' fotoğraf ekleyebilirsin.',
-            'media.*.*' => 'Her fotoğraf JPEG, PNG veya WebP biçiminde, en fazla 5 MB ve 2048 piksel olmalı.',
+            'media.*.*' => PrivateImage::MESSAGE,
         ];
     }
 

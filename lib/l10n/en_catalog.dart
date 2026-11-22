@@ -769,7 +769,8 @@ const enCatalog = <String, String>{
       'Your session has ended. Please sign in again.',
   'Sunucu adresi yapılandırılamadı.':
       'The server address couldn’t be configured.',
-  'Her fotoğraf en fazla 5 MB olabilir.': 'Each photo can be up to 5 MB.',
+  'Fotoğraf yüklenemedi. Başka bir fotoğraf dene.':
+      'The photo could not be uploaded. Try another photo.',
   'Fotoğraf dosyası okunamadı. Yeniden seç.':
       'The photo file couldn’t be read. Choose it again.',
   'Sunucu zamanında yanıt vermedi. Tekrar dene.':

@@ -14,6 +14,8 @@ $gallery = [
     ['app-map', 'Harita', 'Yaklaşık yerler, canlı takip yok', 540, 1200],
     ['app-encounter', 'Karşılaşma', 'Kişiyi etiketle, onay iste', 540, 1200],
     ['app-chat', 'Mesajlar', 'İzinli, birebir sohbet', 540, 1200],
+    ['app-memories', 'Anılar', 'Profilindeki anılar haritada', 540, 1170],
+    ['app-chat-theme', 'Sohbet Teması', 'Balon ve arka plan renkleri', 540, 1170],
 ];
 @endphp
 
@@ -272,6 +274,27 @@ $gallery = [
     </div>
 </section>
 
+{{-- 9b. ANILAR --}}
+<section class="h-section h-soft" id="anilar" aria-labelledby="anilar-baslik">
+    <div class="wrap h-split">
+        <figure class="h-shot h-visual">
+            <img src="{{ asset('web/screens/app-memories.webp') }}" alt="SenMiydin Anılar: profilindeki anıların haritada yaklaşık bölgelere göre toplanması" loading="lazy" decoding="async" width="540" height="1170">
+        </figure>
+        <div class="h-copy">
+            <span class="kicker">ANILAR</span>
+            <h2 id="anilar-baslik">Profilinde sana ait anılar.</h2>
+            <p>Anılar, profilinde kendi seçtiğin anların sakin bir koleksiyonudur. Bir paylaşımdan ya da harita notundan anı oluşturabilir, yer, tarih ve fotoğraf ekleyebilir, kimin göreceğine kendin karar verebilirsin.</p>
+            <ul class="h-checks">
+                <li>En fazla beş fotoğraf; 9:16, 4:5 veya 16:9 kadrajla birlikte kırpılır</li>
+                <li>Görünürlük: yalnızca sen, takipçilerin, herkes ya da belirli bir bölgedekiler</li>
+                <li>Profilinde liste ve harita görünümü; Yakındaki Anılar ana sayfada ve haritada</li>
+                <li>İstediğinde gizle, yeniden göster ya da sil</li>
+            </ul>
+            <p class="h-note">Anı, karşılaşma doğrulaması değildir; yalnızca senin anlattığın bir andır.</p>
+        </div>
+    </div>
+</section>
+
 {{-- 10. MESAJLAŞMA --}}
 <section class="h-section" id="mesajlasma" aria-labelledby="mesaj-baslik">
     <div class="wrap h-split rev">
@@ -286,9 +309,11 @@ $gallery = [
                 <li>Mesaj isteğini kabul etme veya reddetme</li>
                 <li>Fotoğraf mesajı (galeriden ya da kameradan), emoji, okundu bilgisi ve okunmamış sayacı</li>
                 <li>İstersen yaklaşık bir bölge gönderebilirsin; canlı konum paylaşımı yoktur</li>
+                <li>Mesajı yalnızca kendin için sil; gönderdiğin mesajı herkesten de silebilirsin</li>
+                <li>Sohbet Teması: balon renklerini ve sohbet arka planını kendi ekranın için seç</li>
                 <li>Sohbeti gizleme, kullanıcıyı engelleme ve şikâyet etme</li>
             </ul>
-            <p class="h-note">Grup sohbeti ve arama yoktur; SenMiydin sade, birebir mesajlaşmaya odaklanır.</p>
+            <p class="h-note">Grup sohbeti ve arama yoktur; SenMiydin sade, birebir mesajlaşmaya odaklanır. Tema seçimin yalnızca senin ekranında görünür.</p>
         </div>
     </div>
 </section>

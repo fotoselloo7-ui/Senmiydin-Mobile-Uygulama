@@ -261,8 +261,8 @@ class MemoriesTest extends TestCase
         foreach ([$svg, $fake, $double, $png] as $file) {
             $this->make([], [$file])->assertStatus(422)->assertJsonValidationErrors('media.0');
         }
-        $this->make([], [UploadedFile::fake()->image('wide.jpg', 3000, 100)])->assertStatus(422);
-        $this->make([], [UploadedFile::fake()->create('big.jpg', 6000, 'image/jpeg')])->assertStatus(422);
+        $this->make([], [UploadedFile::fake()->image('wide.jpg', 5001, 100)])->assertStatus(422);
+        $this->make([], [UploadedFile::fake()->create('big.jpg', 21000, 'image/jpeg')])->assertStatus(422);
         $this->assertSame(0, Memory::count());
         $this->assertSame([], Storage::disk('local')->allFiles());
     }

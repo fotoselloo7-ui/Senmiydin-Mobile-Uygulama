@@ -157,7 +157,7 @@ class PostController extends Controller
         ], [
             'body.required_without' => 'Metin yaz veya bir fotoğraf ekle.',
             'media.max' => 'En fazla '.$photoLimit.' fotoğraf ekleyebilirsin.',
-            'media.*.*' => 'Her fotoğraf JPEG, PNG veya WebP biçiminde, en fazla 5 MB ve 2048 piksel olmalı.',
+            'media.*.*' => PrivateImage::MESSAGE,
         ]);
         PlaceController::apply($data);
         if (isset($data['travel'])) {

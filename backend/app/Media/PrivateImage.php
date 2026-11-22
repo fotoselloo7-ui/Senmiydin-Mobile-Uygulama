@@ -16,7 +16,18 @@ final class PrivateImage
 
 {
 
-    public const RULES = 'required|file|image|mimes:jpg,jpeg,png,webp|extensions:jpg,jpeg,png,webp|max:5120|dimensions:max_width=2048,max_height=2048';
+    /**
+     * What is accepted: any ordinary photo. The person is never held to a megabyte limit; the app already shrinks photos
+     * before it uploads them, and everything that arrives is scaled to [MAX_EDGE] and re-encoded below. The generous caps
+     * only keep the decoder inside the server's memory (25 megapixels is about 100 MB for GD).
+     */
+    public const RULES = 'required|file|image|mimes:jpg,jpeg,png,webp|extensions:jpg,jpeg,png,webp|max:20480|dimensions:max_width=5000,max_height=5000';
+
+    /** Longest edge of a stored photo. */
+    public const MAX_EDGE = 2048;
+
+    /** Shown for a photo that is refused: a format or decoding problem, never a size the person has to manage. */
+    public const MESSAGE = 'Bu fotoğraf kullanılamadı. JPEG, PNG veya WebP biçiminde başka bir fotoğraf dene.';
 
 
 
@@ -52,7 +63,7 @@ final class PrivateImage
 
         // EXIF "orientation" tag though, so apply it to the pixels first or portrait photos would end up sideways.
 
-        $image = self::upright($image, self::orientation($source));
+        $image = self::fit(self::upright($image, self::orientation($source)));
 
         ob_start();
 
@@ -125,6 +136,21 @@ final class PrivateImage
         abort_unless($encoded && is_string($bytes) && $bytes !== '', 500);
 
         return [$bytes, imagesx($image), imagesy($image)];
+    }
+
+    /** @return \GdImage the image scaled down so its longest edge is at most [MAX_EDGE] pixels (smaller images are kept). */
+    public static function fit(\GdImage $image, int $edge = self::MAX_EDGE): \GdImage
+    {
+        $width = imagesx($image);
+        $height = imagesy($image);
+        $longest = max($width, $height);
+        if ($longest <= $edge) {
+            return $image;
+        }
+        $scale = $edge / $longest;
+        $resized = imagescale($image, max(1, (int) round($width * $scale)), max(1, (int) round($height * $scale)), IMG_BICUBIC);
+
+        return $resized === false ? $image : $resized;
     }
 
     /** EXIF orientation (1–8) of a JPEG, 1 when absent or unreadable. Parsed by hand: no extension needed. */

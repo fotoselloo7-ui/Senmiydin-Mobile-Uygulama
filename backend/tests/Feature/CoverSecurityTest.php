@@ -82,9 +82,9 @@ class CoverSecurityTest extends TestCase
         $upload(UploadedFile::fake()->createWithContent('cover.php.jpg', '<?php system($_GET[0]); ?>'))->assertUnprocessable();
         // A real JPEG signature followed by garbage is rejected as an unreadable photo, never stored.
         $upload(UploadedFile::fake()->createWithContent('cover.jpg', "\xFF\xD8\xFF\xE0".str_repeat("\x00", 40)))->assertUnprocessable();
-        $upload(UploadedFile::fake()->image('wide.jpg', 4097, 200))->assertUnprocessable();
-        $upload(UploadedFile::fake()->image('tall.jpg', 400, 4097))->assertUnprocessable();
-        $upload(UploadedFile::fake()->image('big.jpg', 1000, 500)->size(8300))->assertUnprocessable();
+        $upload(UploadedFile::fake()->image('wide.jpg', 5001, 200))->assertUnprocessable();
+        $upload(UploadedFile::fake()->image('tall.jpg', 400, 5001))->assertUnprocessable();
+        $upload(UploadedFile::fake()->image('big.jpg', 1000, 500)->size(20481))->assertUnprocessable();
         $this->assertSame([], $disk->allFiles());
 
         $this->flushHeaders();
