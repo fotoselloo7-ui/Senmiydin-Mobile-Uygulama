@@ -84,6 +84,19 @@ class _LiveNotificationsPageState extends State<LiveNotificationsPage>
     with AccountAction<LiveNotificationsPage> {
   bool unread = false;
 
+  /// all / follow / comments / likes (the unread switch above is the server's own filter).
+  String kind = 'all';
+
+  static bool _matches(String kind, InboxNotification item) => switch (kind) {
+    'follow' => item.type == 'follow',
+    'comments' =>
+      item.type == 'comment' ||
+          item.type == 'comment_reply' ||
+          item.type == 'map_note_reply',
+    'likes' => item.type == 'like' || item.type == 'comment_like',
+    _ => true,
+  };
+
   @override
   Widget build(BuildContext context) {
     final store = StoreScope.of(context);
@@ -106,24 +119,39 @@ class _LiveNotificationsPageState extends State<LiveNotificationsPage>
         children: [
           Padding(
             padding: Space.page,
-            child: ChoicePills(
-              options: [
-                text.notificationsFilterAll,
-                text.notificationsFilterUnread,
-              ],
-              value: unread
-                  ? text.notificationsFilterUnread
-                  : text.notificationsFilterAll,
-              onChanged: (value) => setState(
-                () => unread = value == text.notificationsFilterUnread,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final (key, label, isUnread) in [
+                    ('all', text.notificationsFilterAll, false),
+                    ('unread', text.notificationsFilterUnread, true),
+                    ('follow', tr('Takip'), false),
+                    ('comments', tr('Yorumlar'), false),
+                    ('likes', tr('Beğeniler'), false),
+                  ])
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: _FilterChip(
+                        key: Key('notifications-filter-$key'),
+                        label: label,
+                        selected: isUnread ? unread : !unread && kind == key,
+                        onTap: () => setState(() {
+                          unread = isUnread;
+                          kind = isUnread ? 'all' : key;
+                        }),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
           Expanded(
             child: PagedContent<InboxNotification>(
-              key: ValueKey((unread, store.communicationVersion)),
+              key: ValueKey((unread, kind, store.communicationVersion)),
               fetch: (page) => store.communication!.inbox(page, unread),
               id: (item) => item.id.toString(),
+              visible: (item) => _matches(kind, item),
               builder: (context, items, footer, refresh) => RefreshIndicator(
                 onRefresh: refresh,
                 child: ListView(
@@ -175,4 +203,47 @@ class _LiveNotificationsPageState extends State<LiveNotificationsPage>
       ),
     );
   }
+}
+
+/// A filter chip like the examples: a soft rounded rectangle; the chosen one is a light wash of the main colour.
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    selected: selected,
+    child: Material(
+      color: selected
+          ? AppColors.primary.withValues(alpha: .13)
+          : const Color(0xFFF1F4F9),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 40),
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            label,
+            maxLines: 1,
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 14,
+              color: selected ? AppColors.primary : AppColors.navy,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }

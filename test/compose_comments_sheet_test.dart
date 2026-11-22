@@ -229,8 +229,14 @@ void main() {
           expect(find.byIcon(Icons.image_outlined), findsOneWidget);
           expect(find.byIcon(Icons.camera_alt_outlined), findsOneWidget);
 
+          // The two map entries: "Harita Notu" and "Anı" (the old post kind reads "Paylaşım" here; "Harita Anısı" is gone).
+          expect(find.descendant(of: find.byKey(const Key('compose-map-note')), matching: find.text('Harita Notu')), findsOneWidget);
+          expect(find.descendant(of: find.byKey(const Key('compose-map-memory')), matching: find.text('Anı')), findsOneWidget);
+          expect(find.text('Harita Anısı'), findsNothing);
+          expect(find.widgetWithText(ChoiceChip, 'Anı'), findsNothing);
+
           // Types: one row.
-          final labels = ['Anı', 'Karşılaşma', 'İtiraf', 'Düşünce', 'Yolculuk'];
+          final labels = ['Paylaşım', 'Karşılaşma', 'İtiraf', 'Düşünce', 'Yolculuk'];
           final tops = [
             for (final l in labels)
               tester.getCenter(find.widgetWithText(ChoiceChip, l)).dy,

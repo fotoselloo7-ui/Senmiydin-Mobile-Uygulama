@@ -1,5 +1,7 @@
 // ignore_for_file: prefer_initializing_formals
 import '../core/app_locale.dart';
+import 'package:latlong2/latlong.dart' show LatLng;
+
 import '../core/relative_time.dart';
 import 'post_context.dart';
 
@@ -139,6 +141,7 @@ class Post {
     this.commentCount = 0,
     this.distanceMeters,
     this.locationLabel,
+    this.mapPoint,
     this.encounterConfirmed = false,
     this.encounterRequestId,
     this.encounterRequestStatus,
@@ -167,6 +170,9 @@ class Post {
   int commentCount;
   int? distanceMeters;
   String? locationLabel;
+
+  /// The approximate (grid) point the map shows for this post; null when the post has no place. Never an exact position.
+  LatLng? mapPoint;
   bool encounterConfirmed;
   String? encounterRequestId, encounterRequestStatus, storyTitle, storyStatus;
   int? storyRevision;
@@ -181,6 +187,9 @@ class Post {
   DateTime? createdAt;
   String get time => createdAt != null ? relativeTime(createdAt!) : tr(_time);
   set time(String value) => _time = value;
+
+  /// "17 sa" for the tight footer of a narrow card.
+  String get timeShort => shortRelativeTime(time);
   final double distance;
   final String? taggedId;
   int likes;

@@ -78,6 +78,7 @@ class VoiceDraftBar extends StatelessWidget {
                   ),
                 ),
                 IconButton.filled(
+                  style: AppButtons.filledIcon,
                   key: const Key('voice-stop'),
                   tooltip: tr('Durdur'),
                   onPressed: onStop,
@@ -124,6 +125,7 @@ class VoiceDraftBar extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 IconButton.filled(
+                  style: AppButtons.filledIcon,
                   key: const Key('voice-send'),
                   tooltip: context.l10n.chatSendTooltip,
                   onPressed: busy ? null : onSend,

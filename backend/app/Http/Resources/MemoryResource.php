@@ -29,6 +29,8 @@ class MemoryResource extends JsonResource
             'city' => $this->relationLoaded('city') ? $this->city?->only('id', 'name', 'slug') : null,
             'place' => $this->relationLoaded('place') ? $this->place?->summary() : null,
             'place_label' => $label,
+            // For "Haritada Gör": a coarse area (centre rounded to ~1 km + radius), never the memory's own point.
+            'map_area' => $this->relationLoaded('city') ? \App\Memories\MapArea::of($this->resource) : null,
             'visibility' => $mine ? $this->visibility : null,
             'is_hidden' => $mine ? (bool) $this->is_hidden : null,
             'source_type' => $mine ? $this->source_type : null,

@@ -16,6 +16,7 @@ import '../data/location_api.dart';
 import '../data/models.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/common.dart';
+import '../widgets/home_memories.dart';
 import '../widgets/location_ui.dart';
 import '../widgets/native_feed_ad.dart';
 import '../widgets/notifications_sheet.dart';
@@ -45,6 +46,7 @@ class _HomeShellState extends State<HomeShell> {
     if (!store.connected) return;
     encounterClock ??= RoutePolling(
       interval: const Duration(seconds: 8),
+      maxBackoff: const Duration(seconds: 32),
       fetch: () async {
         if (!mounted || !store.authenticated) return false;
         final healthy = await store.refreshUnread();
@@ -130,6 +132,8 @@ class _HomeShellState extends State<HomeShell> {
                   const SizedBox(width: 4),
                 ]
               : [
+                  if (tab == 0) HomeCityChip(store),
+                  const SizedBox(width: 2),
                   IconButton(
                     tooltip: tr('Ara'),
                     icon: const Icon(Icons.search_rounded, size: 24),
@@ -188,7 +192,10 @@ class _HomeShellState extends State<HomeShell> {
           unread: store.unreadMessages,
           onChanged: (v) {
             if (v == 2) {
-              openPage(context, '/compose');
+              openPage<Object>(context, '/compose').then((result) {
+                // A memory saved from the `+` lands on the profile, where the Anılar map shows it.
+                if (result == 'memories' && mounted) setState(() => tab = 4);
+              });
             } else {
               setState(() => tab = v);
             }
@@ -208,25 +215,40 @@ class AppBottomNav extends StatelessWidget {
   });
   final int selected, unread;
   final ValueChanged<int> onChanged;
+
+  static const _labels = ['Ana Sayfa', 'Harita', '', 'Mesajlar', 'Profil'];
+
+  IconData _icon(int i, bool active) => [
+    active ? Icons.home_rounded : Icons.home_outlined,
+    active ? Icons.location_on_rounded : Icons.location_on_outlined,
+    Icons.add,
+    active ? Icons.chat_bubble_rounded : Icons.chat_bubble_outline_rounded,
+    active ? Icons.person_rounded : Icons.person_outline_rounded,
+  ][i];
+
+  /// A floating rounded bar (like the examples): the open tab sits in a soft wash of the main colour, the centre button
+  /// is the one strong accent, unread counts are small round badges.
   @override
-  Widget build(BuildContext context) => Container(
-    decoration: BoxDecoration(
-      color: Colors.white,
-      border: const Border(top: BorderSide(color: AppColors.line)),
-      boxShadow: [
-        BoxShadow(
-          color: const Color(0xFF10233F).withValues(alpha: .06),
-          blurRadius: 12,
-          offset: const Offset(0, -2),
-        ),
-      ],
-    ),
-    child: SafeArea(
-      top: false,
-      child: SizedBox(
+  Widget build(BuildContext context) => SafeArea(
+    top: false,
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+      child: Container(
         height:
             AppDimensions.bottomNav +
             40 * (MediaQuery.textScalerOf(context).scale(1) - 1),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: const Color(0xFFE6EDF6)),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF10233F).withValues(alpha: .10),
+              blurRadius: 22,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
         child: Row(
           children: List.generate(5, (i) {
             if (i == 2) {
@@ -264,56 +286,14 @@ class AppBottomNav extends StatelessWidget {
                 ),
               );
             }
-            final active = i == selected;
             return Expanded(
-              child: InkWell(
+              child: _NavItem(
                 key: Key('nav-$i'),
+                label: _labels[i],
+                icon: _icon(i, i == selected),
+                active: i == selected,
+                badge: i == 3 ? unread : 0,
                 onTap: () => onChanged(i),
-                child: Semantics(
-                  selected: active,
-                  button: true,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Badge(
-                        isLabelVisible: i == 3 && unread > 0,
-                        label: Text(unread > 99 ? '99+' : '$unread'),
-                        backgroundColor: AppColors.encounterPink,
-                        child: Icon(
-                          [
-                            active ? Icons.home_rounded : Icons.home_outlined,
-                            active
-                                ? Icons.location_on_rounded
-                                : Icons.location_on_outlined,
-                            Icons.add,
-                            active
-                                ? Icons.chat_bubble_rounded
-                                : Icons.chat_bubble_outline_rounded,
-                            active
-                                ? Icons.person_rounded
-                                : Icons.person_outline_rounded,
-                          ][i],
-                          size: 23,
-                          color: active ? AppColors.primary : AppColors.muted,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        ['Ana Sayfa', 'Harita', '', 'Mesajlar', 'Profil'][i],
-                        maxLines: 2,
-                        textAlign: TextAlign.center,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: active
-                              ? FontWeight.w800
-                              : FontWeight.w600,
-                          color: active ? AppColors.primary : AppColors.muted,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ),
             );
           }),
@@ -321,6 +301,106 @@ class AppBottomNav extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// One tab of the bottom bar. The open tab is marked by a wide soft pill behind its icon only (like the system navigation
+/// bar); the label sits under it, so the pill has room and the label is never squeezed. Press, hover and focus draw their
+/// highlight inside that same pill shape, not as a narrow slab over the whole cell.
+class _NavItem extends StatelessWidget {
+  const _NavItem({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.active,
+    required this.badge,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool active;
+  final int badge;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = active ? AppColors.primary : AppColors.muted;
+    return Semantics(
+      selected: active,
+      button: true,
+      label: badge > 0 ? '${tr(label)}, $badge' : tr(label),
+      excludeSemantics: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // 58 dp wide where the cell allows it; a narrow phone keeps a little air on each side.
+            final pill = constraints.maxWidth - 8 < 58
+                ? constraints.maxWidth - 8
+                : 58.0;
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AnimatedContainer(
+                    key: const Key('nav-indicator'),
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOutCubic,
+                    width: pill,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: active
+                          ? AppColors.primary.withValues(alpha: .13)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: InkWell(
+                        customBorder: const StadiumBorder(),
+                        onTap: onTap,
+                        hoverColor: AppColors.primary.withValues(alpha: .08),
+                        highlightColor: AppColors.primary.withValues(
+                          alpha: .10,
+                        ),
+                        splashColor: AppColors.primary.withValues(alpha: .16),
+                        child: Center(
+                          child: Badge(
+                            isLabelVisible: badge > 0,
+                            label: Text(badge > 99 ? '99+' : '$badge'),
+                            backgroundColor: AppColors.encounterPink,
+                            child: Icon(icon, size: 24, color: color),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  // A label a little too wide for a narrow phone shrinks; it never turns into "Ana Say…".
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      softWrap: false,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 11,
+                        height: 1.15,
+                        fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+                        color: color,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
 }
 
 /// Compact Home module: only when the user has unopened letters left near them (never an empty / begging card).
@@ -491,7 +571,20 @@ class HomeContent extends StatelessWidget {
                     ),
                   ),
                 const SizedBox(height: Space.sm),
-                if (store.nearbyModuleEnabled) ...[
+                if (store.nearbyModuleEnabled &&
+                    store.connected &&
+                    store.memories != null) ...[
+                  SectionHeader(
+                    'Yakındaki Anılar',
+                    icon: Icons.auto_stories_rounded,
+                    onTap: () {
+                      store.openMapInMemories = true;
+                      onMap();
+                    },
+                  ),
+                  const HomeMemoriesStrip(),
+                  const SizedBox(height: Space.xs),
+                ] else if (store.nearbyModuleEnabled) ...[
                   SectionHeader(
                     'Yakınındaki İnsanlar',
                     icon: Icons.location_on_rounded,
@@ -911,6 +1004,79 @@ class HomeContent extends StatelessWidget {
   }
 }
 
+/// The city picker of the Home page: a small chip in the top bar, to the left of the search icon (it used to take its own
+/// row under the feed tabs). Opens the same place picker and switches the feed / map area.
+class HomeCityChip extends StatelessWidget {
+  const HomeCityChip(this.store, {super.key});
+  final AppStore store;
+
+  @override
+  Widget build(BuildContext context) {
+    final narrow = MediaQuery.sizeOf(context).width < 360;
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: narrow ? 92 : 120),
+        child: TextButton(
+          key: const Key('feed-city'),
+          onPressed: () async {
+            final selected = await choosePlace(context, current: store.city);
+            if (selected != null && context.mounted) {
+              await socialAction(
+                context,
+                () => store.setCity(
+                  selected.city.name,
+                  placeId: selected.placeId,
+                ),
+              );
+            }
+          },
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.navy,
+            backgroundColor: Colors.white,
+            minimumSize: const Size(0, 32),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppShape.pill),
+              side: const BorderSide(color: Color(0xFFE9D5FF)),
+            ),
+            textStyle: AppTypography.metadata.copyWith(
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          ),
+          child: MediaQuery.withClampedTextScaling(
+            maxScaleFactor: 1.2,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.location_on_rounded,
+                  size: 14,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 2),
+                // A long name shrinks to fit instead of being cut off.
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(store.city, maxLines: 1, softWrap: false),
+                  ),
+                ),
+                const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 14,
+                  color: AppColors.muted,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _FeedControls extends StatelessWidget {
   const _FeedControls(this.store);
   final AppStore store;
@@ -981,73 +1147,7 @@ class _FeedControls extends StatelessWidget {
                 ],
               ],
             );
-      final city = ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: wide ? 160 : width),
-        child: TextButton(
-          key: const Key('feed-city'),
-          onPressed: () async {
-            final selected = await choosePlace(context, current: store.city);
-            if (selected != null && context.mounted) {
-              await socialAction(
-                context,
-                () => store.setCity(
-                  selected.city.name,
-                  placeId: selected.placeId,
-                ),
-              );
-            }
-          },
-          style: TextButton.styleFrom(
-            foregroundColor: AppColors.navy,
-            backgroundColor: Colors.white,
-            minimumSize: const Size(0, 36),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: const BorderSide(color: Color(0xFFE9D5FF)),
-            ),
-            textStyle: AppTypography.metadata.copyWith(
-              fontWeight: FontWeight.w800,
-              fontSize: 12.5,
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.location_on_rounded,
-                size: 16,
-                color: AppColors.primary,
-              ),
-              const SizedBox(width: 4),
-              Flexible(child: Text(store.city, textAlign: TextAlign.center)),
-              const SizedBox(width: 2),
-              const Icon(
-                Icons.keyboard_arrow_down_rounded,
-                size: 16,
-                color: AppColors.muted,
-              ),
-            ],
-          ),
-        ),
-      );
-      return wide
-          ? Row(
-              children: [
-                Expanded(child: tabs),
-                const SizedBox(width: Space.sm),
-                city,
-              ],
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                tabs,
-                const SizedBox(height: Space.sm),
-                Align(alignment: Alignment.centerRight, child: city),
-              ],
-            );
+      return tabs;
     },
   );
 }

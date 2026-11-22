@@ -61,6 +61,7 @@ Route::prefix('v1')->group(function (): void {
 
         // Map notes (digital letters): independent from posts, encounters and location matches.
         Route::get('map/notes', [MapNoteController::class, 'map'])->middleware('throttle:location-read');
+        Route::get('map/memories', [MemoryController::class, 'around'])->middleware('throttle:location-read');
         Route::get('map/notes/unread', [MapNoteController::class, 'unread'])->middleware('throttle:location-read');
         Route::get('map/notes/{group}', [MapNoteController::class, 'group'])->where('group', '-?[0-9]{1,3}\.[0-9]{5}_-?[0-9]{1,3}\.[0-9]{5}')->middleware('throttle:location-read');
         Route::post('map-notes', [MapNoteController::class, 'store'])->middleware('throttle:map-note-create');
@@ -117,6 +118,7 @@ Route::prefix('v1')->group(function (): void {
         Route::get('users/{username}/posts', [SocialUserController::class, 'posts']);
         // Anılar (memories): owner-curated profile snapshots. Visibility is decided server-side (App\Models\Memory::visibleTo).
         Route::get('users/{username}/memories', [MemoryController::class, 'index'])->middleware('throttle:communication-read');
+        Route::get('users/{username}/memories/map', [MemoryController::class, 'map'])->middleware('throttle:location-read');
         Route::get('memories/prefill', [MemoryController::class, 'prefill'])->middleware('throttle:communication-read');
         Route::post('memories', [MemoryController::class, 'store'])->middleware(['throttle:memory-create', 'throttle:memory-write']);
         Route::get('memories/{memory}', [MemoryController::class, 'show'])->whereNumber('memory')->middleware('throttle:communication-read');

@@ -95,13 +95,19 @@ class OfficialSharePlatform implements SharePlatform {
   }
 
   @override
-  Future<void> copyText(String text) => Clipboard.setData(ClipboardData(text: text));
+  Future<void> copyText(String text) =>
+      Clipboard.setData(ClipboardData(text: text));
 }
 
-typedef ShareImageLoader =
-    Future<Uint8List?> Function(String url, Map<String, String> headers);
+typedef ShareImageLoader = Future<Uint8List?> Function(
+  String url,
+  Map<String, String> headers,
+);
 
-Future<Uint8List?> _downloadImage(String url, Map<String, String> headers) async {
+Future<Uint8List?> _downloadImage(
+  String url,
+  Map<String, String> headers,
+) async {
   try {
     final response = await http
         .get(Uri.parse(url), headers: headers)
@@ -122,12 +128,32 @@ Future<ui.Image> decodeShareImage(Uint8List bytes, {int? targetWidth}) async {
 }
 
 const _monthsTr = [
-  'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
+  'Ocak',
+  'Şubat',
+  'Mart',
+  'Nisan',
+  'Mayıs',
+  'Haziran',
+  'Temmuz',
+  'Ağustos',
+  'Eylül',
+  'Ekim',
+  'Kasım',
+  'Aralık',
 ];
 const _monthsEn = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 /// "15 Kasım 2026" / "November 15, 2026" in the sharing person's language.
@@ -227,7 +253,10 @@ class ShareService {
       handle: encounter ? null : author?.handle,
       avatar: avatar,
       pairNames: encounter
-          ? post.storyParticipants.take(2).map((p) => p.name).join(' & ')
+          ? post.storyParticipants
+                .take(2)
+                .map((p) => p.name.trim().split(RegExp(r'\s+')).first)
+                .join(' & ')
           : null,
       pairAvatars: pairAvatars,
       badge: encounter ? tr('Karşılaşıldı') : null,
@@ -345,7 +374,9 @@ class ShareService {
   /// The chosen app reads the file after the sheet closes (possibly much later), so it is never deleted right away:
   /// it goes after a while, and anything left behind is swept by the next share ([cleanUp]).
   void _removeLater(File file) {
-    unawaited(Future<void>.delayed(const Duration(minutes: 10), () => _remove(file)));
+    unawaited(
+      Future<void>.delayed(const Duration(minutes: 10), () => _remove(file)),
+    );
   }
 
   Future<void> _remove(File file) async {

@@ -76,6 +76,18 @@ class LocationTimeTravelTest extends TestCase
         $this->assertSame('Alanya', $demo->fresh()->city->name);
     }
 
+    public function test_an_area_picked_by_hand_is_never_taken_over_by_the_device(): void
+    {
+        $demo = $this->user('demo', 'alanya');
+        $this->asUser($demo)->putJson('/api/v1/active-city', ['city_id' => $this->city('ankara')])->assertOk();
+        // the device is in Alanya, but the person picked Ankara: it stays Ankara until they pick something else
+        $this->putJson('/api/v1/location', ['latitude' => 36.544, 'longitude' => 32.000, 'accuracy' => 20])->assertOk();
+        $this->getJson('/api/v1/profile')->assertJsonPath('data.active_city.name', 'Ankara')->assertJsonPath('data.active_city_source', 'manual');
+        $this->putJson('/api/v1/active-city', ['city_id' => $this->city('alanya')])->assertOk();
+        $this->putJson('/api/v1/location', ['latitude' => 39.9208, 'longitude' => 32.8541, 'accuracy' => 20])->assertOk();
+        $this->getJson('/api/v1/profile')->assertJsonPath('data.active_city.name', 'Alanya');
+    }
+
     public function test_unknown_city_preserves_coordinates_and_manual_fallback_persists(): void
     {
         $user = $this->user('manual', 'alanya');

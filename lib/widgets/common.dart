@@ -383,7 +383,7 @@ class SectionHeader extends StatelessWidget {
             title,
             style: AppTypography.section.copyWith(
               fontSize: 16.5,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
               color: AppColors.navy,
             ),
           ),
@@ -1012,16 +1012,22 @@ class ChoicePills extends StatelessWidget {
             ? const EdgeInsets.symmetric(horizontal: 1)
             : null,
         padding: singleRow ? const EdgeInsets.symmetric(horizontal: 6) : null,
-        selectedColor: AppColors.action,
-        backgroundColor: AppColors.surface,
-        side: BorderSide(color: value == v ? AppColors.action : AppColors.line),
+        // The examples' look: a soft rounded rectangle, the chosen one a light wash of the main colour.
+        selectedColor: AppColors.primary.withValues(alpha: .13),
+        backgroundColor: const Color(0xFFF1F4F9),
+        side: BorderSide(
+          color: value == v
+              ? AppColors.primary.withValues(alpha: .35)
+              : Colors.transparent,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         selected: value == v,
         showCheckmark: false,
         labelStyle: TextStyle(
           fontFamily: 'NunitoSans',
           fontSize: 12.5,
-          fontWeight: value == v ? FontWeight.w700 : FontWeight.w600,
-          color: value == v ? Colors.white : AppColors.navy,
+          fontWeight: value == v ? FontWeight.w800 : FontWeight.w700,
+          color: value == v ? AppColors.primary : AppColors.navy,
         ),
         onSelected: (_) => onChanged(v),
       ),

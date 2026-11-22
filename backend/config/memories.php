@@ -11,7 +11,8 @@ return [
     // A memory the owner deleted while it carried a report, and one an admin removed, stays reviewable for this many
     // days; after that it (and its files) is purged for good. Everything else is erased at once.
     'retention_days' => 30,
-    // Rounding of the internal approximate point of a memory (degrees, ~555 m). Never returned by the API.
-    'location_grid' => (float) env('MEMORY_LOCATION_GRID', 0.005),
+    // A memory is kept exactly where its owner put the pin (5 decimals, ~1 m: the column precision). Who may see it is
+    // decided by its visibility (private / followers / public / area), not by blurring the point.
+    'location_grid' => (float) env('MEMORY_LOCATION_GRID', 0.00001),
     'create_per_hour' => 30,
 ];

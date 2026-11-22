@@ -18,6 +18,7 @@ import '../data/app_store.dart';
 import '../widgets/account_action.dart';
 import '../widgets/auth_ui.dart';
 import '../widgets/common.dart';
+import '../widgets/media_crop.dart';
 import '../widgets/location_ui.dart';
 import '../core/app_locale.dart';
 
@@ -1462,6 +1463,11 @@ class _CompleteProfilePageState extends State<CompleteProfilePage>
       toast(context, 'Adını ve geçerli bir kullanıcı adını gir.');
       return;
     }
+    // People are shown by their real name everywhere ("İsim Soyisim"): a first name alone is not enough.
+    if (name.text.trim().split(RegExp(r'\s+')).length < 2) {
+      toast(context, 'Adını ve soyadını birlikte yaz. Örnek: Elif Bozkurt');
+      return;
+    }
     final store = StoreScope.of(context);
     if (store.connected) {
       runAccountAction(() async {
@@ -1526,7 +1532,10 @@ class _CompleteProfilePageState extends State<CompleteProfilePage>
           imageQuality: 88,
         );
         if (image == null || !mounted) return;
-        await store.uploadAvatar(image);
+        // The profile picture is a square shown in a circle: move and zoom the photo and keep the part you want.
+        final cropped = await cropAvatar(context, image);
+        if (cropped == null || !mounted) return;
+        await store.uploadAvatar(cropped);
         if (mounted) setState(() => photo = store.me.photo);
       } on PlatformException {
         throw const ApiFailure('Galeriden fotoğraf seçilemedi.');

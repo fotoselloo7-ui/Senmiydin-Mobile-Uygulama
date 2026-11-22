@@ -91,13 +91,17 @@ class CropGeometry {
   );
 
   /// Output size of a crop of [ratio]: [kCropOutputEdge] on the long edge, never larger than the source itself.
-  static Size outputSize(CropRatio ratio, Rect source) {
-    final baseWidth = ratio.value < 1
-        ? kCropOutputEdge * ratio.value
-        : kCropOutputEdge.toDouble();
-    final baseHeight = ratio.value < 1
-        ? kCropOutputEdge.toDouble()
-        : kCropOutputEdge / ratio.value;
+  static Size outputSize(CropRatio ratio, Rect source) =>
+      outputSizeFor(ratio.value, source);
+
+  /// The same for any shape (width / height), e.g. the square of a profile picture.
+  static Size outputSizeFor(
+    double value,
+    Rect source, {
+    int edge = kCropOutputEdge,
+  }) {
+    final baseWidth = value < 1 ? edge * value : edge.toDouble();
+    final baseHeight = value < 1 ? edge.toDouble() : edge / value;
     final shrink = math.min(1.0, source.width / baseWidth);
     return Size(
       math.max(1, (baseWidth * shrink).roundToDouble()),
@@ -108,11 +112,7 @@ class CropGeometry {
 
 /// Cuts [source] out of [image] and encodes it. PNG is the only encoder `dart:ui` has; the server re-encodes every
 /// upload to a metadata-free JPEG anyway. The output is scaled down until it fits well inside the 5 MB upload limit.
-Future<Uint8List> renderCrop(
-  ui.Image image,
-  Rect source,
-  Size output,
-) async {
+Future<Uint8List> renderCrop(ui.Image image, Rect source, Size output) async {
   var size = output;
   for (var attempt = 0; attempt < 4; attempt++) {
     final recorder = ui.PictureRecorder();
@@ -163,6 +163,7 @@ Future<XFile?> cropPhoto(
   CropRatio? initial,
   int position = 1,
   int total = 1,
+  bool square = false,
 }) => Navigator.of(context, rootNavigator: true).push<XFile>(
   MaterialPageRoute(
     fullscreenDialog: true,
@@ -171,9 +172,15 @@ Future<XFile?> cropPhoto(
       initial: initial,
       position: position,
       total: total,
+      square: square,
     ),
   ),
 );
+
+/// The profile picture: always a square (shown in a circle). Move and zoom the photo under a circular guide and keep
+/// the part you want. Returns null when cancelled.
+Future<XFile?> cropAvatar(BuildContext context, XFile file) =>
+    cropPhoto(context, file, square: true);
 
 /// [cropPhoto] for several photos in a row ("Fotoğraf 2/3"); a cancelled one is left out.
 Future<List<XFile>> cropPhotos(
@@ -203,10 +210,14 @@ class MediaCropPage extends StatefulWidget {
     this.initial,
     this.position = 1,
     this.total = 1,
+    this.square = false,
   });
   final XFile file;
   final CropRatio? initial;
   final int position, total;
+
+  /// A fixed square with a circular guide (profile picture): no ratio choice.
+  final bool square;
 
   @override
   State<MediaCropPage> createState() => _MediaCropPageState();
@@ -262,6 +273,8 @@ class _MediaCropPageState extends State<MediaCropPage> {
     }
   }
 
+  double get shape => widget.square ? 1.0 : ratio.value;
+
   CropGeometry geometry(Size frame) => CropGeometry(
     imageWidth: image!.width.toDouble(),
     imageHeight: image!.height.toDouble(),
@@ -273,10 +286,10 @@ class _MediaCropPageState extends State<MediaCropPage> {
     final maxWidth = math.max(1.0, box.maxWidth - 32);
     final maxHeight = math.max(1.0, box.maxHeight - 24);
     var width = maxWidth;
-    var height = width / ratio.value;
+    var height = width / shape;
     if (height > maxHeight) {
       height = maxHeight;
-      width = height * ratio.value;
+      width = height * shape;
     }
     return Size(width, height);
   }
@@ -284,7 +297,10 @@ class _MediaCropPageState extends State<MediaCropPage> {
   void _fit(Size frame) {
     final g = geometry(frame);
     scale = g.clampScale(scale);
-    center = g.clampCenter(scale, center == Offset.zero ? g.initialCenter : center);
+    center = g.clampCenter(
+      scale,
+      center == Offset.zero ? g.initialCenter : center,
+    );
   }
 
   void _select(CropRatio next) {
@@ -308,7 +324,9 @@ class _MediaCropPageState extends State<MediaCropPage> {
       final bytes = await renderCrop(
         picture,
         source,
-        CropGeometry.outputSize(ratio, source),
+        widget.square
+            ? CropGeometry.outputSizeFor(1, source, edge: 1024)
+            : CropGeometry.outputSize(ratio, source),
       );
       final directory = await _scratchDirectory();
       final file = File('${directory.path}/crop_${const Uuid().v4()}.png');
@@ -405,6 +423,7 @@ class _MediaCropPageState extends State<MediaCropPage> {
                                   painter: _CropPainter(
                                     image!,
                                     g.source(scale, center),
+                                    circle: widget.square,
                                   ),
                                 ),
                               ),
@@ -415,6 +434,7 @@ class _MediaCropPageState extends State<MediaCropPage> {
                     ),
             ),
             _Controls(
+              square: widget.square,
               ratio: ratio,
               onRatio: _select,
               busy: saving || image == null,
@@ -428,9 +448,12 @@ class _MediaCropPageState extends State<MediaCropPage> {
 }
 
 class _CropPainter extends CustomPainter {
-  const _CropPainter(this.image, this.source);
+  const _CropPainter(this.image, this.source, {this.circle = false});
   final ui.Image image;
   final Rect source;
+
+  /// A profile picture: a circular guide dims everything outside the circle.
+  final bool circle;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -440,6 +463,25 @@ class _CropPainter extends CustomPainter {
       Offset.zero & size,
       Paint()..filterQuality = FilterQuality.medium,
     );
+    if (circle) {
+      final dim = Path.combine(
+        PathOperation.difference,
+        Path()..addRect(Offset.zero & size),
+        Path()..addOval(Offset.zero & size),
+      );
+      canvas.drawPath(
+        dim,
+        Paint()..color = Colors.black.withValues(alpha: .55),
+      );
+      canvas.drawOval(
+        Offset.zero & size,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2
+          ..color = Colors.white.withValues(alpha: .9),
+      );
+      return;
+    }
     // Rule-of-thirds guide.
     final guide = Paint()
       ..color = Colors.white.withValues(alpha: .35)
@@ -467,16 +509,18 @@ class _CropPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_CropPainter old) =>
-      old.image != image || old.source != source;
+      old.image != image || old.source != source || old.circle != circle;
 }
 
 class _Controls extends StatelessWidget {
   const _Controls({
+    required this.square,
     required this.ratio,
     required this.onRatio,
     required this.busy,
     required this.onConfirm,
   });
+  final bool square;
   final CropRatio ratio;
   final ValueChanged<CropRatio> onRatio;
   final bool busy;
@@ -493,20 +537,32 @@ class _Controls extends StatelessWidget {
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          children: [
-            for (final (index, item) in CropRatio.values.indexed) ...[
-              if (index > 0) const SizedBox(width: Space.sm),
-              Expanded(
-                child: _RatioTile(
-                  item,
-                  selected: item == ratio,
-                  onTap: () => onRatio(item),
+        if (square)
+          const Text(
+            'Fotoğrafı sürükle ve yakınlaştır; daire içinde kalan bölüm profil resmin olur.',
+            key: Key('crop-avatar-hint'),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+              height: 1.35,
+            ),
+          )
+        else
+          Row(
+            children: [
+              for (final (index, item) in CropRatio.values.indexed) ...[
+                if (index > 0) const SizedBox(width: Space.sm),
+                Expanded(
+                  child: _RatioTile(
+                    item,
+                    selected: item == ratio,
+                    onTap: () => onRatio(item),
+                  ),
                 ),
-              ),
+              ],
             ],
-          ],
-        ),
+          ),
         const SizedBox(height: Space.md),
         SizedBox(
           width: double.infinity,

@@ -25,19 +25,19 @@ class DemoDataSeeder extends Seeder
 
     public const PEOPLE = [
         ['demo', 'Demo Kullanıcı', 36.544, 32.000, 'Şehirdeki küçük ayrıntıları ve sahil yürüyüşlerini seviyorum.'],
-        ['ahmet', 'Ahmet D.', 36.544, 32.004, 'Sahilde bu akşam hava çok güzeldi.'],
-        ['elif', 'Elif B.', 36.548, 32.005, 'Sabah kahvemi sahile karşı içtim.'],
-        ['deniz', 'Deniz A.', 36.550, 32.012, 'Bisikletle şehir turu yaptım.'],
-        ['zeynep', 'Zeynep D.', 36.563, 32.023, 'Bugün yeni bir yürüyüş rotası buldum.'],
-        ['kaan', 'Kaan Y.', 36.555, 32.047, 'Deniz kenarında bir kitap bitirdim.'],
-        ['selin', 'Selin K.', 36.562, 32.065, 'Akşam ışığı görülmeye değerdi.'],
-        ['mert', 'Mert A.', 36.580, 32.080, 'Şehirden uzaklaşınca sessizlik iyi geldi.'],
-        ['ece', 'Ece Y.', 36.594, 32.092, 'Yeni bir kahve molası noktası keşfettim.'],
-        ['burak', 'Burak S.', 36.578, 32.115, 'Güneş batarken yola çıktım.'],
-        ['ceren', 'Ceren A.', 36.615, 32.120, 'Bugün şehir manzarasını fotoğrafladım.'],
-        ['duru', 'Duru Ç.', 36.620, 32.145, 'Hafta sonu gezisi kısa ama güzeldi.'],
-        ['arda', 'Arda E.', 36.888, 30.707, 'Antalya’da sahil yürüyüşü.'],
-        ['elifdemo', 'Elif B.', 36.548, 32.006, 'Sahile yakın bir kahve molası.'],
+        ['ahmet', 'Ahmet Demir', 36.544, 32.004, 'Sahilde bu akşam hava çok güzeldi.'],
+        ['elif', 'Elif Bozkurt', 36.548, 32.005, 'Sabah kahvemi sahile karşı içtim.'],
+        ['deniz', 'Deniz Akın', 36.550, 32.012, 'Bisikletle şehir turu yaptım.'],
+        ['zeynep', 'Zeynep Doğan', 36.563, 32.023, 'Bugün yeni bir yürüyüş rotası buldum.'],
+        ['kaan', 'Kaan Yıldız', 36.555, 32.047, 'Deniz kenarında bir kitap bitirdim.'],
+        ['selin', 'Selin Kaya', 36.562, 32.065, 'Akşam ışığı görülmeye değerdi.'],
+        ['mert', 'Mert Arslan', 36.580, 32.080, 'Şehirden uzaklaşınca sessizlik iyi geldi.'],
+        ['ece', 'Ece Yılmaz', 36.594, 32.092, 'Yeni bir kahve molası noktası keşfettim.'],
+        ['burak', 'Burak Şahin', 36.578, 32.115, 'Güneş batarken yola çıktım.'],
+        ['ceren', 'Ceren Aydın', 36.615, 32.120, 'Bugün şehir manzarasını fotoğrafladım.'],
+        ['duru', 'Duru Çelik', 36.620, 32.145, 'Hafta sonu gezisi kısa ama güzeldi.'],
+        ['arda', 'Arda Eren', 36.888, 30.707, 'Antalya’da sahil yürüyüşü.'],
+        ['elifdemo', 'Elif Bozkurt', 36.548, 32.006, 'Sahile yakın bir kahve molası.'],
     ];
 
     public static function username(string $handle): string

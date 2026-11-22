@@ -10,6 +10,7 @@ import '../data/account_api.dart';
 import '../data/models.dart';
 import '../data/mock_data.dart';
 import '../widgets/common.dart';
+import '../widgets/memories_map.dart';
 import '../widgets/memory_widgets.dart';
 import '../widgets/social.dart';
 import '../widgets/social_page.dart';
@@ -100,6 +101,21 @@ class ProfileContent extends StatefulWidget {
 class _ProfileContentState extends State<ProfileContent> {
   String tab = 'Paylaşımlar';
   int refreshVersion = 0;
+  bool tabRequested = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (tabRequested) return;
+    tabRequested = true;
+    final store = StoreScope.of(context);
+    final requested = store.profileTabRequest;
+    if (requested != null) {
+      tab = requested;
+      store.profileTabRequest = null;
+    }
+  }
+
   Object? profileKey;
   Future<Person>? profileRequest;
 
@@ -191,6 +207,46 @@ class _ProfileContentState extends State<ProfileContent> {
     );
   }
 
+  Widget _tabBar(AppStore store, bool own, Person p) {
+    return Stack(
+      alignment: Alignment.bottomCenter,
+      children: [
+        Container(height: 1, color: AppColors.line),
+        Row(
+          children: [
+            _buildProfileTab(
+              'Paylaşımlar',
+              Icons.view_agenda_outlined,
+              Icons.view_agenda_rounded,
+            ),
+            _buildProfileTab(
+              'Karşılaşmalar',
+              Icons.auto_awesome_outlined,
+              Icons.auto_awesome_rounded,
+            ),
+            _buildProfileTab(
+              'Medya',
+              Icons.photo_library_outlined,
+              Icons.photo_library_rounded,
+            ),
+            if (store.connected && (own || p.remote))
+              _buildProfileTab(
+                'Anılar',
+                Icons.auto_stories_outlined,
+                Icons.auto_stories_rounded,
+              ),
+            if (own)
+              _buildProfileTab(
+                'Kaydedilenler',
+                Icons.bookmark_outline_rounded,
+                Icons.bookmark_rounded,
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final store = StoreScope.of(context);
@@ -270,6 +326,79 @@ class _ProfileContentState extends State<ProfileContent> {
       ),
       child: SizedBox(width: double.infinity, height: 135),
     );
+    if (tab == 'Anılar' && store.connected && !(isBlocked && !own)) {
+      return Column(
+        key: const Key('profile-memories-map'),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Row(
+              children: [
+                Avatar(p, size: 44),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        p.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.navy,
+                          height: 1.2,
+                        ),
+                      ),
+                      Text(
+                        '@${p.handle}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (!own && p.remote) ...[
+                  TextButton.icon(
+                    onPressed: () =>
+                        socialAction(context, () => store.toggleFollow(p)),
+                    icon: Icon(
+                      following
+                          ? Icons.check_rounded
+                          : Icons.person_add_rounded,
+                      size: 18,
+                    ),
+                    label: Text(following ? 'Takip Ediliyor' : 'Takip Et'),
+                  ),
+                  IconButton(
+                    tooltip: tr('Mesaj'),
+                    onPressed: () => openPage(context, '/chat', p.id),
+                    icon: const Icon(
+                      Icons.chat_bubble_outline_rounded,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          _tabBar(store, own, p),
+          Expanded(
+            child: MemoriesMap(
+              username: own ? store.account?.username ?? p.handle : p.handle,
+              own: own,
+              refreshVersion: refreshVersion,
+            ),
+          ),
+        ],
+      );
+    }
     return RefreshIndicator(
       onRefresh: () => socialAction(context, () async {
         if (p.remote) {
@@ -555,43 +684,7 @@ class _ProfileContentState extends State<ProfileContent> {
               ),
             const SizedBox(height: 16),
           ],
-          Stack(
-            alignment: Alignment.bottomCenter,
-            children: [
-              Container(height: 1, color: AppColors.line),
-              Row(
-                children: [
-                  _buildProfileTab(
-                    'Paylaşımlar',
-                    Icons.view_agenda_outlined,
-                    Icons.view_agenda_rounded,
-                  ),
-                  _buildProfileTab(
-                    'Karşılaşmalar',
-                    Icons.auto_awesome_outlined,
-                    Icons.auto_awesome_rounded,
-                  ),
-                  _buildProfileTab(
-                    'Medya',
-                    Icons.photo_library_outlined,
-                    Icons.photo_library_rounded,
-                  ),
-                  if (store.connected && (own || p.remote))
-                    _buildProfileTab(
-                      'Anılar',
-                      Icons.auto_stories_outlined,
-                      Icons.auto_stories_rounded,
-                    ),
-                  if (own)
-                    _buildProfileTab(
-                      'Kaydedilenler',
-                      Icons.bookmark_outline_rounded,
-                      Icons.bookmark_rounded,
-                    ),
-                ],
-              ),
-            ],
-          ),
+          _tabBar(store, own, p),
           const SizedBox(height: 16),
           if (isBlocked && !own)
             const EmptyState(

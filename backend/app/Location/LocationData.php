@@ -23,7 +23,8 @@ final class LocationData
             $resolved = $this->cities->resolve($latitude, $longitude);
             $city = $resolved && DB::table('cities')->where('id', $resolved)->where('is_active', true)->exists()
                 ? $resolved : null;
-            if (!$data['history_only'] && ($city !== null || $user->active_city_source !== 'manual')) {
+            // An area the person picked by hand stays until they pick another one: the device never takes it over.
+            if (!$data['history_only'] && $user->active_city_source !== 'manual') {
                 $values = ['active_city_id' => $city, 'active_city_source' => $city ? 'device' : null];
                 $user->forceFill($values)->save();
                 $viewer->forceFill($values)->unsetRelation('activeCity');

@@ -2,6 +2,7 @@ import '../core/relative_time.dart';
 import 'post_context.dart';
 
 import 'package:image_picker/image_picker.dart';
+import 'package:latlong2/latlong.dart' show LatLng;
 
 import 'account_api.dart';
 import 'models.dart';
@@ -49,8 +50,8 @@ class SocialService {
     );
   }
 
-  Future<void> delete(String path) async {
-    await client.send('DELETE', path, authenticated: true);
+  Future<void> delete(String path, {Map<String, dynamic>? query}) async {
+    await client.send('DELETE', path, authenticated: true, query: query);
   }
 }
 
@@ -117,6 +118,11 @@ Post socialPost(Map<String, dynamic> json, String authorId) => Post(
   locationLabel:
       json['location_label'] as String? ??
       (json['place'] as Map<String, dynamic>?)?['label'] as String?,
+  mapPoint: switch (json['map_point']) {
+    {'latitude': final num latitude, 'longitude': final num longitude} =>
+      LatLng(latitude.toDouble(), longitude.toDouble()),
+    _ => null,
+  },
   encounterConfirmed: json['encounter_confirmed'] == true,
   encounterRequestId: json['encounter_request_id']?.toString(),
   encounterRequestStatus: json['encounter_request_status'] as String?,

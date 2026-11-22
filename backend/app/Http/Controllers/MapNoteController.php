@@ -169,7 +169,7 @@ class MapNoteController extends Controller
                 // The raw selection is snapped server-side and is never stored or returned.
                 'approx_latitude' => Geo::grid((float) $data['latitude'], $grid),
                 'approx_longitude' => Geo::grid((float) $data['longitude'], $grid),
-                'place_label' => $city.' · Yaklaşık bölge', 'content_hash' => ContentGuard::fingerprint($body),
+                'place_label' => $city, 'content_hash' => ContentGuard::fingerprint($body),
                 'request_id' => $data['request_id'] ?? null, 'image_path' => $imagePath,
                 'occurred_at' => now(),
                 'expires_at' => now()->addDays((int) config('map_notes.ttl_days')),

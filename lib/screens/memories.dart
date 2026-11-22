@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart' hide Text;
-import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:uuid/uuid.dart';
 
 import '../core/app_locale.dart';
@@ -13,7 +13,7 @@ import '../data/app_store.dart';
 import '../data/memories_api.dart';
 import '../widgets/account_action.dart';
 import '../widgets/common.dart';
-import '../widgets/media_crop.dart';
+import '../widgets/memory_photo_pick.dart';
 import '../widgets/memory_widgets.dart';
 import '../widgets/social.dart';
 import '../widgets/translated_text.dart';
@@ -124,75 +124,118 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
   Widget _content(BuildContext context, MemoryItem memory) {
     final store = StoreScope.of(context);
     final visibility = memory.visibility;
+    final area = memory.area;
     return RefreshIndicator(
       onRefresh: load,
       child: ListView(
         padding: Space.page,
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
+          // The photos lead: a memory is first of all a picture.
+          if (memory.media.isNotEmpty) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: ImageCarousel(
+                [for (final photo in memory.media) photo.url],
+                key: ValueKey('memory-gallery-${memory.id}'),
+                maxHeight: 340,
+              ),
+            ),
+            const SizedBox(height: Space.md),
+          ],
           Container(
             key: const Key('memory-detail-header'),
-            padding: const EdgeInsets.all(Space.lg),
-            decoration: AppShape.encounterCard(),
+            padding: const EdgeInsets.fromLTRB(
+              Space.lg,
+              Space.lg,
+              Space.lg,
+              Space.md,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: const Color(0xFFE6ECF5)),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.navy.withValues(alpha: .05),
+                  blurRadius: 18,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  memoryDate(memory.occurredAt),
-                  key: const Key('memory-detail-date'),
-                  style: AppTypography.pageTitle,
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.auto_stories_rounded,
+                      size: 18,
+                      color: AppColors.brandPurple,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        memoryDate(memory.occurredAt),
+                        key: const Key('memory-detail-date'),
+                        style: AppTypography.pageTitle.copyWith(fontSize: 21),
+                      ),
+                    ),
+                  ],
                 ),
-                if (memory.area.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.location_on_outlined,
-                        size: 17,
-                        color: AppColors.brandPurple,
+                const SizedBox(height: Space.sm),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (area.isNotEmpty)
+                      MemoryPill(
+                        area,
+                        Icons.location_on_rounded,
+                        key: const Key('memory-detail-place'),
+                        color: AppColors.primary,
+                        background: AppColors.surfaceBlue,
                       ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          memory.area,
-                          key: const Key('memory-detail-place'),
-                          style: AppTypography.secondaryBody,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                if (memory.mine && visibility != null) ...[
-                  const SizedBox(height: Space.sm),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: [
+                    if (memory.mine && visibility != null)
                       MemoryPill(
                         visibility.label,
                         memoryVisibilityIcon(visibility),
                         key: const Key('memory-detail-visibility'),
                       ),
-                      if (memory.hidden)
-                        const MemoryPill(
-                          'Gizli',
-                          Icons.visibility_off_outlined,
-                          key: Key('memory-detail-hidden'),
-                          color: AppColors.textSecondary,
-                          background: Colors.white,
-                        ),
-                    ],
+                    if (memory.mine && memory.hidden)
+                      const MemoryPill(
+                        'Gizli',
+                        Icons.visibility_off_outlined,
+                        key: Key('memory-detail-hidden'),
+                        color: AppColors.textSecondary,
+                        background: Color(0xFFF1F4F9),
+                      ),
+                  ],
+                ),
+                if (memory.body.isNotEmpty) ...[
+                  const SizedBox(height: Space.md),
+                  Text(
+                    memory.body,
+                    key: const Key('memory-detail-body'),
+                    style: AppTypography.body.copyWith(
+                      fontSize: 16.5,
+                      height: 1.55,
+                    ),
                   ),
                 ],
                 if (!memory.mine && memory.author != null) ...[
                   const SizedBox(height: Space.md),
+                  const Divider(height: 1, color: Color(0xFFE6ECF5)),
+                  const SizedBox(height: Space.sm),
                   InkWell(
+                    borderRadius: BorderRadius.circular(14),
                     onTap: () =>
                         openPage(context, '/profile', memory.author!.id),
                     child: Row(
                       children: [
-                        Avatar(memory.author, size: 32),
-                        const SizedBox(width: 8),
+                        Avatar(memory.author, size: 36),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             memory.author!.name,
@@ -201,29 +244,41 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
                             style: AppTypography.cardTitle,
                           ),
                         ),
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          color: AppColors.textMuted,
+                        ),
                       ],
                     ),
+                  ),
+                ],
+                // The memory's own spot on the app's map; only when it has a place at all.
+                if (memory.mapArea case final spot?) ...[
+                  const SizedBox(height: Space.sm),
+                  const Divider(height: 1, color: Color(0xFFE6ECF5)),
+                  TextButton.icon(
+                    key: const Key('memory-see-on-map'),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 2,
+                        vertical: 10,
+                      ),
+                      minimumSize: const Size(0, 40),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      alignment: Alignment.centerLeft,
+                    ),
+                    onPressed: () {
+                      store.mapFocus = spot.center;
+                      store.mapFocusRadius = spot.radiusMeters;
+                      openPage(context, '/map');
+                    },
+                    icon: const Icon(Icons.map_outlined, size: 18),
+                    label: const Text('Haritada Gör'),
                   ),
                 ],
               ],
             ),
           ),
-          if (memory.body.isNotEmpty) ...[
-            const SizedBox(height: Space.lg),
-            Text(
-              memory.body,
-              key: const Key('memory-detail-body'),
-              style: AppTypography.body.copyWith(fontSize: 16.5, height: 1.55),
-            ),
-          ],
-          if (memory.media.isNotEmpty) ...[
-            const SizedBox(height: Space.lg),
-            // The shared gallery: every photo whole, in the shape it was cut to, with the 1/5 counter and the full viewer.
-            ImageCarousel(
-              [for (final photo in memory.media) photo.url],
-              key: ValueKey('memory-gallery-${memory.id}'),
-            ),
-          ],
           if (memory.mine && memory.sourceType != null) ...[
             const SizedBox(height: Space.md),
             Row(
@@ -246,63 +301,130 @@ class _MemoryDetailPageState extends State<MemoryDetailPage> {
             ),
           ],
           if (memory.mine) ...[
-            const SizedBox(height: Space.xl),
-            PrimaryButton(
-              'Düzenle',
-              icon: Icons.edit_outlined,
-              key: const Key('memory-edit'),
-              onPressed: () =>
-                  runMemoryAction(context, memory, 'edit', onChanged: load),
-            ),
-            const SizedBox(height: Space.sm),
-            SecondaryButton(
-              memory.hidden ? 'Tekrar Göster' : 'Gizle',
-              icon: memory.hidden
-                  ? Icons.visibility_outlined
-                  : Icons.visibility_off_outlined,
-              key: const Key('memory-hide'),
-              onPressed: () => runMemoryAction(
-                context,
-                memory,
-                memory.hidden ? 'show' : 'hide',
-                onChanged: load,
-              ),
-            ),
-            const SizedBox(height: Space.sm),
-            SecondaryButton(
-              'Görünürlüğü Değiştir',
-              icon: Icons.lock_outline_rounded,
-              key: const Key('memory-change-visibility'),
-              onPressed: () => runMemoryAction(
-                context,
-                memory,
-                'visibility',
-                onChanged: load,
-              ),
-            ),
-            const SizedBox(height: Space.sm),
-            DestructiveButton(
-              'Sil',
-              key: const Key('memory-delete'),
-              onPressed: () => runMemoryAction(
-                context,
-                memory,
-                'delete',
-                detail: true,
-              ),
+            const SizedBox(height: Space.lg),
+            // Three quiet tiles side by side. Hide / show lives in the ⋮ menu: it is a rare action, not a button.
+            Row(
+              children: [
+                Expanded(
+                  child: _MemoryTile(
+                    'Düzenle',
+                    Icons.edit_outlined,
+                    key: const Key('memory-edit'),
+                    color: AppColors.primary,
+                    background: AppColors.surfaceBlue,
+                    onTap: () => runMemoryAction(
+                      context,
+                      memory,
+                      'edit',
+                      onChanged: load,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _MemoryTile(
+                    'Görünürlük',
+                    Icons.lock_outline_rounded,
+                    key: const Key('memory-change-visibility'),
+                    color: AppColors.brandPurple,
+                    background: AppColors.surfaceLilac,
+                    onTap: () => runMemoryAction(
+                      context,
+                      memory,
+                      'visibility',
+                      onChanged: load,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _MemoryTile(
+                    'Sil',
+                    Icons.delete_outline_rounded,
+                    key: const Key('memory-delete'),
+                    color: const Color(0xFFD92D20),
+                    background: const Color(0xFFFEF0EE),
+                    onTap: () => runMemoryAction(
+                      context,
+                      memory,
+                      'delete',
+                      detail: true,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ] else if (store.connected) ...[
-            const SizedBox(height: Space.xl),
-            SecondaryButton(
-              'Şikâyet Et',
-              icon: Icons.flag_outlined,
-              onPressed: () => runMemoryAction(context, memory, 'report'),
+            const SizedBox(height: Space.lg),
+            Align(
+              child: TextButton.icon(
+                onPressed: () => runMemoryAction(context, memory, 'report'),
+                icon: const Icon(Icons.flag_outlined, size: 18),
+                label: const Text('Şikâyet Et'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.textSecondary,
+                ),
+              ),
             ),
           ],
+          const SizedBox(height: Space.lg),
         ],
       ),
     );
   }
+}
+
+/// One compact action of the memory page: a soft tinted tile, icon over label.
+class _MemoryTile extends StatelessWidget {
+  const _MemoryTile(
+    this.label,
+    this.icon, {
+    super.key,
+    required this.color,
+    required this.background,
+    required this.onTap,
+  });
+  final String label;
+  final IconData icon;
+  final Color color, background;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: tr(label),
+    excludeSemantics: true,
+    child: Material(
+      color: background,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 22, color: color),
+              const SizedBox(height: 5),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 /// New memory, memory made from a map note / post (prefilled, editable before saving) and the edit form. Saving a
@@ -324,6 +446,9 @@ class _MemoryFormPageState extends State<MemoryFormPage>
   late DateTime occurredAt;
   late MemoryVisibility visibility;
   ChosenPlace? place;
+  // A spot picked on the map (null: the place above is used). Only its approximate region is ever stored.
+  LatLng? point;
+  String? pointLabel;
   String? areaLabel;
   bool placeChanged = false, started = false;
   List<MemorySlot> slots = [];
@@ -355,6 +480,13 @@ class _MemoryFormPageState extends State<MemoryFormPage>
           ? null
           : ChosenPlace(source.city!, place: source.place);
       areaLabel = source.placeLabel;
+      if (widget.args.point != null) {
+        point = widget.args.point;
+        pointLabel = widget.args.pointLabel;
+        areaLabel = _spotName(pointLabel);
+        place = null;
+        placeChanged = true;
+      }
       slots = [
         for (final photo in source.photos.take(maxPhotos)) SourceSlot(photo),
       ];
@@ -365,11 +497,18 @@ class _MemoryFormPageState extends State<MemoryFormPage>
           ? null
           : ChosenPlace(account.city, place: account.place);
       areaLabel = place?.label;
+      if (widget.args.point != null) {
+        point = widget.args.point;
+        pointLabel = widget.args.pointLabel;
+        areaLabel = _spotName(pointLabel);
+        place = null;
+        slots = [for (final file in widget.args.photos) FreshSlot(file)];
+      }
       final preferred =
           MemoryVisibility.parse(account?.memoryDefaultVisibility) ??
           MemoryVisibility.private;
       // "Bu Bölgedekiler" needs an area; without one a new memory starts private.
-      visibility = preferred == MemoryVisibility.area && place == null
+      visibility = preferred == MemoryVisibility.area && !hasPlace
           ? MemoryVisibility.private
           : preferred;
     }
@@ -380,6 +519,11 @@ class _MemoryFormPageState extends State<MemoryFormPage>
     text.dispose();
     super.dispose();
   }
+
+  bool get hasPlace => place != null || point != null;
+
+  String _spotName(String? name) =>
+      (name ?? '').isEmpty ? tr('Haritadan seçilen nokta') : name!;
 
   Future<void> pickDate() async {
     final now = DateTime.now();
@@ -402,15 +546,22 @@ class _MemoryFormPageState extends State<MemoryFormPage>
   }
 
   Future<void> pickPlace() async {
-    final chosen = await choosePlace(
+    final start = point ?? editing?.mapArea?.center;
+    final picked = await openPage<MemoryPickResult>(
       context,
-      current: areaLabel,
-      title: 'Anı nerede yaşandı?',
+      '/memory-pick',
+      MemoryPickArgs(
+        center: start,
+        zoom: start == null ? null : (point == null ? 14 : 15),
+        photoStep: false,
+      ),
     );
-    if (chosen == null || !mounted) return;
+    if (picked == null || !mounted) return;
     setState(() {
-      place = chosen;
-      areaLabel = chosen.label;
+      point = picked.point;
+      pointLabel = picked.label;
+      place = null;
+      areaLabel = _spotName(picked.label);
       placeChanged = true;
     });
   }
@@ -421,61 +572,22 @@ class _MemoryFormPageState extends State<MemoryFormPage>
       toast(context, 'En fazla 5 fotoğraf ekleyebilirsin.');
       return;
     }
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheet) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              key: const Key('memory-photo-gallery'),
-              leading: const Icon(Icons.image_outlined),
-              title: Text(tr('Galeriden Seç')),
-              onTap: () => Navigator.pop(sheet, ImageSource.gallery),
-            ),
-            ListTile(
-              key: const Key('memory-photo-camera'),
-              leading: const Icon(Icons.camera_alt_outlined),
-              title: Text(tr('Fotoğraf Çek')),
-              onTap: () => Navigator.pop(sheet, ImageSource.camera),
-            ),
-          ],
-        ),
-      ),
+    final choice = await showMemoryPhotoSheet(context);
+    if (choice == null || !mounted) return;
+    // Every photo goes through the shared crop step (9:16 / 4:5 / 16:9) before it can be uploaded.
+    final cropped = await pickMemoryPhotos(
+      context,
+      choice,
+      room: room,
+      picker: picker,
     );
-    if (source == null || !mounted) return;
-    try {
-      final List<XFile> picked;
-      if (source == ImageSource.camera || room == 1) {
-        final one = await picker.pickImage(
-          source: source,
-          maxWidth: 2048,
-          maxHeight: 2048,
-          imageQuality: 88,
-        );
-        picked = one == null ? [] : [one];
-      } else {
-        picked = await picker.pickMultiImage(
-          maxWidth: 2048,
-          maxHeight: 2048,
-          imageQuality: 88,
-          limit: room,
-        );
+    if (!mounted) return;
+    setState(() {
+      for (final file in cropped) {
+        if (slots.length < maxPhotos) slots.add(FreshSlot(file));
       }
-      if (picked.isEmpty || !mounted) return;
-      // Every photo goes through the shared crop step (9:16 / 4:5 / 16:9) before it can be uploaded.
-      final cropped = await cropPhotos(context, picked.take(room).toList());
-      if (!mounted) return;
-      setState(() {
-        for (final file in cropped) {
-          if (slots.length < maxPhotos) slots.add(FreshSlot(file));
-        }
-        error = null;
-      });
-    } on PlatformException {
-      if (mounted) toast(context, 'Fotoğraf seçilemedi. Tekrar dene.');
-    }
+      error = null;
+    });
   }
 
   Future<void> save() async {
@@ -485,7 +597,7 @@ class _MemoryFormPageState extends State<MemoryFormPage>
       setState(() => error = 'Anı için bir metin yaz veya fotoğraf ekle.');
       return;
     }
-    if (visibility == MemoryVisibility.area && place == null) {
+    if (visibility == MemoryVisibility.area && !hasPlace) {
       setState(() => error = 'Bu Bölgedekiler için bir yer seç.');
       return;
     }
@@ -503,8 +615,10 @@ class _MemoryFormPageState extends State<MemoryFormPage>
                 occurredAt: occurredAt,
                 visibility: visibility,
                 slots: slots,
-                placeId: sendPlace ? chosen?.placeId : null,
-                cityId: sendPlace ? chosen?.city.id : null,
+                placeId: sendPlace && point == null ? chosen?.placeId : null,
+                cityId: sendPlace && point == null ? chosen?.city.id : null,
+                point: sendPlace ? point : null,
+                pointLabel: sendPlace ? pointLabel : null,
               )
             : await api.create(
                 body: body,
@@ -512,8 +626,10 @@ class _MemoryFormPageState extends State<MemoryFormPage>
                 visibility: visibility,
                 slots: slots,
                 requestId: requestId,
-                placeId: chosen?.placeId,
-                cityId: chosen?.city.id,
+                placeId: point == null ? chosen?.placeId : null,
+                cityId: point == null ? chosen?.city.id : null,
+                point: point,
+                pointLabel: pointLabel,
                 sourceType: prefill?.sourceType,
                 sourceId: widget.args.sourceId,
               );
@@ -580,12 +696,69 @@ class _MemoryFormPageState extends State<MemoryFormPage>
                 ),
               ),
             ),
+            if (index == 0 && slots.length > 1)
+              Positioned(
+                left: 4,
+                bottom: 4,
+                child: Container(
+                  key: const Key('memory-cover-badge'),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.navy.withValues(alpha: .72),
+                    borderRadius: BorderRadius.circular(AppShape.pill),
+                  ),
+                  child: const Text(
+                    'Kapak',
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+            if (index > 0)
+              Positioned(
+                left: 4,
+                bottom: 4,
+                child: Tooltip(
+                  message: tr('Kapak yap'),
+                  child: InkResponse(
+                    key: Key('memory-make-cover-$index'),
+                    onTap: busy
+                        ? null
+                        : () => setState(
+                            () => slots.insert(0, slots.removeAt(index)),
+                          ),
+                    radius: 18,
+                    child: Container(
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        color: AppColors.navy.withValues(alpha: .72),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.star_rounded,
+                        size: 16,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             Positioned(
               right: 2,
               top: 2,
               child: InkResponse(
                 key: Key('memory-photo-remove-$index'),
-                onTap: busy ? null : () => setState(() => slots.removeAt(index)),
+                onTap: busy
+                    ? null
+                    : () => setState(() => slots.removeAt(index)),
                 radius: 18,
                 child: Container(
                   width: 26,
@@ -669,11 +842,9 @@ class _MemoryFormPageState extends State<MemoryFormPage>
             key: const Key('memory-date-row'),
           ),
           SettingsRow(
-            'Yaklaşık yer',
+            'Yer',
             Icons.location_on_outlined,
-            subtitle: (areaLabel ?? '').isEmpty
-                ? tr('Yer seç')
-                : areaLabel,
+            subtitle: (areaLabel ?? '').isEmpty ? tr('Yer seç') : areaLabel,
             onTap: busy ? null : pickPlace,
             key: const Key('memory-place-row'),
           ),
@@ -757,7 +928,7 @@ class _MemoryFormPageState extends State<MemoryFormPage>
             const Padding(
               padding: EdgeInsets.only(top: 4),
               child: Text(
-                'Sıralamak için bir fotoğrafı basılı tutup sürükle.',
+                'Sıralamak için basılı tutup sürükle ya da ★ ile kapak yap. İlk fotoğraf kapak olur.',
                 style: AppTypography.metadata,
               ),
             ),

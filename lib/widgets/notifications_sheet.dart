@@ -339,10 +339,11 @@ class NotificationGroupHeader extends StatelessWidget {
       header: true,
       child: Text(
         label,
-        style: AppTypography.metadata.copyWith(
+        style: const TextStyle(
           fontWeight: FontWeight.w800,
-          color: AppColors.muted,
-          letterSpacing: .2,
+          fontSize: 17,
+          color: AppColors.navy,
+          letterSpacing: -.2,
         ),
       ),
     ),
@@ -375,7 +376,9 @@ Color notificationColor(String type) => switch (type) {
   _ => AppColors.blue,
 };
 
-/// One clean list row (no per-row card box): avatar or category icon, text, optional second line, time, unread dot.
+/// One clean list row: the actor (with a small category badge), what happened in one flowing sentence with its time in
+/// muted type, an optional second line. A notification nobody has opened yet is tinted with a very light wash of the
+/// main colour (and carries a small dot); an opened one is plain white.
 class NotificationTile extends StatelessWidget {
   const NotificationTile({super.key, required this.item, required this.onTap});
   final InboxNotification item;
@@ -392,64 +395,71 @@ class NotificationTile extends StatelessWidget {
           ? text.notificationsReadSemantics
           : text.notificationsUnreadSemantics,
       child: Material(
-        color: item.read ? Colors.white : const Color(0xFFF1F5FF),
+        color: item.read
+            ? Colors.white
+            : AppColors.primary.withValues(alpha: .075),
         child: InkWell(
           onTap: onTap,
           child: Container(
-            constraints: const BoxConstraints(minHeight: 64),
+            constraints: const BoxConstraints(minHeight: 72),
             padding: const EdgeInsets.symmetric(
               horizontal: Space.lg,
-              vertical: 10,
-            ),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Color(0xFFEEF3F9))),
+              vertical: 12,
             ),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 NotificationAvatar(item.type, item.actor),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        item.text,
-                        style: TextStyle(
-                          fontSize: 14,
-                          height: 1.3,
-                          fontWeight: item.read
-                              ? FontWeight.w600
-                              : FontWeight.w800,
-                          color: AppColors.navy,
+                      Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: item.text,
+                              style: TextStyle(
+                                fontWeight: item.read
+                                    ? FontWeight.w600
+                                    : FontWeight.w800,
+                                color: AppColors.navy,
+                              ),
+                            ),
+                            const TextSpan(text: '  '),
+                            TextSpan(
+                              text: item.time,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.muted,
+                              ),
+                            ),
+                          ],
                         ),
+                        style: const TextStyle(fontSize: 15, height: 1.3),
                       ),
                       if (subtitle != null && subtitle.isNotEmpty)
                         Padding(
-                          padding: const EdgeInsets.only(top: 2),
+                          padding: const EdgeInsets.only(top: 3),
                           child: Text(
                             subtitle,
-                            style: AppTypography.metadata.copyWith(height: 1.3),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.metadata.copyWith(
+                              height: 1.3,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
-                      Padding(
-                        padding: const EdgeInsets.only(top: 3),
-                        child: Text(
-                          item.time,
-                          style: const TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.muted,
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                 ),
                 if (!item.read)
                   const Padding(
-                    padding: EdgeInsets.only(left: 8, top: 6),
-                    child: Icon(Icons.circle, size: 8, color: AppColors.blue),
+                    padding: EdgeInsets.only(left: 10),
+                    child: Icon(Icons.circle, size: 10, color: AppColors.blue),
                   ),
               ],
             ),
@@ -472,25 +482,29 @@ class NotificationAvatar extends StatelessWidget {
     final color = notificationColor(type);
     if (actor == null) {
       return CircleAvatar(
-        radius: 22,
+        radius: 26,
         backgroundColor: color.withValues(alpha: .12),
-        child: Icon(icon, color: color, size: 22),
+        child: Icon(icon, color: color, size: 26),
       );
     }
     return SizedBox(
-      width: 46,
-      height: 46,
+      width: 54,
+      height: 54,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          Avatar(actor, size: 44),
+          Avatar(actor, size: 52),
           Positioned(
-            right: -3,
-            bottom: -3,
-            child: CircleAvatar(
-              radius: 10,
-              backgroundColor: Colors.white,
-              child: Icon(icon, color: color, size: 13),
+            right: -4,
+            bottom: -4,
+            child: Container(
+              padding: const EdgeInsets.all(4.5),
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+              child: Icon(icon, color: Colors.white, size: 12),
             ),
           ),
         ],

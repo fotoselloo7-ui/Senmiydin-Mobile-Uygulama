@@ -67,7 +67,7 @@ void main() {
     await device.updatesController.close();
   });
 
-  test('Active city follows device while profile city stays unchanged; manual choice uses API', () async {
+  test('Active city follows the device until the person picks one by hand; then the manual choice sticks', () async {
     final device = fixtures.TestLocationDevice();
     final api = fixtures.mockApi((request) async {
       if (request.url.path.endsWith('/login')) {
@@ -104,8 +104,9 @@ void main() {
     await store.setCity('Ankara');
     expect(store.city, 'Ankara');
     expect(store.account!.city.name, 'Alanya');
+    // The device says Alanya, but an area picked by hand stays until the person picks another one.
     await store.location!.activateFromUi();
-    expect(store.city, 'Alanya');
+    expect(store.city, 'Ankara');
     expect(store.account!.city.name, 'Alanya');
   });
 

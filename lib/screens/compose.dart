@@ -24,6 +24,8 @@ import '../data/models.dart';
 import '../data/mock_data.dart';
 import '../widgets/common.dart';
 import '../widgets/media_crop.dart';
+import '../widgets/memory_widgets.dart';
+import '../data/map_notes_api.dart';
 import '../widgets/social.dart';
 import '../core/app_locale.dart';
 
@@ -47,6 +49,34 @@ class _ComposePageState extends State<ComposePage>
   final text = TextEditingController();
   final storyTitle = TextEditingController();
   bool get composingStory => widget.storyFor != null;
+
+  /// What the compose menu calls each post kind. The ordinary post kind (internally still "moment", shown as "Anı" in
+  /// older feed items) reads "Paylaşım" here, so "Anı" is free for the Anılar map memory. Display only: values, drafts and
+  /// the API keep the kind exactly as it was.
+  static String _kindLabel(PostKind kind) => kind == PostKind.memory
+      ? (AppLocale.english ? 'Post' : 'Paylaşım')
+      : kind.label;
+
+  static const _mapNoteOption = 'Harita Notu';
+  static const _mapMemoryOption = 'Anı';
+
+  /// "Harita Notu": the Map Note composer (pick the spot, write, leave it); on success this page is done too.
+  Future<void> _startMapNote() async {
+    final created = await openPage<MapNoteItem>(context, '/map-note-compose');
+    if (created == null || !mounted) return;
+    StoreScope.of(context).mapNotesChanged();
+    Navigator.pop(context);
+  }
+
+  /// "Anı": the same single memory flow as the profile map (pick the place → photos → form); on success the
+  /// shell opens the person's Anılar map on the new memory.
+  Future<void> _startMapMemory() async {
+    final saved = await startMemoryCreation(context);
+    if (saved == null || !mounted) return;
+    StoreScope.of(context).profileTabRequest = 'Anılar';
+    Navigator.pop(context, 'memories');
+  }
+
   bool get canPublish => composingStory
       ? storyTitle.text.trim().isNotEmpty && text.text.trim().isNotEmpty
       : text.text.trim().isNotEmpty || images.isNotEmpty;
@@ -551,6 +581,72 @@ class _ComposePageState extends State<ComposePage>
         title: composingStory
             ? 'Ortak Karşılaşma Hikâyesi'
             : 'Bir anını paylaş',
+        bottom: Row(
+          children: [
+            if (!widget.reviseStory) ...[
+              Tooltip(
+                message: tr('Paylaşım Önizlemesi'),
+                child: OutlinedButton(
+                  key: const Key('compose-preview'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(52, 52),
+                    padding: EdgeInsets.zero,
+                    side: const BorderSide(color: AppColors.borderLilac),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  onPressed: () {
+                    if (text.text.trim().isEmpty && images.isEmpty) {
+                      toast(context, 'Önizleme için metin veya fotoğraf ekle.');
+                      return;
+                    }
+                    showModalBottomSheet<void>(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (ctx) => SafeArea(
+                        child: SingleChildScrollView(
+                          padding: Space.page,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Paylaşım Önizlemesi',
+                                style: Theme.of(ctx).textTheme.titleLarge,
+                              ),
+                              const SizedBox(height: Space.lg),
+                              PostCard(draft(store), preview: true),
+                              SecondaryButton(
+                                'Düzenlemeye Dön',
+                                onPressed: () => Navigator.pop(ctx),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                  child: const Icon(Icons.visibility_outlined),
+                ),
+              ),
+              const SizedBox(width: Space.sm),
+            ],
+            Expanded(
+              child: PrimaryButton(
+                publishing
+                    ? (images.isEmpty
+                          ? 'Paylaşılıyor…'
+                          : 'Fotoğraflar yükleniyor…')
+                    : composingStory
+                    ? 'Yayın Onayına Gönder'
+                    : 'Paylaş',
+                key: const Key('publish-post'),
+                icon: Icons.near_me_outlined,
+                onPressed: busy || !canPublish ? null : publish,
+              ),
+            ),
+          ],
+        ),
         child: AbsorbPointer(
           absorbing: busy,
           child: ListView(
@@ -567,153 +663,201 @@ class _ComposePageState extends State<ComposePage>
                   style: TextStyle(color: AppColors.muted, fontSize: 13),
                 ),
               const SizedBox(height: Space.md),
-              if (composingStory)
-                TextField(
-                  key: const Key('encounter-story-title'),
-                  controller: storyTitle,
-                  maxLength: 100,
-                  decoration: InputDecoration(labelText: tr('Başlık')),
-                  onChanged: (_) => setState(() {}),
-                ),
-              TextField(
-                key: const Key('post-text'),
-                controller: text,
-                maxLength: 1000,
-                minLines: 5,
-                maxLines: 8,
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(
-                  hintText: composingStory
-                      ? tr('Açıklama')
-                      : tr('Bugün kiminle karşılaştın?'),
-                  alignLabelWithHint: true,
-                ),
-              ),
-              const SizedBox(height: Space.md),
-              if (images.isNotEmpty) ...[
-                SizedBox(
-                  height: 132,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: images.length,
-                    separatorBuilder: (_, _) => const SizedBox(width: 8),
-                    itemBuilder: (_, i) => SizedBox(
-                      width: 115,
-                      child: Column(
-                        children: [
-                          Expanded(
-                            child: Stack(
-                              children: [
-                                ClipRRect(
-                                  borderRadius: AppShape.rounded,
-                                  child: socialMediaImage(
-                                    store,
-                                    images[i],
-                                    width: 115,
-                                    height: 98,
-                                    fit: BoxFit.cover,
-                                  ),
+              _ComposerCard(
+                children: [
+                  if (composingStory)
+                    TextField(
+                      key: const Key('encounter-story-title'),
+                      controller: storyTitle,
+                      maxLength: 100,
+                      decoration: InputDecoration(labelText: tr('Başlık')),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  TextField(
+                    key: const Key('post-text'),
+                    controller: text,
+                    maxLength: 1000,
+                    minLines: 4,
+                    maxLines: 8,
+                    onChanged: (_) => setState(() {}),
+                    style: const TextStyle(fontSize: 16, height: 1.4),
+                    decoration: InputDecoration(
+                      hintText: composingStory
+                          ? tr('Açıklama')
+                          : tr('Bugün kiminle karşılaştın?'),
+                      alignLabelWithHint: true,
+                      filled: false,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      contentPadding: const EdgeInsets.fromLTRB(2, 6, 2, 0),
+                    ),
+                  ),
+                  const SizedBox(height: Space.md),
+                  if (images.isNotEmpty) ...[
+                    SizedBox(
+                      height: 132,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: images.length,
+                        separatorBuilder: (_, _) => const SizedBox(width: 8),
+                        itemBuilder: (_, i) => SizedBox(
+                          width: 115,
+                          child: Column(
+                            children: [
+                              Expanded(
+                                child: Stack(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: AppShape.rounded,
+                                      child: socialMediaImage(
+                                        store,
+                                        images[i],
+                                        width: 115,
+                                        height: 98,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                    Positioned(
+                                      top: 3,
+                                      right: 3,
+                                      child: InkWell(
+                                        onTap: () =>
+                                            setState(() => images.removeAt(i)),
+                                        child: const CircleAvatar(
+                                          radius: 12,
+                                          backgroundColor: Colors.white,
+                                          child: Icon(
+                                            Icons.close,
+                                            size: 16,
+                                            color: AppColors.navy,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                Positioned(
-                                  top: 3,
-                                  right: 3,
-                                  child: InkWell(
-                                    onTap: () =>
-                                        setState(() => images.removeAt(i)),
-                                    child: const CircleAvatar(
-                                      radius: 12,
-                                      backgroundColor: Colors.white,
+                              ),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  InkWell(
+                                    onTap: i == 0
+                                        ? null
+                                        : () => setState(() {
+                                            final image = images.removeAt(i);
+                                            images.insert(i - 1, image);
+                                          }),
+                                    child: const Padding(
+                                      padding: EdgeInsets.all(6),
+                                      child: Icon(Icons.arrow_back, size: 16),
+                                    ),
+                                  ),
+                                  Text(
+                                    '${i + 1}/${images.length}',
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                  InkWell(
+                                    onTap: i == images.length - 1
+                                        ? null
+                                        : () => setState(() {
+                                            final image = images.removeAt(i);
+                                            images.insert(i + 1, image);
+                                          }),
+                                    child: const Padding(
+                                      padding: EdgeInsets.all(6),
                                       child: Icon(
-                                        Icons.close,
+                                        Icons.arrow_forward,
                                         size: 16,
-                                        color: AppColors.navy,
                                       ),
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              InkWell(
-                                onTap: i == 0
-                                    ? null
-                                    : () => setState(() {
-                                        final image = images.removeAt(i);
-                                        images.insert(i - 1, image);
-                                      }),
-                                child: const Padding(
-                                  padding: EdgeInsets.all(6),
-                                  child: Icon(Icons.arrow_back, size: 16),
-                                ),
-                              ),
-                              Text(
-                                '${i + 1}/${images.length}',
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                              InkWell(
-                                onTap: i == images.length - 1
-                                    ? null
-                                    : () => setState(() {
-                                        final image = images.removeAt(i);
-                                        images.insert(i + 1, image);
-                                      }),
-                                child: const Padding(
-                                  padding: EdgeInsets.all(6),
-                                  child: Icon(Icons.arrow_forward, size: 16),
-                                ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: Space.md),
-              ],
-              if (widget.reviseStory &&
-                  widget.storyFor!.story!.images.isNotEmpty)
-                ImageCarousel(widget.storyFor!.story!.images),
-              if (!widget.reviseStory)
-                // Photo and camera only: compact icon buttons (the location choices live further down, once).
-                Row(
-                  children: [
-                    _QuickAction(
-                      key: const Key('compose-photo'),
-                      icon: Icons.image_outlined,
-                      tooltip: tr('Fotoğraf Ekle'),
-                      onPressed: busy ? null : pickPhotos,
-                    ),
-                    const SizedBox(width: 8),
-                    _QuickAction(
-                      key: const Key('compose-camera'),
-                      icon: Icons.camera_alt_outlined,
-                      tooltip: tr('Kamerayı Aç'),
-                      onPressed: busy ? null : camera,
-                    ),
+                    const SizedBox(height: Space.md),
                   ],
-                ),
+                  if (widget.reviseStory &&
+                      widget.storyFor!.story!.images.isNotEmpty)
+                    ImageCarousel(widget.storyFor!.story!.images),
+                  if (!widget.reviseStory)
+                    // Photo and camera only: compact icon buttons (the location choices live further down, once).
+                    Row(
+                      children: [
+                        _QuickAction(
+                          key: const Key('compose-photo'),
+                          icon: Icons.image_outlined,
+                          tooltip: tr('Fotoğraf Ekle'),
+                          onPressed: busy ? null : pickPhotos,
+                        ),
+                        const SizedBox(width: 8),
+                        _QuickAction(
+                          key: const Key('compose-camera'),
+                          icon: Icons.camera_alt_outlined,
+                          tooltip: tr('Kamerayı Aç'),
+                          onPressed: busy ? null : camera,
+                        ),
+                      ],
+                    ),
+                ],
+              ),
               const SizedBox(height: Space.md),
               if (!composingStory) ...[
-                const SectionHeader(
-                  'Paylaşım türü',
-                  icon: Icons.layers_outlined,
-                ),
+                const _SectionLabel('Paylaşım türü', Icons.layers_outlined),
                 ChoicePills(
+                  key: const Key('compose-kinds'),
                   singleRow: true,
-                  options: PostKind.values.map((k) => k.label).toList(),
-                  value: kind.label,
+                  options: PostKind.values.map(_kindLabel).toList(),
+                  value: _kindLabel(kind),
                   onChanged: (v) => setState(() {
-                    kind = PostKind.values.firstWhere((k) => k.label == v);
+                    kind = PostKind.values.firstWhere(
+                      (k) => _kindLabel(k) == v,
+                    );
                     if (kind != PostKind.encounter) {
                       taggedId = null;
                     }
                   }),
                 ),
-                const SizedBox(height: Space.md),
+                // The two map entries start their own flow; they are not post kinds.
+                if (store.connected) ...[
+                  const SizedBox(height: Space.lg),
+                  const _SectionLabel('Haritada paylaş', Icons.map_outlined),
+                  IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          child: _MapEntryCard(
+                            key: const Key('compose-map-note'),
+                            icon: Icons.mail_outline_rounded,
+                            label: _mapNoteOption,
+                            hint: 'Haritaya not bırak',
+                            onPressed: busy ? null : _startMapNote,
+                          ),
+                        ),
+                        if (store.memories != null) ...[
+                          const SizedBox(width: Space.sm),
+                          Expanded(
+                            child: _MapEntryCard(
+                              key: const Key('compose-map-memory'),
+                              icon: Icons.auto_stories_outlined,
+                              label: _mapMemoryOption,
+                              hint: 'Bir yeri anılarına ekle',
+                              onPressed: busy ? null : _startMapMemory,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: Space.lg),
+                const _SectionLabel('Yer ve görünürlük', Icons.tune_rounded),
                 if (kind == PostKind.encounter) ...[
                   SettingsRow(
                     taggedId == null
@@ -804,104 +948,59 @@ class _ComposePageState extends State<ComposePage>
                       if (mounted) setState(() {});
                     },
                   ),
-                PreferenceRow(
-                  'Şehir genelinde görünür',
-                  cityWide,
-                  (v) => setState(() {
-                    cityWide = v;
-                    if (store.connected && !v) taggedId = null;
-                  }),
-                  subtitle: cityWide
-                      ? 'Paylaşımın şehrindeki herkese önerilebilir.'
-                      : store.connected
-                      ? 'Paylaşımını yalnızca kendi profilinde görürsün.'
-                      : 'Paylaşımın yakın çevredeki keşifte yer alır.',
-                ),
-                if (store.connected && cityWide)
-                  PreferenceRow(
-                    'Mevcut konumumu ekle',
-                    attachLocation && store.location?.synced == true,
-                    busy
-                        ? null
-                        : (value) async {
-                            if (value && store.location?.synced != true) {
-                              await store.location?.activateFromUi();
-                            }
-                            if (mounted) {
-                              setState(() {
-                                attachLocation =
-                                    value && store.location?.synced == true;
-                                // A device position and a hand-picked place never both look selected.
-                                if (attachLocation) place = null;
-                              });
-                            }
-                          },
-                    subtitle: tr(
-                      'Cihaz konumundan yaklaşık bir bölge eklenir.',
+                _SwitchGroup(
+                  children: [
+                    PreferenceRow(
+                      'Şehir genelinde görünür',
+                      cityWide,
+                      (v) => setState(() {
+                        cityWide = v;
+                        if (store.connected && !v) taggedId = null;
+                      }),
+                      subtitle: cityWide
+                          ? 'Paylaşımın şehrindeki herkese önerilebilir.'
+                          : store.connected
+                          ? 'Paylaşımını yalnızca kendi profilinde görürsün.'
+                          : 'Paylaşımın yakın çevredeki keşifte yer alır.',
                     ),
-                  ),
-                PreferenceRow(
-                  'Anonim paylaş',
-                  anonymous,
-                  (v) => setState(() {
-                    anonymous = v;
-                    if (v) {
-                      taggedId = null;
-                    }
-                  }),
-                  subtitle: tr('Adın ve profilin bu paylaşımda görünmez.'),
-                ),
-              ],
-              const SizedBox(height: Space.md),
-              if (!widget.reviseStory)
-                SecondaryButton(
-                  'Paylaşım Önizlemesi',
-                  icon: Icons.visibility_outlined,
-                  onPressed: () {
-                    if (text.text.trim().isEmpty && images.isEmpty) {
-                      toast(context, 'Önizleme için metin veya fotoğraf ekle.');
-                      return;
-                    }
-                    showModalBottomSheet<void>(
-                      context: context,
-                      isScrollControlled: true,
-                      builder: (ctx) => SafeArea(
-                        child: SingleChildScrollView(
-                          padding: Space.page,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Paylaşım Önizlemesi',
-                                style: Theme.of(ctx).textTheme.titleLarge,
-                              ),
-                              const SizedBox(height: Space.lg),
-                              PostCard(draft(store), preview: true),
-                              SecondaryButton(
-                                'Düzenlemeye Dön',
-                                onPressed: () => Navigator.pop(ctx),
-                              ),
-                            ],
-                          ),
+                    if (store.connected && cityWide)
+                      PreferenceRow(
+                        'Mevcut konumumu ekle',
+                        attachLocation && store.location?.synced == true,
+                        busy
+                            ? null
+                            : (value) async {
+                                if (value && store.location?.synced != true) {
+                                  await store.location?.activateFromUi();
+                                }
+                                if (mounted) {
+                                  setState(() {
+                                    attachLocation =
+                                        value && store.location?.synced == true;
+                                    // A device position and a hand-picked place never both look selected.
+                                    if (attachLocation) place = null;
+                                  });
+                                }
+                              },
+                        subtitle: tr(
+                          'Cihaz konumundan yaklaşık bir bölge eklenir.',
                         ),
                       ),
-                    );
-                  },
+                    PreferenceRow(
+                      'Anonim paylaş',
+                      anonymous,
+                      (v) => setState(() {
+                        anonymous = v;
+                        if (v) {
+                          taggedId = null;
+                        }
+                      }),
+                      subtitle: tr('Adın ve profilin bu paylaşımda görünmez.'),
+                    ),
+                  ],
                 ),
-              const SizedBox(height: Space.md),
-              PrimaryButton(
-                publishing
-                    ? (images.isEmpty
-                          ? 'Paylaşılıyor…'
-                          : 'Fotoğraflar yükleniyor…')
-                    : composingStory
-                    ? 'Yayın Onayına Gönder'
-                    : 'Paylaş',
-                key: const Key('publish-post'),
-                icon: Icons.near_me_outlined,
-                onPressed: busy || !canPublish ? null : publish,
-              ),
-              const SizedBox(height: Space.xl),
+              ],
+              const SizedBox(height: Space.lg),
             ],
           ),
         ),
@@ -1303,6 +1402,182 @@ class _QuickAction extends StatelessWidget {
       padding: EdgeInsets.zero,
       side: const BorderSide(color: AppColors.line),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ),
+  );
+}
+
+/// The composer: text, photos and the photo / camera actions in one soft card.
+class _ComposerCard extends StatelessWidget {
+  const _ComposerCard({required this.children});
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(22),
+      border: Border.all(color: AppColors.borderLilac),
+      boxShadow: [
+        BoxShadow(
+          color: AppColors.brandPurple.withValues(alpha: .07),
+          blurRadius: 18,
+          offset: const Offset(0, 6),
+        ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: children,
+    ),
+  );
+}
+
+/// A small section title: an accent bar, an icon and the name (quieter than a page heading).
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.label, this.icon);
+  final String label;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 2, bottom: Space.sm),
+    child: Row(
+      children: [
+        Container(
+          width: 4,
+          height: 18,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(4),
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [AppColors.primary, AppColors.brandPurple],
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Icon(icon, size: 18, color: AppColors.brandPurple),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: AppColors.navy,
+              letterSpacing: -.1,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// The switches (city-wide, current location, anonymous) as one soft group with hairlines.
+class _SwitchGroup extends StatelessWidget {
+  const _SwitchGroup({required this.children});
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: Space.sm),
+    child: Material(
+      color: Colors.white,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppShape.rounded,
+        side: const BorderSide(color: AppColors.borderLilac),
+      ),
+      child: Column(
+        children: [
+          for (final (i, child) in children.indexed) ...[
+            if (i > 0) const Divider(height: 1, color: AppColors.line),
+            child,
+          ],
+        ],
+      ),
+    ),
+  );
+}
+
+/// "Harita Notu" / "Anı": a small card that starts its own flow (not a post kind): icon, name and one short line.
+class _MapEntryCard extends StatelessWidget {
+  const _MapEntryCard({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.hint,
+    required this.onPressed,
+  });
+  final IconData icon;
+  final String label, hint;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(18),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: onPressed,
+      child: Ink(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.borderLilac),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.white, AppColors.surfaceLilac],
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AppColors.brandPurple.withValues(alpha: .1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, size: 21, color: AppColors.brandPurple),
+                ),
+                const Spacer(),
+                const Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 18,
+                  color: AppColors.brandLilac,
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: AppColors.navy,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              hint,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.metadata,
+            ),
+          ],
+        ),
+      ),
     ),
   );
 }

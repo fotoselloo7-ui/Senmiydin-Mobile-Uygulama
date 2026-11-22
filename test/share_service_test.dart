@@ -194,7 +194,7 @@ void main() {
       final published = (await tester.runAsync(() => service.postCard(post(storyStatus: 'published', participants: pair), store)))!;
       expect(published.kind, ShareCardKind.encounter);
       expect(published.badge, 'Karşılaşıldı');
-      expect(published.pairNames, '${pair[0].name} & ${pair[1].name}');
+      expect(published.pairNames, '${pair[0].name.split(' ').first} & ${pair[1].name.split(' ').first}');
       final pending = (await tester.runAsync(() => service.postCard(post(storyStatus: 'pending', participants: pair), store)))!;
       expect(pending.kind, ShareCardKind.post);
       expect(pending.badge, isNull);

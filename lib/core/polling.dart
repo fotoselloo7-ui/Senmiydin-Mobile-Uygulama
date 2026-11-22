@@ -7,9 +7,16 @@ final pollingRoutes = RouteObserver<ModalRoute<dynamic>>();
 
 /// One request at a time, with bounded backoff. Mutations never use this scheduler.
 class AdaptivePoller {
-  AdaptivePoller({required this.interval, required this.fetch});
+  AdaptivePoller({
+    required this.interval,
+    required this.fetch,
+    this.maxBackoff = const Duration(seconds: 120),
+  });
   final Duration interval;
   final Future<bool> Function() fetch;
+
+  /// The longest wait after repeated failures (a chat must not go quiet for minutes after a bad connection).
+  final Duration maxBackoff;
   Timer? _timer;
   bool _active = false, _busy = false, _disposed = false;
   int _failures = 0;
@@ -33,7 +40,10 @@ class AdaptivePoller {
     } finally {
       _busy = false;
       if (active) {
-        final seconds = math.min(interval.inSeconds * (1 << _failures), 120);
+        final seconds = math.min(
+          interval.inSeconds * (1 << _failures),
+          maxBackoff.inSeconds,
+        );
         _timer = Timer(Duration(seconds: seconds), _run);
       }
     }
@@ -50,7 +60,12 @@ class RoutePolling with WidgetsBindingObserver, RouteAware {
   RoutePolling({
     required Duration interval,
     required Future<bool> Function() fetch,
-  }) : poller = AdaptivePoller(interval: interval, fetch: fetch) {
+    Duration maxBackoff = const Duration(seconds: 120),
+  }) : poller = AdaptivePoller(
+         interval: interval,
+         fetch: fetch,
+         maxBackoff: maxBackoff,
+       ) {
     WidgetsBinding.instance.addObserver(this);
   }
   final AdaptivePoller poller;

@@ -35,7 +35,9 @@ class ConversationController extends Controller
             ->where('member.user_id', $id)->whereIn('status', $requests ? ['pending'] : ['active'])
             ->whereExists(fn ($query) => $query->selectRaw('1')->from('messages')
                 ->whereColumn('messages.conversation_id', 'conversations.id')->whereColumn('messages.id', '>', 'member.hidden_through')->whereNull('messages.moderated_at')
-                ->where(fn ($visible) => $visible->where('sender_id', '<>', $id)->orWhereNull('deleted_at')));
+                ->whereNull('messages.recalled_at')
+                ->where(fn ($visible) => $visible->where(fn ($theirs) => $theirs->where('sender_id', '<>', $id)->whereNull('recipient_hidden_at'))
+                    ->orWhere(fn ($mine) => $mine->where('sender_id', $id)->whereNull('deleted_at'))));
         if (! empty($data['q'])) {
             $pattern = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], Str::lower(ltrim($data['q'], '@'))).'%';
             $peers = User::query()->where('id', '<>', $id)->where(fn ($match) =>
@@ -46,7 +48,7 @@ class ConversationController extends Controller
         $page = $query->addSelect([
             'last_message_id' => $this->visibleMessages($id)->select('id')->whereColumn('conversation_id', 'conversations.id')->latest('id')->limit(1),
             'unread_total' => Message::query()->selectRaw('COUNT(*)')->whereColumn('conversation_id', 'conversations.id')
-                ->where('sender_id', '<>', $id)->whereNull('moderated_at')->whereNull('read_at')->whereColumn('id', '>', 'member.hidden_through'),
+                ->where('sender_id', '<>', $id)->whereNull('moderated_at')->whereNull('recalled_at')->whereNull('recipient_hidden_at')->whereNull('read_at')->whereColumn('id', '>', 'member.hidden_through'),
         ])->orderByDesc('last_message_id')->orderByDesc('conversations.id')->simplePaginate(20);
         $peers = User::with('city')->whereKey(collect($page->items())->map(fn ($chat) => $chat->otherId($id))->all())->get()->keyBy('id');
         $messages = Message::with('gift')->whereKey(collect($page->items())->pluck('last_message_id')->filter()->all())->get()->keyBy('id');
@@ -231,9 +233,18 @@ class ConversationController extends Controller
         $id = $request->user()->id;
         Conversation::available($id)->findOrFail($conversation);
         $item = Message::where('conversation_id', $conversation)->findOrFail($message);
-        abort_unless($item->sender_id === $id, 403);
-        if (! $item->deleted_at) {
-            $item->update(['deleted_at' => now()]);
+        $scope = $request->validate(['scope' => 'sometimes|in:me,everyone'])['scope'] ?? 'me';
+        if ($item->sender_id === $id) {
+            // The sender may delete a message for themselves, or take it back for everyone (the other person no longer sees it).
+            $item->update($scope === 'everyone'
+                ? ['deleted_at' => $item->deleted_at ?? now(), 'recalled_at' => $item->recalled_at ?? now()]
+                : ['deleted_at' => $item->deleted_at ?? now()]);
+            return ApiResponse::ok();
+        }
+        // The person who received it can only remove it from their own view; it stays for its sender.
+        abort_unless($scope === 'me', 403);
+        if (! $item->recipient_hidden_at) {
+            $item->update(['recipient_hidden_at' => now()]);
         }
         return ApiResponse::ok();
     }
@@ -280,13 +291,23 @@ class ConversationController extends Controller
         $messages = Message::query()->join('conversation_participants as member', 'member.conversation_id', '=', 'messages.conversation_id')
             ->where('member.user_id', $id)->whereColumn('messages.id', '>', 'member.hidden_through')
             ->whereIn('messages.conversation_id', Conversation::available($id)->whereIn('status', ['active', 'pending'])->select('id'))
-            ->where('sender_id', '<>', $id)->whereNull('moderated_at')->whereNull('read_at')->count();
-        return ApiResponse::ok(['messages' => $messages, 'notifications' => Inbox::query($id)->whereNull('read_at')->count()]);
+            ->where('sender_id', '<>', $id)->whereNull('moderated_at')->whereNull('recalled_at')->whereNull('recipient_hidden_at')->whereNull('read_at')->count();
+        // Incoming message requests still waiting for an answer (a stranger's first message lands in "İstekler").
+        $requests = Conversation::available($id)->where('status', 'pending')->where('requester_id', '<>', $id)
+            ->whereExists(fn ($query) => $query->selectRaw('1')->from('messages')
+                ->whereColumn('messages.conversation_id', 'conversations.id')->where('messages.sender_id', '<>', $id)
+                ->whereNull('messages.moderated_at')->whereNull('messages.recalled_at')->whereNull('messages.recipient_hidden_at')->whereNull('messages.read_at'))->count();
+
+        return ApiResponse::ok(['messages' => $messages, 'requests' => $requests, 'notifications' => Inbox::query($id)->whereNull('read_at')->count()]);
     }
 
     private function visibleMessages(int $user): Builder
     {
-        return Message::whereNull('moderated_at')->where(fn ($query) => $query->where('sender_id', '<>', $user)->orWhereNull('deleted_at'));
+        // What the viewer may see: not moderated, not taken back by its sender, not hidden by them. A message they sent
+        // and deleted "for me" is gone for them only; one they received and hid is gone for them only.
+        return Message::whereNull('moderated_at')->whereNull('recalled_at')->where(fn ($query) => $query
+            ->where(fn ($theirs) => $theirs->where('sender_id', '<>', $user)->whereNull('recipient_hidden_at'))
+            ->orWhere(fn ($mine) => $mine->where('sender_id', $user)->whereNull('deleted_at')));
     }
 
     private function pair(int $a, int $b): Builder

@@ -150,6 +150,54 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets('Message sheet: the sender deletes for themselves or for everyone, the receiver for themselves or reports', (
+    tester,
+  ) async {
+    final deletes = <String>[];
+    final client = ApiClient(
+      httpClient: MockClient((request) async {
+        if (request.method == 'DELETE') {
+          deletes.add(request.url.toString().split('/conversations/').last);
+          return result(null);
+        }
+        if (request.url.path.endsWith('/messages')) {
+          return result({
+            'items': [
+              {...message, 'id': 61, 'body': 'Benim mesajım', 'mine': true},
+              {...message, 'id': 62, 'body': 'Gelen mesaj', 'mine': false},
+            ],
+            'has_more': false,
+          });
+        }
+        return result({'id': 9, 'peer': peer, 'status': 'active', 'outgoing': true, 'can_send': true});
+      }),
+    );
+    await client.saveToken('local-test');
+    final store = AppStore(api: client);
+    addTearDown(store.dispose);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpWidget(StoreScope(store: store, child: const MaterialApp(home: DirectChatPage('9'))));
+    await tester.pumpAndSettle();
+
+    await tester.longPress(find.text('Gelen mesaj'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('message-delete-everyone')), findsNothing, reason: 'Only the sender can take a message back.');
+    expect(find.byKey(const Key('message-report')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('message-delete-me')));
+    await tester.pumpAndSettle();
+    expect(deletes, ['9/messages/62']);
+    expect(find.text('Gelen mesaj'), findsNothing);
+
+    await tester.longPress(find.text('Benim mesajım'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('message-report')), findsNothing);
+    await tester.tap(find.byKey(const Key('message-delete-everyone')));
+    await tester.pumpAndSettle();
+    expect(deletes.last, '9/messages/61?scope=everyone');
+    expect(find.text('Benim mesajım'), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('Notification center loads server rows and marks them read', (
     tester,
   ) async {
@@ -188,7 +236,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Paylaşımın beğenildi.'), findsOneWidget);
+    expect(find.textContaining('Paylaşımın beğenildi.', findRichText: true), findsOneWidget);
     expect(find.byIcon(Icons.circle), findsOneWidget);
     await tester.tap(find.byTooltip('Tümünü okundu işaretle'));
     await tester.pumpAndSettle();

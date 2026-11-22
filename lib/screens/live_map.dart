@@ -14,13 +14,16 @@ import '../data/account_api.dart';
 import '../data/app_store.dart';
 import '../data/location_api.dart';
 import '../data/map_notes_api.dart';
+import '../data/models.dart';
 import '../widgets/common.dart';
 import '../widgets/location_ui.dart';
 import '../widgets/map_attribution.dart';
 import '../widgets/map_note_widgets.dart';
+import '../widgets/memories_map.dart';
+import '../widgets/post_map_preview.dart';
 import '../core/app_locale.dart';
 
-enum _MapMode { people, posts, notes }
+enum _MapMode { people, posts, notes, memories }
 
 class LiveMapContent extends StatefulWidget {
   const LiveMapContent({super.key});
@@ -57,7 +60,15 @@ class _LiveMapContentState extends State<LiveMapContent> {
   /// An approximate point another screen asked this map to show ("Haritada Aç" in a chat, "Haritada Gör" in an
   /// announcement). Shown with a pin; the camera moves there once.
   LatLng? focusPoint;
+  int? focusRadius;
   bool moveToFocus = false;
+
+  /// The post open in the compact preview at the bottom of the map (a located post opened from the feed, or a tapped
+  /// marker). Its approximate marker is highlighted; from the feed the camera starts on it.
+  Post? previewPost;
+  String? previewId;
+  LatLng? previewAt;
+  bool previewFailed = false, moveToPreview = false;
 
   @override
   void didChangeDependencies() {
@@ -66,10 +77,25 @@ class _LiveMapContentState extends State<LiveMapContent> {
       consumedHomeRequest = true;
       // The Home card "Yakınında N yeni mektup var" opens the map straight in its Notlar view.
       final store = StoreScope.of(context);
+      if (store.mapPostFocus case final post? when post.mapPoint != null) {
+        store.mapPostFocus = null;
+        mode = _MapMode.posts;
+        previewPost = post;
+        previewId = post.id;
+        previewAt = post.mapPoint;
+        moveToPreview = true;
+        needsInitialFocus = false;
+      }
       if (store.mapFocus case final focus?) {
         store.mapFocus = null;
         focusPoint = focus;
+        focusRadius = store.mapFocusRadius;
+        store.mapFocusRadius = null;
         moveToFocus = true;
+      }
+      if (store.openMapInMemories && store.memories != null) {
+        store.openMapInMemories = false;
+        mode = _MapMode.memories;
       }
       if (store.openMapInNotes && store.mapNotes != null) {
         store.openMapInNotes = false;
@@ -197,7 +223,7 @@ class _LiveMapContentState extends State<LiveMapContent> {
         store.location?.synced,
       );
       if (noteQuery != noteKey) requestNotes(store, noteKey);
-    } else if (query != key) {
+    } else if (mode != _MapMode.memories && query != key) {
       requestData(store, key);
     }
 
@@ -328,6 +354,20 @@ class _LiveMapContentState extends State<LiveMapContent> {
                       ],
                     ),
                   ),
+                if (store.memories != null)
+                  TextButton.icon(
+                    key: const Key('map-memories-tab'),
+                    onPressed: () => setState(() => mode = _MapMode.memories),
+                    icon: const Icon(Icons.auto_stories_outlined),
+                    label: Text(
+                      'Anılar',
+                      style: TextStyle(
+                        color: mode == _MapMode.memories
+                            ? AppColors.brandPurple
+                            : AppColors.muted,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -339,6 +379,8 @@ class _LiveMapContentState extends State<LiveMapContent> {
               borderRadius: AppShape.rounded,
               child: mode == _MapMode.notes
                   ? notesView(store)
+                  : mode == _MapMode.memories
+                  ? memoriesView(store)
                   : FutureBuilder(
                       future: request,
                       builder: (context, snapshot) {
@@ -387,6 +429,24 @@ class _LiveMapContentState extends State<LiveMapContent> {
         ),
       ],
     );
+  }
+
+  /// The Anılar tab: everybody's memories in the viewer's own area (same city / radius pills as the other tabs; never
+  /// the whole country or world). What is visible to the viewer is decided by the memory's visibility on the server.
+  Widget memoriesView(AppStore store) {
+    final radius = store.radiusMeters;
+    if (radius != null &&
+        (store.location?.synced != true || store.location?.allowed != true)) {
+      return EmptyState(
+        'Mesafe filtresi için cihaz konumu gerekli.',
+        store.location!.state.message,
+        action: SecondaryButton(
+          'Konumu Kontrol Et',
+          onPressed: store.location!.activateFromUi,
+        ),
+      );
+    }
+    return const MemoriesMap.area(key: Key('map-memories'));
   }
 
   Widget notesView(AppStore store) {
@@ -446,12 +506,24 @@ class _LiveMapContentState extends State<LiveMapContent> {
       needsInitialFocus = false;
       final target = focusPoint!;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) mapController.move(target, 15);
+        if (mounted) {
+          mapController.move(target, focusRadius == null ? 15 : 13.5);
+        }
       });
     }
     final groups = <(double, double), List<MapPostPoint>>{};
     for (final point in points) {
       (groups[(point.latitude, point.longitude)] ??= []).add(point);
+    }
+    // The first build after a post was opened from the feed starts on its approximate point.
+    final startAt = moveToPreview ? previewAt : null;
+    if (moveToPreview) {
+      moveToPreview = false;
+      if (startAt != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) mapController.move(startAt, 15);
+        });
+      }
     }
     return Stack(
       children: [
@@ -463,8 +535,10 @@ class _LiveMapContentState extends State<LiveMapContent> {
             mode == _MapMode.notes ? false : own == null && empty,
           )),
           options: MapOptions(
-            initialCenter: center,
-            initialZoom: own == null && empty
+            initialCenter: startAt ?? center,
+            initialZoom: startAt != null
+                ? 15
+                : own == null && empty
                 ? 5
                 : switch (store.radiusMeters) {
                     5000 => 12,
@@ -475,6 +549,10 @@ class _LiveMapContentState extends State<LiveMapContent> {
             minZoom: 4,
             maxZoom: 17,
             backgroundColor: AppColors.pale,
+            // A tap on the bare map puts the preview away (read when tapped: the map is created before a marker is tapped).
+            onTap: (_, _) {
+              if (posts && previewId != null) closePreview();
+            },
           ),
           children: [
             TileLayer(
@@ -492,6 +570,20 @@ class _LiveMapContentState extends State<LiveMapContent> {
               userAgentPackageName: 'com.senmiydin.app',
               panBuffer: 0,
             ),
+            if (focusPoint case final focus?)
+              if (focusRadius case final radius?)
+                CircleLayer(
+                  circles: [
+                    CircleMarker(
+                      point: focus,
+                      radius: radius.toDouble(),
+                      useRadiusInMeter: true,
+                      color: AppColors.brandPurple.withValues(alpha: .16),
+                      borderColor: AppColors.brandPurple,
+                      borderStrokeWidth: 2,
+                    ),
+                  ],
+                ),
             if (focusPoint case final focus?)
               MarkerLayer(
                 markers: [
@@ -511,43 +603,7 @@ class _LiveMapContentState extends State<LiveMapContent> {
               ),
             MarkerLayer(
               markers: [
-                if (posts)
-                  for (final group in groups.entries)
-                    Marker(
-                      point: LatLng(group.key.$1, group.key.$2),
-                      width: AppDimensions.touch,
-                      height: AppDimensions.touch,
-                      child: IconButton(
-                        key: ValueKey('map-post-${group.value.first.id}'),
-                        tooltip: tr('Haritadaki paylaşım'),
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: AppColors.blue,
-                        ),
-                        icon: group.value.length == 1
-                            ? const Icon(Icons.location_on)
-                            : Text(
-                                '${group.value.length}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                        onPressed: () => openGroup(group.value),
-                      ),
-                    ),
-                if (mode == _MapMode.notes)
-                  for (final note in notes)
-                    Marker(
-                      point: LatLng(note.latitude, note.longitude),
-                      width: AppDimensions.touch,
-                      height: AppDimensions.touch,
-                      child: MapNotePin(
-                        key: ValueKey('map-note-${note.group}'),
-                        count: note.count,
-                        highlighted: note.group == highlightGroup,
-                        onPressed: () => openNotePoint(note),
-                      ),
-                    ),
+                // Under everything else: the markers people can tap (a post on the very spot of the device) stay on top.
                 if (own != null)
                   Marker(
                     point: own,
@@ -561,6 +617,27 @@ class _LiveMapContentState extends State<LiveMapContent> {
                       ),
                     ),
                   ),
+                if (posts)
+                  for (final group in groups.entries)
+                    postMarker(LatLng(group.key.$1, group.key.$2), group.value),
+                // A post opened from the feed whose marker is not among the loaded points (older, or outside the radius).
+                if (posts &&
+                    previewAt != null &&
+                    !points.any((point) => point.id == previewId))
+                  postMarker(previewAt!, const []),
+                if (mode == _MapMode.notes)
+                  for (final note in notes)
+                    Marker(
+                      point: LatLng(note.latitude, note.longitude),
+                      width: AppDimensions.touch,
+                      height: AppDimensions.touch,
+                      child: MapNotePin(
+                        key: ValueKey('map-note-${note.group}'),
+                        count: note.count,
+                        highlighted: note.group == highlightGroup,
+                        onPressed: () => openNotePoint(note),
+                      ),
+                    ),
               ],
             ),
             const MapAttribution(),
@@ -570,8 +647,12 @@ class _LiveMapContentState extends State<LiveMapContent> {
           Positioned(
             left: Space.md,
             right: 76,
-            // Above the note button in notes mode, beside the location button otherwise.
-            bottom: mode == _MapMode.notes ? 84 : Space.md,
+            // Above the note button in notes mode, beside the location button otherwise (above the post preview when open).
+            bottom: mode == _MapMode.notes
+                ? 84
+                : posts && previewId != null
+                ? 220
+                : Space.md,
             child: Material(
               color: Colors.white,
               borderRadius: AppShape.rounded,
@@ -599,22 +680,34 @@ class _LiveMapContentState extends State<LiveMapContent> {
             ),
           ),
         Positioned(
+          left: Space.md,
           right: Space.md,
           bottom: Space.md,
-          child: Material(
-            color: Colors.white,
-            shape: const CircleBorder(),
-            elevation: 2,
-            child: IconButton(
-              tooltip: own == null
-                  ? tr('Cihaz konumunu kontrol et')
-                  : tr('Bulunduğum bölgeye dön'),
-              color: AppColors.action,
-              icon: const Icon(Icons.my_location_outlined),
-              onPressed: own == null
-                  ? location.activateFromUi
-                  : () => mapController.move(own, 13),
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Material(
+                color: Colors.white,
+                shape: const CircleBorder(),
+                elevation: 2,
+                child: IconButton(
+                  tooltip: own == null
+                      ? tr('Cihaz konumunu kontrol et')
+                      : tr('Bulunduğum bölgeye dön'),
+                  color: AppColors.action,
+                  icon: const Icon(Icons.my_location_outlined),
+                  onPressed: own == null
+                      ? location.activateFromUi
+                      : () => mapController.move(own, 13),
+                ),
+              ),
+              // The post preview rides under the location button: a strip, never a screen.
+              if (posts && previewId != null) ...[
+                const SizedBox(height: Space.sm),
+                SizedBox(width: double.infinity, child: previewCard()),
+              ],
+            ],
           ),
         ),
         if (mode == _MapMode.people)
@@ -664,7 +757,7 @@ class _LiveMapContentState extends State<LiveMapContent> {
               ),
             ),
           )
-        else if (mode == _MapMode.posts && points.isEmpty)
+        else if (mode == _MapMode.posts && points.isEmpty && previewId == null)
           const Positioned(
             top: MapAttribution.clearance,
             left: 8,
@@ -733,9 +826,87 @@ class _LiveMapContentState extends State<LiveMapContent> {
     );
   }
 
+  /// A marker of the posts view: the marker of one post, or one point several posts share.
+  Marker postMarker(LatLng at, List<MapPostPoint> group) {
+    final selected =
+        previewId != null &&
+        (group.isEmpty || group.any((point) => point.id == previewId));
+    return Marker(
+      point: at,
+      width: AppDimensions.touch,
+      height: AppDimensions.touch,
+      child: IconButton(
+        key: group.isEmpty
+            ? const Key('map-post-focus')
+            : ValueKey('map-post-${group.first.id}'),
+        tooltip: tr('Haritadaki paylaşım'),
+        style: IconButton.styleFrom(
+          backgroundColor: selected ? AppColors.primary : Colors.white,
+          foregroundColor: selected ? Colors.white : AppColors.blue,
+          elevation: selected ? 3 : 0,
+          shadowColor: AppColors.navy.withValues(alpha: .4),
+        ),
+        icon: group.length <= 1
+            ? const Icon(Icons.location_on)
+            : Text(
+                '${group.length}',
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+        onPressed: group.isEmpty ? () {} : () => openGroup(group),
+      ),
+    );
+  }
+
+  Widget previewCard() {
+    final post = previewPost;
+    if (post != null) {
+      return PostMapPreview(
+        key: ValueKey('post-map-preview-${post.id}'),
+        post: post,
+        onClose: closePreview,
+      );
+    }
+    return PostMapPreviewPlaceholder(
+      failed: previewFailed,
+      onRetry: () {
+        if (previewId case final id?) loadPreview(id);
+      },
+      onClose: closePreview,
+    );
+  }
+
+  void closePreview() => setState(() {
+    previewPost = null;
+    previewId = null;
+    previewAt = null;
+    previewFailed = false;
+  });
+
+  /// A tap on a marker only knows the post's id: the preview shows a placeholder, then the post.
+  Future<void> openPostPoint(MapPostPoint point) async {
+    setState(() {
+      previewPost = null;
+      previewId = point.id;
+      previewAt = LatLng(point.latitude, point.longitude);
+      previewFailed = false;
+    });
+    await loadPreview(point.id);
+  }
+
+  Future<void> loadPreview(String id) async {
+    final store = StoreScope.of(context);
+    setState(() => previewFailed = false);
+    try {
+      final post = await store.loadPost(id);
+      if (mounted && previewId == id) setState(() => previewPost = post);
+    } catch (_) {
+      if (mounted && previewId == id) setState(() => previewFailed = true);
+    }
+  }
+
   void openGroup(List<MapPostPoint> points) {
     if (points.length == 1) {
-      openPage(context, '/post', points.first.id);
+      openPostPoint(points.first);
       return;
     }
     showModalBottomSheet<void>(
@@ -754,7 +925,7 @@ class _LiveMapContentState extends State<LiveMapContent> {
                     : Text(locationDistance(point.meters!)),
                 onTap: () {
                   Navigator.pop(sheet);
-                  openPage(context, '/post', point.id);
+                  openPostPoint(point);
                 },
               ),
           ],

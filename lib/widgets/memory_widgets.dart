@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart' hide Text;
+import 'package:image_picker/image_picker.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../core/app_locale.dart';
 import '../core/navigation.dart';
@@ -15,10 +17,77 @@ import 'translated_text.dart';
 
 /// Arguments of the memory form route: a new empty memory, one made from a map note / post, or an edit.
 class MemoryFormArgs {
-  const MemoryFormArgs({this.edit, this.prefill, this.sourceId});
+  const MemoryFormArgs({
+    this.edit,
+    this.prefill,
+    this.sourceId,
+    this.point,
+    this.pointLabel,
+    this.photos = const [],
+  });
   final MemoryItem? edit;
   final MemoryPrefill? prefill;
   final int? sourceId;
+
+  /// A spot picked on the map (and its approximate name) and the photos chosen for it before the form opened.
+  final LatLng? point;
+  final String? pointLabel;
+  final List<XFile> photos;
+}
+
+/// What the map pick screen starts with: the view to open on, the title, whether the photo sheet follows the `→`.
+class MemoryPickArgs {
+  const MemoryPickArgs({
+    this.center,
+    this.zoom,
+    this.label,
+    this.photoStep = true,
+    this.title = 'Anı nerede yaşandı?',
+  });
+  final LatLng? center;
+  final double? zoom;
+  final String? label;
+  final bool photoStep;
+  final String title;
+}
+
+/// The result of the map pick screen: the spot, its approximate name and the (already cropped) photos.
+class MemoryPickResult {
+  const MemoryPickResult(this.point, this.label, this.photos);
+  final LatLng point;
+  final String label;
+  final List<XFile> photos;
+}
+
+/// "Anı Ekle", the one flow every entry point uses (profile map, the global `+`): pick the place on the map → photo sheet
+/// (camera / gallery / no photo) → shared crop → the form → save. Returns the saved memory, null when the person backed out.
+Future<MemoryItem?> startMemoryCreation(
+  BuildContext context, {
+  LatLng? center,
+  double? zoom,
+}) async {
+  final store = StoreScope.of(context);
+  final spot = await openPage<MemoryPickResult>(
+    context,
+    '/memory-pick',
+    MemoryPickArgs(center: center, zoom: zoom),
+  );
+  if (spot == null || !context.mounted) return null;
+  final saved = await openPage<MemoryItem>(
+    context,
+    '/memory-form',
+    MemoryFormArgs(
+      point: spot.point,
+      pointLabel: spot.label,
+      photos: spot.photos,
+    ),
+  );
+  if (saved != null) {
+    store.memoryFocusId = saved.id;
+    store.memoriesChanged();
+    if (context.mounted) toast(context, 'Anı kaydedildi.');
+  }
+  return saved;
 }
 
 const _months = [
@@ -251,10 +320,29 @@ Future<void> addSourceToMemories(
   }
   final prefill = result.prefill;
   if (prefill == null) return;
+  // A post that only has a city has no spot to show on the Anılar map: the person picks one first.
+  MemoryPickResult? spot;
+  if (!prefill.hasPoint) {
+    toast(
+      context,
+      'Bu paylaşımın haritada bir noktası yok. Anı için bir yer seç.',
+    );
+    spot = await openPage<MemoryPickResult>(
+      context,
+      '/memory-pick',
+      const MemoryPickArgs(photoStep: false),
+    );
+    if (spot == null || !context.mounted) return;
+  }
   final saved = await openPage<MemoryItem>(
     context,
     '/memory-form',
-    MemoryFormArgs(prefill: prefill, sourceId: sourceId),
+    MemoryFormArgs(
+      prefill: prefill,
+      sourceId: sourceId,
+      point: spot?.point,
+      pointLabel: spot?.label,
+    ),
   );
   if (saved != null) {
     store.memoriesChanged();
@@ -314,8 +402,7 @@ Future<void> runMemoryAction(
       final confirmed = await confirmAction(
         context,
         title: tr('Anı silinsin mi?'),
-        message:
-            'Anı ve fotoğrafları kalıcı olarak silinir. Paylaşımın veya Harita Notun etkilenmez.',
+        message: 'Anı ve fotoğrafları kalıcı olarak silinir. Paylaşımın veya Harita Notun etkilenmez.',
         action: 'Sil',
       );
       if (!confirmed || !context.mounted) return;
@@ -374,11 +461,9 @@ class _MemoryPhotosState extends State<MemoryPhotos> {
   }
 
   Future<void> open(int at) async {
-    final next = await showMediaViewer(
-      context,
-      [for (final item in widget.media) item.url],
-      initialIndex: at,
-    );
+    final next = await showMediaViewer(context, [
+      for (final item in widget.media) item.url,
+    ], initialIndex: at);
     if (next != null && next != index && mounted && controller.hasClients) {
       controller.jumpToPage(next);
       setState(() => index = next);
@@ -392,8 +477,9 @@ class _MemoryPhotosState extends State<MemoryPhotos> {
     if (media.isEmpty) return const SizedBox.shrink();
     return LayoutBuilder(
       builder: (context, box) {
-        // The box follows the first photo's own shape (4:5 portrait … 1.91:1 landscape); nothing is cut off.
-        final aspect = media.first.aspect.clamp(4 / 5, kPostMaxAspect);
+        // The first photo is the cover: the box follows its shape but is never taller than a square (portrait photos sit whole
+        // inside it, nothing is cut off); the viewer and the detail show them in full.
+        final aspect = media.first.aspect.clamp(1.0, kPostMaxAspect);
         final height = box.maxWidth / aspect;
         return ClipRRect(
           borderRadius: BorderRadius.circular(AppShape.small),
@@ -600,8 +686,9 @@ class MemoryCard extends StatelessWidget {
   }
 }
 
-/// The profile's Anılar tab: a person's memories newest event first, 20 per page, with "+ Anı Ekle" for the owner.
-class MemoriesSection extends StatelessWidget {
+/// The profile's Anılar tab: a person's memories newest event first, 20 per page, with "+ Anı Ekle" and a compact
+/// Tümü · Görünür · Gizli filter for the owner only.
+class MemoriesSection extends StatefulWidget {
   const MemoriesSection({
     super.key,
     required this.username,
@@ -613,11 +700,33 @@ class MemoriesSection extends StatelessWidget {
   final int refreshVersion;
 
   @override
+  State<MemoriesSection> createState() => _MemoriesSectionState();
+}
+
+class _MemoriesSectionState extends State<MemoriesSection> {
+  static const filters = {
+    'Tümü': 'all',
+    'Görünür': 'visible',
+    'Gizli': 'hidden',
+  };
+  String filter = 'Tümü';
+
+  @override
   Widget build(BuildContext context) {
     final store = StoreScope.of(context);
+    final own = widget.own;
+    // The filter is only a convenience for the owner: the server ignores it for everybody else.
+    final mode = own ? filters[filter]! : 'all';
     return PagedContent<MemoryItem>(
-      key: ValueKey((username, 'Anılar', store.memoriesVersion, refreshVersion)),
-      fetch: (page) => store.memories!.list(username, page),
+      key: ValueKey((
+        widget.username,
+        'Anılar',
+        mode,
+        store.memoriesVersion,
+        widget.refreshVersion,
+      )),
+      fetch: (page) =>
+          store.memories!.list(widget.username, page, filter: mode),
       id: (item) => item.id,
       builder: (context, items, footer, _) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -639,12 +748,32 @@ class MemoriesSection extends StatelessWidget {
                 },
               ),
             ),
+          if (own)
+            Padding(
+              padding: const EdgeInsets.only(bottom: Space.md),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: ChoicePills(
+                  key: const Key('memory-filter'),
+                  options: filters.keys.toList(),
+                  value: filter,
+                  singleRow: true,
+                  onChanged: (value) => setState(() => filter = value),
+                ),
+              ),
+            ),
           if (items.isEmpty && footer == null)
             EmptyState(
-              own ? 'Henüz bir anın yok.' : 'Henüz paylaşılmış bir anı yok.',
-              own
+              !own
+                  ? 'Henüz paylaşılmış bir anı yok.'
+                  : mode == 'all'
+                  ? 'Henüz bir anın yok.'
+                  : 'Bu filtreye uyan bir anı yok.',
+              !own
+                  ? 'Paylaşılan anılar burada görünür.'
+                  : mode == 'all'
                   ? 'Önemli anlarını fotoğraflarıyla burada sakla.'
-                  : 'Paylaşılan anılar burada görünür.',
+                  : 'Filtreyi Tümü yaparak bütün anılarını görebilirsin.',
               icon: Icons.auto_stories_outlined,
             ),
           for (final item in items) MemoryCard(item, key: ValueKey(item.id)),

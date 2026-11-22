@@ -56,7 +56,11 @@ void main() {
               lessThanOrEqualTo(54),
             );
           }
-          expect(find.text('Karşılaşıldı ✓'), findsOneWidget);
+          // The featured card keeps its badge; the feed card only carries the quiet "Karşılaşıldı" under the names.
+          expect(
+            find.text(featured ? 'Karşılaşıldı ✓' : 'Karşılaşıldı'),
+            findsOneWidget,
+          );
           expect(find.text(post.storyTitle!), findsOneWidget);
           expect(find.text(post.text), findsOneWidget);
           expect(

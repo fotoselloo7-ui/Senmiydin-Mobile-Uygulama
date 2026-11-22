@@ -140,7 +140,8 @@ class SystemController
             throw ValidationException::withMessages(['city_id' => 'Şehir hedefi için bir şehir seç.']);
         }
         // The stored target is an approximate point on the dedicated grid (~55 m), never anything more precise.
-        $grid = (float) config('map_notes.location_grid');
+        // An announcement's point is an area an administrator marks, not a note: it keeps the coarse placement grid.
+        $grid = (float) config('map_notes.announcement_grid');
         $publishAt = empty($data['publish_at']) ? now() : Carbon::parse($data['publish_at'], 'Europe/Istanbul')->utc();
         $expiresAt = empty($data['expires_at']) ? null : Carbon::parse($data['expires_at'], 'Europe/Istanbul')->utc();
         if ($expiresAt && $expiresAt->lte($publishAt)) {

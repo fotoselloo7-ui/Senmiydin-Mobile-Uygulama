@@ -53,6 +53,7 @@ Future<Future<XFile?>> openCrop(
   double width = 390,
   double scale = 1,
   CropRatio? initial,
+  bool square = false,
 }) async {
   tester.view.physicalSize = Size(width, 820);
   tester.view.devicePixelRatio = 1;
@@ -74,7 +75,7 @@ Future<Future<XFile?>> openCrop(
       ),
     ),
   );
-  final result = cropPhoto(context, file, initial: initial);
+  final result = cropPhoto(context, file, initial: initial, square: square);
   await tester.pump(const Duration(milliseconds: 400));
   return result;
 }
@@ -179,6 +180,30 @@ void main() {
       expect(find.byKey(const Key('crop-frame')), findsOneWidget);
       expect(find.byKey(const Key('crop-confirm')), findsOneWidget);
       expect(find.text('Fotoğrafı Kırp'), findsOneWidget);
+    });
+
+    testWidgets('Profile picture: a fixed square, no ratio choice, a hint, and a square photo comes out', (tester) async {
+      final file = await makePhoto(tester, 1200, 800);
+      final result = await openCrop(tester, XFile(file.path), square: true);
+      await settleDecode(tester);
+      expect(find.byKey(const Key('crop-ratio-9:16')), findsNothing);
+      expect(find.byKey(const Key('crop-avatar-hint')), findsOneWidget);
+      final frame = tester.getSize(find.byKey(const Key('crop-frame')));
+      expect(frame.width / frame.height, closeTo(1, .01));
+      // Move the photo under the circle first: what is kept follows the finger.
+      await tester.drag(find.byKey(const Key('crop-frame')), const Offset(-80, 0));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('crop-confirm')));
+      XFile? cropped;
+      result.then((value) => cropped = value);
+      for (var i = 0; i < 80 && cropped == null; i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 40)));
+        await tester.pump();
+      }
+      expect(cropped, isNotNull);
+      final size = await imageSize(tester, cropped!.path);
+      expect(size.width, size.height);
+      expect(size.longestSide, lessThanOrEqualTo(1024));
     });
 
     for (final (label, ratio) in [

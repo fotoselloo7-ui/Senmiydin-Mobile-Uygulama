@@ -31,11 +31,11 @@ const demoPhotos = [
 ];
 List<Person> seedPeople() {
   const names = [
-    'Ahmet D.',
-    'Elif B.',
-    'Deniz A.',
-    'Zeynep D.',
-    'Kaan Y.',
+    'Ahmet Demir',
+    'Elif Bozkurt',
+    'Deniz Akın',
+    'Zeynep Doğan',
+    'Kaan Yıldız',
     'Ece K.',
     'Mert S.',
     'Selin T.',
@@ -218,7 +218,7 @@ List<AppNotice> seedNotices() => [
   AppNotice(
     'n0',
     NoticeKind.request,
-    'Ahmet D. seni bir karşılaşmada etiketledi.',
+    'Ahmet Demir seni bir karşılaşmada etiketledi.',
     personId: 'u0',
     encounterId: 'e2',
     postId: 'p0',
@@ -226,7 +226,7 @@ List<AppNotice> seedNotices() => [
   AppNotice(
     'n1',
     NoticeKind.like,
-    'Deniz A. paylaşımını beğendi.',
+    'Deniz Akın paylaşımını beğendi.',
     personId: 'u2',
     postId: 'p0',
     time: '8 dk önce',
@@ -234,7 +234,7 @@ List<AppNotice> seedNotices() => [
   AppNotice(
     'n2',
     NoticeKind.comment,
-    'Zeynep D. paylaşımına yorum yaptı.',
+    'Zeynep Doğan paylaşımına yorum yaptı.',
     personId: 'u3',
     postId: 'p0',
     time: '15 dk önce',
@@ -249,7 +249,7 @@ List<AppNotice> seedNotices() => [
   AppNotice(
     'n4',
     NoticeKind.message,
-    'Elif B. sana bir mesaj gönderdi.',
+    'Elif Bozkurt sana bir mesaj gönderdi.',
     personId: 'u1',
     time: '32 dk önce',
   ),

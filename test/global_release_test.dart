@@ -240,7 +240,7 @@ void main() {
     for (final width in [320.0, 360.0, 390.0, 430.0]) {
       for (final scale in [1.0, 1.5]) {
         testWidgets(
-          'At $width px and ${scale}x text the four feed tabs share one row and the city picker sits below them without overlap',
+          'At $width px and ${scale}x text the four feed tabs share one row without overlap',
           (tester) async {
             size(tester, width, 1200);
             final store = AppStore()..city = 'Afyonkarahisar';
@@ -266,15 +266,8 @@ void main() {
                 expect(tabs[i].right, lessThanOrEqualTo(tabs[i + 1].left + .5));
               }
             }
-            final city = tester.getRect(find.byKey(const Key('feed-city')));
-            final lowestTab = tabs.map((r) => r.bottom).reduce((a, b) => a > b ? a : b);
-            expect(
-              city.top,
-              greaterThanOrEqualTo(lowestTab),
-              reason: 'The city picker is a separate row under the social tabs.',
-            );
-            expect(city.right, lessThanOrEqualTo(width));
-            expect(city.right, greaterThan(width - 40), reason: 'Right aligned.');
+            // The city picker no longer takes a row here: it lives in the top bar, left of the search icon.
+            expect(find.byKey(const Key('feed-city')), findsNothing);
             if (scale == 1.0) {
               expect(
                 tabs.map((r) => r.top.round()).toSet().length,
@@ -284,6 +277,44 @@ void main() {
             }
           },
         );
+      }
+    }
+  });
+
+  group('Home top bar city chip', () {
+    for (final width in [320.0, 360.0, 390.0, 430.0]) {
+      for (final scale in [1.0, 1.5]) {
+        testWidgets('At $width px and ${scale}x text the city chip sits left of the search icon without overflow', (tester) async {
+          size(tester, width, 800);
+          final store = AppStore()..city = 'Afyonkarahisar';
+          addTearDown(store.dispose);
+          await tester.pumpWidget(
+            host(
+              store,
+              Scaffold(
+                appBar: AppBar(
+                  leadingWidth: 46,
+                  leading: const Icon(Icons.menu_rounded),
+                  title: const Brand(size: 26, alignment: Alignment.centerLeft),
+                  titleSpacing: 0,
+                  actions: [
+                    HomeCityChip(store),
+                    const SizedBox(width: 2),
+                    IconButton(tooltip: 'Ara', icon: const Icon(Icons.search_rounded), onPressed: () {}),
+                    IconButton(tooltip: 'Bildirimler', icon: const Icon(Icons.notifications_none_rounded), onPressed: () {}),
+                  ],
+                ),
+              ),
+              scale: scale,
+            ),
+          );
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull, reason: 'No overflow.');
+          final chip = tester.getRect(find.byKey(const Key('feed-city')));
+          final search = tester.getRect(find.byTooltip('Ara'));
+          expect(chip.right, lessThanOrEqualTo(search.left + 1));
+          expect(chip.left, greaterThan(100), reason: 'Beside the logo, never on top of it.');
+        });
       }
     }
   });
@@ -430,9 +461,10 @@ void main() {
           );
           await tester.pumpAndSettle();
           expect(tester.takeException(), isNull, reason: 'No overflow at $width px / ${scale}x.');
-          // The encounter card: the pair of names and the "Karşılaşıldı ✓" badge never collide.
-          final badge = tester.getRect(find.text('Karşılaşıldı ✓'));
-          final names = store.people[0].name;
+          // The encounter card: the pair of names and the quiet "Karşılaşıldı" under them never collide.
+          final badge = tester.getRect(find.text('Karşılaşıldı'));
+          // A pair of people reads "Ercan & Meliha": first names only.
+          final names = store.people[0].name.split(' ').first;
           final nameFinder = find.textContaining(names).first;
           final nameRect = tester.getRect(nameFinder);
           expect(badge.overlaps(nameRect), isFalse, reason: 'Badge and names do not overlap.');
@@ -448,7 +480,39 @@ void main() {
       }
     }
 
-    testWidgets('A short text-only post gets a larger body so the card never looks empty', (tester) async {
+    testWidgets('A pair of people reads "Ercan & Meliha", one person reads in full, and tapping a post opens no separate page', (tester) async {
+      size(tester, 390, 1400);
+      final store = AppStore();
+      addTearDown(store.dispose);
+      final routes = _Routes();
+      final ercan = Person(id: 'e1', name: 'Ercan Yılmaz', handle: 'ercan', photo: '');
+      final meliha = Person(id: 'e2', name: 'Meliha Kaya Demir', handle: 'meliha', photo: '');
+      final single = store.people[1];
+      await tester.pumpWidget(
+        host(
+          store,
+          Scaffold(
+            body: ListView(
+              children: [
+                PostCard(Post(id: 'pair', authorId: single.id, text: 'Karşılaştık.', kind: PostKind.encounter, encounterConfirmed: true, storyParticipants: [ercan, meliha], remote: true)),
+                PostCard(Post(id: 'one', authorId: single.id, text: 'Tek kişilik paylaşım metni.')),
+              ],
+            ),
+          ),
+          observer: routes,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Ercan & Meliha'), findsOneWidget);
+      expect(find.textContaining('Yılmaz'), findsNothing);
+      expect(find.text(single.name), findsOneWidget, reason: 'One person: the full name, as written.');
+      final before = routes.names.length;
+      await tester.tap(find.text('Tek kişilik paylaşım metni.'));
+      await tester.pumpAndSettle();
+      expect(routes.names.length, before, reason: 'The post is read where it is: no separate page.');
+    });
+
+    testWidgets('A short text-only post has the same body size as every other post', (tester) async {
       size(tester, 390);
       final store = AppStore();
       addTearDown(store.dispose);
@@ -457,7 +521,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       final text = tester.widget<Text>(find.descendant(of: find.byType(PostCard), matching: find.text('Kısa bir not.')));
-      expect(text.style?.fontSize, 17);
+      expect(text.style?.fontSize, 16);
     });
   });
 
@@ -513,15 +577,15 @@ void main() {
         expect(find.text('Tümünü okundu'), findsOneWidget);
         expect(find.text('Bugün'), findsOneWidget);
         expect(find.text('Dün'), findsOneWidget);
-        expect(find.text('Daha Önce'), findsOneWidget);
+        expect(find.text('Daha Önce', skipOffstage: false), findsOneWidget);
         final tiles = find.byType(NotificationTile);
         expect(tiles.evaluate().length, lessThanOrEqualTo(10), reason: 'The quick panel previews 8–10 items.');
-        expect(find.text('Bugün bildirimi 1'), findsOneWidget);
+        expect(find.textContaining('Bugün bildirimi 1', findRichText: true), findsOneWidget);
         // Rounded sheet that opens at roughly 70 % of the screen height.
         final scroll = tester.getRect(find.byKey(const Key('notifications-scroll')));
         expect(scroll.top, greaterThan(900 * .25));
         // Unread rows carry the pale surface, read rows are white.
-        Color colour(String text) => tester.widget<Material>(find.ancestor(of: find.text(text), matching: find.byType(Material)).first).color!;
+        Color colour(String text) => tester.widget<Material>(find.ancestor(of: find.textContaining(text, findRichText: true), matching: find.byType(Material)).first).color!;
         expect(colour('Bugün bildirimi 1'), isNot(Colors.white));
         expect(colour('Dünkü yorum'), Colors.white);
         // "Tümünü Gör" is the way to the full page.
@@ -578,13 +642,13 @@ void main() {
       await tester.pumpAndSettle();
       await real(tester);
       await tester.scrollUntilVisible(
-        find.text('Dünkü yorum'),
+        find.textContaining('Dünkü yorum', findRichText: true),
         200,
         scrollable: find.descendant(of: find.byKey(const Key('notifications-scroll')), matching: find.byType(Scrollable)),
       );
-      await tester.ensureVisible(find.text('Dünkü yorum'));
+      await tester.ensureVisible(find.textContaining('Dünkü yorum', findRichText: true));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Dünkü yorum'));
+      await tester.tap(find.textContaining('Dünkü yorum', findRichText: true));
       await tester.pumpAndSettle();
       expect(routes.names, contains('/comments'));
       expect(routes.args.last, '5');

@@ -89,7 +89,7 @@ void main() {
     await t.enterText(find.byKey(const Key('tag-search')), '@elifb');
     await hideKeyboard();
     await shot('27-tag-search');
-    await t.tap(find.text('Elif B.'));
+    await t.tap(find.text('Elif Bozkurt'));
     await t.pumpAndSettle();
     await hideKeyboard();
     await t.scrollUntilVisible(

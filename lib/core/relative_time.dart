@@ -11,3 +11,10 @@ String relativeTime(DateTime time) {
   if (elapsed.inDays < 7) return text.timeDaysAgo(elapsed.inDays);
   return '${time.day}.${time.month}.${time.year}';
 }
+
+/// The short form of a relative time for tight places: the trailing word goes ("17 sa önce" -> "17 sa", "5 min ago" ->
+/// "5 min"). "Az önce", "Just now" and plain dates are already short and stay as they are.
+String shortRelativeTime(String full) => full.replaceFirstMapped(
+  RegExp(r'^(\d+\s+\S+)\s+\S+$'),
+  (match) => match[1]!,
+);

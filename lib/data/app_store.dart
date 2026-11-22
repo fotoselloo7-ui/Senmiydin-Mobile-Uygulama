@@ -1,6 +1,7 @@
 import 'post_context.dart';
 import '../core/ads_config.dart';
 import '../core/app_locale.dart';
+import '../core/chat_theme.dart';
 import 'ads_service.dart';
 
 import 'dart:async';
@@ -62,6 +63,9 @@ class AppStore extends ChangeNotifier {
   /// Local, per-account composer drafts (private app storage, never uploaded).
   final ComposeDraftStore drafts;
 
+  /// The signed-in account's chat colours and background (kept on the device, one entry per account).
+  final ChatThemeController chatTheme = ChatThemeController();
+
   /// Native feed ads: consent, age treatment and availability. Never fed with any SenMiydin location data.
   final AdsService ads;
 
@@ -79,6 +83,15 @@ class AppStore extends ChangeNotifier {
   MemoriesApi? memories;
   int memoriesVersion = 0;
 
+  /// Set by Home's "Yakındaki Anılar → Tümünü Gör": the Harita page opens on its Anılar tab.
+  bool openMapInMemories = false;
+
+  /// A memory the Anılar map should open on (selected, centred) the next time it loads: set right after one is saved.
+  int? memoryFocusId;
+
+  /// The profile tab to start on the next time a profile opens ("Anılar" after saving from the global `+`).
+  String? profileTabRequest;
+
   void memoriesChanged() {
     memoriesVersion++;
     notifyListeners();
@@ -88,7 +101,9 @@ class AppStore extends ChangeNotifier {
   int mapNotesVersion = 0;
   PushClient? push;
   int unreadMessages = 0, unreadNotifications = 0, communicationVersion = 0;
-  bool _loadingUnread = false;
+
+  /// Incoming message requests waiting in "İstekler" (a stranger's first message never shows under "Sohbetler").
+  int pendingRequests = 0;
   bool _loadingHomeConfig = false;
   bool nearbyModuleEnabled = true, featuredModuleEnabled = true;
 
@@ -101,6 +116,13 @@ class AppStore extends ChangeNotifier {
 
   /// One-shot request for the map screen to centre on an approximate point ("Haritada Aç" / "Haritada Gör").
   LatLng? mapFocus;
+
+  /// With [mapFocus]: draw an area of this radius (a memory's approximate area) instead of just a pin.
+  int? mapFocusRadius;
+
+  /// One-shot request for the map screen to open on a post: it centres on the post's approximate point and shows the post
+  /// in a compact preview. Set by a tap on a located post in the feed.
+  Post? mapPostFocus;
 
   /// Server-side minimum registration age (single config value); null until /app-config answered.
   int minimumAge = 16;
@@ -243,25 +265,35 @@ class AppStore extends ChangeNotifier {
   bool _disposed = false;
   final ApiClient? _api;
 
-  Future<bool> refreshUnread() async {
-    if (!authenticated || _loadingUnread || communication == null) return false;
-    _loadingUnread = true;
+  Future<bool>? _unreadRequest;
+
+  Future<bool> refreshUnread() {
+    if (!authenticated || communication == null) return Future.value(false);
+    // A refresh already in flight answers every caller (an overlapping call is not a failure).
+    return _unreadRequest ??= _refreshUnread().whenComplete(
+      () => _unreadRequest = null,
+    );
+  }
+
+  Future<bool> _refreshUnread() async {
     try {
       final counts = await communication!.counts();
       if (_disposed) return false;
       final messages = counts['messages'] as int;
       final notifications = counts['notifications'] as int;
-      if (messages != unreadMessages || notifications != unreadNotifications) {
+      final requests = (counts['requests'] as num?)?.toInt() ?? 0;
+      if (messages != unreadMessages ||
+          notifications != unreadNotifications ||
+          requests != pendingRequests) {
         unreadMessages = messages;
         unreadNotifications = notifications;
+        pendingRequests = requests;
         communicationVersion++;
         notifyListeners();
       }
       return true;
     } on ApiFailure {
       return false;
-    } finally {
-      _loadingUnread = false;
     }
   }
 
@@ -328,9 +360,11 @@ class AppStore extends ChangeNotifier {
         : null;
     if (resolved != null) {
       rememberCity(resolved);
-      activeCity = resolved;
-      _cityChosen = false;
-      city = resolved.name;
+      // An area picked by hand stays until the person picks another: the device position never takes it over.
+      if (!_cityChosen) {
+        activeCity = resolved;
+        city = resolved.name;
+      }
     } else if (!_cityChosen) {
       activeCity = null;
     }
@@ -440,6 +474,21 @@ class AppStore extends ChangeNotifier {
       return const MapNoteMarkers([], locationRequired: true);
     }
     return mapNotes!.markers(
+      cityId: await cityId(city),
+      radius: radius,
+      useLocation: location?.synced == true && location?.allowed == true,
+    );
+  }
+
+  /// The Harita page's Anılar tab: memories of everybody in the viewer's own area (same city / radius as the other tabs).
+  Future<({List<MemoryPin> pins, bool locationRequired})>
+  loadMemoriesAround() async {
+    final radius = radiusMeters;
+    if (radius != null &&
+        (location?.synced != true || location?.allowed != true)) {
+      return (pins: const <MemoryPin>[], locationRequired: true);
+    }
+    return memories!.around(
       cityId: await cityId(city),
       radius: radius,
       useLocation: location?.synced == true && location?.allowed == true,
@@ -622,6 +671,7 @@ class AppStore extends ChangeNotifier {
       ..matchHint = incoming.matchHint
       ..travel = incoming.travel
       ..locationLabel = incoming.locationLabel
+      ..mapPoint = incoming.mapPoint
       ..encounterConfirmed = incoming.encounterConfirmed
       ..encounterRequestId = incoming.encounterRequestId
       ..encounterRequestStatus = incoming.encounterRequestStatus
@@ -1149,6 +1199,17 @@ class AppStore extends ChangeNotifier {
   /// The neighbourhood / district around the device. The coordinate goes only to the SenMiydin API, which rounds it
   /// to about 1 km before asking the map provider; nothing is stored. Throws a readable [ApiFailure] when location is
   /// off or not allowed, so the picker can fall back to search.
+  /// A short name for a spot picked on the map ("Kleopatra Plajı"), through the SenMiydin API's place provider. Best effort:
+  /// null when the provider is unavailable (the approximate area name is used instead). Nothing is stored.
+  Future<String?> placeLabelAt(double latitude, double longitude) async {
+    try {
+      final place = await _places?.reverse(latitude, longitude);
+      return place?.name;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<PlaceResult?> placeAtDevice() async {
     final device = location?.device ?? const LocationDevice();
     try {
@@ -1289,7 +1350,7 @@ class AppStore extends ChangeNotifier {
     _remotePosts.clear();
     _remotePeople.clear();
     _socialWrites.clear();
-    unreadMessages = unreadNotifications = 0;
+    unreadMessages = unreadNotifications = pendingRequests = 0;
     nearbyModuleEnabled = featuredModuleEnabled = true;
     nearbyNotesEnabled = true;
     nearbyUnread = const MapNoteUnread(0, locationRequired: true);
@@ -1332,6 +1393,7 @@ class AppStore extends ChangeNotifier {
     _api?.onUnauthorized = null;
     push?.dispose();
     location?.dispose();
+    chatTheme.dispose();
     _api?.dispose();
     super.dispose();
   }

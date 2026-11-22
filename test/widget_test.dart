@@ -178,7 +178,7 @@ void main() {
       await t.enterText(find.byKey(const Key('tag-search')), '@elifb');
       await t.pumpAndSettle();
       expect(find.byType(UserRow), findsOneWidget);
-      await t.tap(find.text('Elif B.'));
+      await t.tap(find.text('Elif Bozkurt'));
       await t.pumpAndSettle();
       await t.ensureVisible(find.byKey(const Key('publish-post')));
       await t.tap(find.byKey(const Key('publish-post')));

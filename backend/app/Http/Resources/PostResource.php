@@ -41,6 +41,11 @@ class PostResource extends JsonResource
             'interactions_enabled' => $this->encounter_id === null || $published,
             'distance_meters' => Geo::publicDistance($this->distance_meters),
             'location_label' => $this->approx_latitude === null ? null : \App\Http\ApiResponse::localize($this->place_label ?? $this->city->name),
+            // The approximate (grid) point the map already shows for this post, so the app can open the map on it.
+            // Never the author's exact position; null for a post without a place.
+            'map_point' => $this->approx_latitude === null ? null : [
+                'latitude' => (float) $this->approx_latitude, 'longitude' => (float) $this->approx_longitude,
+            ],
             'occurred_at' => $this->occurred_at?->toISOString(),
             'match_hint' => $this->viewer_match_score > 0 ? \App\Http\ApiResponse::localize('Geçtiğin bir bölgeden') : null,
             'travel' => $travelVisible ? [

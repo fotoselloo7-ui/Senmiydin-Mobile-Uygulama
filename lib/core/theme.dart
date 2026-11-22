@@ -162,6 +162,17 @@ abstract final class AppDimensions {
   static const iconContainerLG = 48.0;
 }
 
+/// Shared button styles that the theme alone cannot express.
+abstract final class AppButtons {
+  /// The round blue action (send, record, stop): a white glyph on the main colour. The theme gives every icon button a navy
+  /// glyph, which turns a filled one dark on blue; this puts the white back.
+  static ButtonStyle get filledIcon => IconButton.styleFrom(
+    backgroundColor: AppColors.primary,
+    foregroundColor: Colors.white,
+    minimumSize: const Size.square(44),
+  );
+}
+
 abstract final class AppTypography {
   static const pageTitle = TextStyle(
     fontFamily: 'NunitoSans',

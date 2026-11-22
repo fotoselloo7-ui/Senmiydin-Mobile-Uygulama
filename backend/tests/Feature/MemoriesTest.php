@@ -521,14 +521,16 @@ class MemoriesTest extends TestCase
     // Privacy of the response
     // ---------------------------------------------------------------------------------------------------------------
 
-    public function test_no_exact_location_or_internal_field_ever_leaves_the_server(): void
+    public function test_no_internal_field_leaves_the_server_and_the_point_only_as_the_map_area(): void
     {
         $note = $this->note(image: $this->photo());
         $memory = $this->create(['source_type' => 'map_note', 'source_id' => $note['id'], 'visibility' => 'public', 'layout' => ['s'.$note['id']]]);
         $row = DB::table('memories')->find($memory['id']);
-        // What is stored internally is the grid snapped note point, not the typed coordinate, and it is not published.
-        $this->assertNotNull($row->approx_latitude);
-        $this->assertNotSame(36.54463, (float) $row->approx_latitude);
+        // The memory is kept exactly where the note was left (the owner chose the spot; visibility decides who sees it).
+        $this->assertEquals(36.54463, (float) $row->approx_latitude);
+        $this->assertEquals(32.00211, (float) $row->approx_longitude);
+        $this->assertEquals(36.54463, $memory['map_area']['lat']);
+        $this->assertEquals(32.00211, $memory['map_area']['lng']);
 
         $bodies = [
             $this->as($this->ada)->getJson('/api/v1/memories/'.$memory['id'])->getContent(),
@@ -537,10 +539,17 @@ class MemoriesTest extends TestCase
             $this->as($this->ada)->getJson('/api/v1/memories/prefill?source_type=map_note&source_id='.$note['id'])->getContent(),
         ];
         foreach ($bodies as $json) {
-            foreach (['latitude', 'longitude', 'approx', '36.54', '32.00', 'content_hash', 'request_id', 'moderated_at', 'location_history', 'deleted_at', '"lat"', '"lng"'] as $forbidden) {
+            foreach (['latitude', 'longitude', 'approx', 'content_hash', 'request_id', 'moderated_at', 'location_history', 'deleted_at'] as $forbidden) {
                 $this->assertStringNotContainsString($forbidden, $json, "$forbidden must not be in a memory response");
             }
+            // The only coordinate-like thing is the map area (the spot itself), never anywhere else.
+            $this->assertSame(0, preg_match('/"(lat|lng|x|y)":/', preg_replace('/"map_area":\{[^}]*\}/', '', $json)));
         }
+        $area = $this->as($this->ece)->getJson('/api/v1/memories/'.$memory['id'])->json('data.map_area');
+        $this->assertSame(['lat', 'lng', 'radius_m'], array_keys($area));
+        $this->assertEquals(36.54463, $area['lat'], 'the spot itself');
+        $this->assertEquals(32.00211, $area['lng']);
+        $this->assertSame(60, $area['radius_m']);
         // Visibility, hidden state and the kind of source are the owner's business only.
         $others = $this->as($this->ece)->getJson('/api/v1/memories/'.$memory['id'])->json('data');
         $this->assertNull($others['visibility']);
@@ -548,6 +557,136 @@ class MemoriesTest extends TestCase
         $this->assertNull($others['source_type']);
         $this->assertFalse($others['mine']);
         $this->assertSame('map_note', $this->as($this->ada)->getJson('/api/v1/memories/'.$memory['id'])->json('data.source_type'));
+    }
+
+    public function test_a_memory_with_a_place_offers_a_map_area_and_one_without_offers_none(): void
+    {
+        $withCity = $this->create(['visibility' => 'public']);
+        $this->assertSame(['lat', 'lng', 'radius_m'], array_keys($withCity['map_area']), 'the city centre');
+        $this->assertSame(5000, $withCity['map_area']['radius_m']);
+        $place = Place::create(['provider' => 'osm', 'provider_place_id' => '88', 'city_id' => $this->antalya, 'type' => 'suburb', 'name' => 'Lara',
+            'country_code' => 'tr', 'country_name' => 'Türkiye', 'admin1' => 'Antalya', 'display_name' => 'Lara, Antalya', 'latitude' => 36.85612, 'longitude' => 30.78451]);
+        $placed = $this->create(['place_id' => $place->id, 'visibility' => 'public', 'body' => 'Lara akşamı']);
+        $this->assertEqualsWithDelta(36.85612, $placed['map_area']['lat'], 0.000011);
+        $this->assertEqualsWithDelta(30.78451, $placed['map_area']['lng'], 0.000011);
+        $this->assertSame(60, $placed['map_area']['radius_m'], 'a memory made at a place keeps that place centre as its point');
+        $none = $this->create(['body' => 'Yersiz anı']);
+        DB::table('memories')->where('id', $none['id'])->update(['city_id' => null, 'place_id' => null, 'place_label' => null, 'approx_latitude' => null, 'approx_longitude' => null]);
+        $this->assertNull($this->as($this->ada)->getJson('/api/v1/memories/'.$none['id'])->json('data.map_area'));
+    }
+
+    public function test_the_owner_can_filter_the_list_to_visible_or_hidden_and_nobody_else_can(): void
+    {
+        $open = $this->create(['visibility' => 'public', 'body' => 'Açık anı']);
+        $hidden = $this->create(['visibility' => 'public', 'body' => 'Gizli anı']);
+        $this->as($this->ada)->postJson('/api/v1/memories/'.$hidden['id'].'/hide')->assertOk();
+        $bodies = fn (string $query, User $who) => array_column($this->as($who)->getJson('/api/v1/users/ada/memories'.$query)->json('data.items'), 'body');
+        $this->assertEqualsCanonicalizing(['Açık anı', 'Gizli anı'], $bodies('', $this->ada));
+        $this->assertSame(['Açık anı'], $bodies('?filter=visible', $this->ada));
+        $this->assertSame(['Gizli anı'], $bodies('?filter=hidden', $this->ada));
+        // The filter changes nothing for others: a hidden memory stays hidden whatever they ask for.
+        $this->assertSame(['Açık anı'], $bodies('?filter=hidden', $this->ece));
+        $this->assertSame(['Açık anı'], $bodies('', $this->ece));
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // The Anılar map
+    // ---------------------------------------------------------------------------------------------------------------
+
+    private function mapItems(string $query, User $who, string $owner = 'ada'): array
+    {
+        return $this->as($who)->getJson('/api/v1/users/'.$owner.'/memories/map'.$query)->assertOk()->json('data');
+    }
+
+    public function test_a_spot_picked_on_the_map_is_stored_and_shown_exactly(): void
+    {
+        $memory = $this->create(['latitude' => 36.54463, 'longitude' => 32.00211, 'place_label' => 'Kleopatra', 'visibility' => 'public', 'body' => 'Haritadan seçtim']);
+        $row = DB::table('memories')->find($memory['id']);
+        $this->assertEquals(36.54463, (float) $row->approx_latitude, 'exactly the picked spot (5 decimals, ~1 m)');
+        $this->assertEquals(32.00211, (float) $row->approx_longitude);
+        $this->assertSame($this->alanya, (int) $row->city_id, 'the area comes from the bundled boundaries');
+        $this->assertSame('Kleopatra', $row->place_label);
+
+        $item = $this->mapItems('', $this->ece)['items'][0];
+        $this->assertEquals(36.54463, $item['lat']);
+        $this->assertEquals(32.00211, $item['lng']);
+        $detail = $this->as($this->ece)->getJson('/api/v1/memories/'.$memory['id'])->json('data');
+        $this->assertEquals(36.54463, $detail['map_area']['lat']);
+        $this->assertArrayNotHasKey('latitude', $detail);
+
+        $moved = $this->as($this->ada)->postJson('/api/v1/memories/'.$memory['id'], ['latitude' => 36.8841, 'longitude' => 30.7055, 'place_label' => 'Kaleiçi'])->assertOk()->json('data');
+        $this->assertSame($this->antalya, $moved['city']['id']);
+        $this->assertEquals(36.8841, $this->mapItems('', $this->ada)['items'][0]['lat']);
+        $this->as($this->ada)->postJson('/api/v1/memories', ['body' => 'x', 'occurred_at' => '2026-01-01T10:00:00Z', 'request_id' => (string) Str::uuid(), 'latitude' => 36.5])->assertStatus(422);
+    }
+
+    public function test_the_map_lists_the_cover_thumbnail_and_a_short_excerpt_not_the_whole_memory(): void
+    {
+        $this->create(['latitude' => 36.5, 'longitude' => 32.0, 'visibility' => 'public', 'body' => str_repeat('Uzun anı. ', 60)], [$this->photo('a.jpg', 40, 60), $this->photo('b.jpg', 60, 40)]);
+        $this->create(['latitude' => 36.6, 'longitude' => 32.1, 'visibility' => 'public', 'body' => 'Fotoğrafsız anı']);
+        $items = $this->mapItems('', $this->ece)['items'];
+        $this->assertCount(2, $items);
+        $withPhotos = collect($items)->firstWhere('media_count', 2);
+        $this->assertStringEndsWith('/thumb', $withPhotos['cover_thumb']);
+        $this->assertLessThanOrEqual(143, mb_strlen($withPhotos['excerpt']));
+        $this->assertNull(collect($items)->firstWhere('media_count', 0)['cover_thumb']);
+        $this->assertSame(['id', 'lat', 'lng', 'occurred_at', 'place_label', 'excerpt', 'media_count', 'cover_thumb', 'cover_aspect', 'mine', 'visibility', 'is_hidden'], array_keys($withPhotos));
+    }
+
+    public function test_the_map_follows_exactly_the_same_visibility_rules_as_the_list(): void
+    {
+        $spot = ['latitude' => 36.5, 'longitude' => 32.0];
+        $ids = [];
+        foreach (['private', 'followers', 'public', 'area'] as $v) {
+            $ids[$v] = $this->create($spot + ['visibility' => $v, 'body' => "Anı $v"])['id'];
+        }
+        $this->follow($this->ece, $this->ada);
+        $seen = fn (User $who) => collect($this->mapItems('', $who)['items'])->pluck('id')->sort()->values()->all();
+        $this->assertSame(array_values($ids), $seen($this->ada), 'the owner sees all four');
+        $this->assertSame([$ids['followers'], $ids['public'], $ids['area']], $seen($this->ece));
+        $this->assertSame([$ids['public'], $ids['area']], $seen($this->kaan), 'same home area, no follow');
+        $this->assertSame([$ids['public']], $seen($this->mert), 'another area, no follow');
+
+        // hidden, blocked, other age band, moderated: gone from the map too
+        $this->as($this->ada)->postJson('/api/v1/memories/'.$ids['public'].'/hide')->assertOk();
+        $this->assertSame([$ids['followers'], $ids['area']], $seen($this->ece));
+        $this->as($this->ece)->putJson('/api/v1/blocks/'.$this->ada->id)->assertOk();
+        $this->as($this->ece)->getJson('/api/v1/users/ada/memories/map')->assertNotFound();
+        $teen = $this->user('teenmap', $this->alanya, '2010-06-01');
+        $this->as($teen)->getJson('/api/v1/users/ada/memories/map')->assertNotFound();
+        DB::table('memories')->where('id', $ids['area'])->update(['moderated_at' => now()]);
+        $this->assertNotContains($ids['area'], $seen($this->ada));
+    }
+
+    public function test_the_map_filters_bounds_and_the_owner_only_filter_and_lists_unlocated_ones_separately(): void
+    {
+        $a = $this->create(['latitude' => 36.5, 'longitude' => 32.0, 'visibility' => 'public', 'body' => 'Alanya anı']);
+        $b = $this->create(['latitude' => 36.9, 'longitude' => 30.7, 'city_id' => $this->antalya, 'visibility' => 'public', 'body' => 'Antalya anı']);
+        $hidden = $this->create(['latitude' => 36.5, 'longitude' => 32.0, 'visibility' => 'public', 'body' => 'Saklı anı']);
+        $this->as($this->ada)->postJson('/api/v1/memories/'.$hidden['id'].'/hide')->assertOk();
+        $none = $this->create(['body' => 'Yersiz anı', 'visibility' => 'public']);
+        DB::table('memories')->where('id', $none['id'])->update(['city_id' => null, 'place_id' => null, 'place_label' => null, 'approx_latitude' => null, 'approx_longitude' => null]);
+
+        $all = $this->mapItems('', $this->ada);
+        $this->assertCount(3, $all['items']);
+        $this->assertSame(1, $all['unlocated_count']);
+        $this->assertSame('Yersiz anı', $all['unlocated'][0]['body']);
+        $inView = $this->mapItems('?bounds=36.3,31.8,36.7,32.2', $this->ada)['items'];
+        $this->assertEqualsCanonicalizing([$a['id'], $hidden['id']], array_column($inView, 'id'));
+        $this->assertSame([$hidden['id']], array_column($this->mapItems('?filter=hidden', $this->ada)['items'], 'id'));
+        $this->assertEqualsCanonicalizing([$a['id'], $b['id']], array_column($this->mapItems('?filter=visible', $this->ada)['items'], 'id'));
+        // the filter is the owner's convenience only
+        $this->assertEqualsCanonicalizing([$a['id'], $b['id']], array_column($this->mapItems('?filter=hidden', $this->ece)['items'], 'id'));
+        $this->as($this->ece)->getJson('/api/v1/users/ada/memories/map?bounds=nonsense')->assertStatus(422);
+    }
+
+    public function test_a_post_without_its_own_point_asks_for_one_while_a_note_brings_its_own(): void
+    {
+        $note = $this->note();
+        $this->assertTrue($this->as($this->ada)->getJson('/api/v1/memories/prefill?source_type=map_note&source_id='.$note['id'])->json('data.prefill.has_point'));
+        $post = $this->as($this->ada)->post('/api/v1/posts', ['body' => 'Konumsuz gönderi', 'type' => 'moment', 'city_id' => $this->alanya, 'visibility' => 'city',
+            'is_anonymous' => 0, 'request_id' => (string) Str::uuid()], ['Accept' => 'application/json'])->assertCreated()->json('data');
+        $this->assertFalse($this->as($this->ada)->getJson('/api/v1/memories/prefill?source_type=post&source_id='.$post['id'])->json('data.prefill.has_point'));
     }
 
     public function test_a_chosen_place_decides_the_area_and_keeps_its_label(): void
@@ -559,7 +698,7 @@ class MemoriesTest extends TestCase
         $this->assertSame($place->id, $memory['place']['id']);
         $this->assertStringContainsString('Lara', $memory['place_label']);
         $stored = DB::table('memories')->find($memory['id']);
-        $this->assertSame(36.855, (float) $stored->approx_latitude, 'the place centre, snapped to the grid');
+        $this->assertEquals(36.85612, (float) $stored->approx_latitude, 'the place centre');
         $this->as($this->mert)->getJson('/api/v1/memories/'.$memory['id'])->assertOk();
         $this->as($this->kaan)->getJson('/api/v1/memories/'.$memory['id'])->assertNotFound();
 
@@ -699,5 +838,59 @@ class MemoriesTest extends TestCase
         $this->get($memory['media'][0]['url'], ['Accept' => 'application/json'])->assertUnauthorized();
         $this->as($this->ece)->get('/api/v1/memory-media/999999')->assertNotFound();
         $this->as($this->ece)->get('/api/v1/memory-media/999999/thumb')->assertNotFound();
+    }
+
+    public function test_the_harita_tab_shows_the_memories_around_the_viewer_by_the_same_visibility_rules(): void
+    {
+        $spot = ['latitude' => 36.5, 'longitude' => 32.0];
+        $ids = [];
+        foreach (['private', 'followers', 'public', 'area'] as $v) {
+            $ids[$v] = $this->create($spot + ['visibility' => $v, 'body' => "Çevre anısı $v"])['id'];
+        }
+        $far = $this->create(['latitude' => 36.9, 'longitude' => 30.7, 'city_id' => $this->antalya, 'visibility' => 'public', 'body' => 'Antalya anısı'])['id'];
+        $this->follow($this->ece, $this->ada);
+        $seen = fn (User $who, string $query = '') => collect($this->as($who)->getJson('/api/v1/map/memories'.$query)->assertOk()->json('data.items'))->pluck('id')->sort()->values()->all();
+
+        // own area only: Alanya viewers never get the Antalya memory, and the owner's private memory is only the owner's
+        $this->assertSame([$ids['followers'], $ids['public'], $ids['area']], $seen($this->ece));
+        $this->assertSame([$ids['public'], $ids['area']], $seen($this->kaan), 'same home area, no follow');
+        $this->assertSame([$ids['private'], $ids['followers'], $ids['public'], $ids['area']], $seen($this->ada));
+        $this->assertNotContains($far, $seen($this->ece));
+        // Antalya is a province: its viewers (and anybody who picks it) see the whole province, Alanya included, by the same rules
+        $this->assertSame([$ids['public'], $far], $seen($this->mert), 'a province covers its districts; only what is public for a stranger');
+        $this->assertSame([$ids['followers'], $ids['public'], $ids['area'], $far], $seen($this->ece, '?city_id='.$this->antalya));
+        // Alanya is a district: choosing it never shows the rest of the province
+        $this->assertSame([$ids['public']], $seen($this->mert, '?city_id='.$this->alanya));
+        $this->assertNotContains($far, $seen($this->ece, '?city_id='.$this->alanya));
+        $this->assertEqualsCanonicalizing([$this->alanya, $this->antalya], array_values(array_intersect(City::coveredIds($this->antalya), [$this->alanya, $this->antalya])), 'the province covers its districts');
+        $this->assertSame([$this->alanya], City::coveredIds($this->alanya), 'a district covers only itself');
+
+        // hidden memories never show, not even to their owner; blocks and moderation remove them as everywhere
+        $this->as($this->ada)->postJson('/api/v1/memories/'.$ids['public'].'/hide')->assertOk();
+        $this->assertNotContains($ids['public'], $seen($this->ece));
+        $this->assertNotContains($ids['public'], $seen($this->ada));
+        $this->as($this->ece)->putJson('/api/v1/blocks/'.$this->ada->id)->assertOk();
+        $this->assertSame([], $seen($this->ece));
+
+        // the author is named; nothing but a coarse point and a thumbnail leaves the server
+        $item = $this->as($this->kaan)->getJson('/api/v1/map/memories')->assertOk()->json('data.items.0');
+        $this->assertSame('ada', $item['author']['username']);
+        $this->assertEquals([36.5, 32.0], [$item['lat'], $item['lng']]);
+        $this->assertNull($item['visibility']);
+    }
+
+    public function test_the_harita_tab_radius_needs_the_device_location_and_closes_by_distance(): void
+    {
+        $this->create(['latitude' => 36.5, 'longitude' => 32.0, 'visibility' => 'public', 'body' => 'Yakın']);
+        $this->create(['latitude' => 36.62, 'longitude' => 32.0, 'visibility' => 'public', 'body' => 'Uzak']);
+        $this->as($this->ece)->getJson('/api/v1/map/memories?radius=5000')->assertOk()->assertJsonPath('data.location_required', true)->assertJsonPath('data.items', []);
+        DB::table('user_locations')->insert(['user_id' => $this->ece->id, 'city_id' => $this->alanya, 'latitude' => 36.5, 'longitude' => 32.0, 'accuracy' => 20, 'recorded_at' => now(), 'visibility' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $this->assertCount(1, $this->as($this->ece)->getJson('/api/v1/map/memories?radius=5000')->assertOk()->json('data.items'));
+        $all = $this->as($this->ece)->getJson('/api/v1/map/memories?radius=25000')->assertOk()->json('data.items');
+        $this->assertCount(2, $all);
+        $this->assertSame(['Yakın', 'Uzak'], array_map(fn ($item) => $item['excerpt'], $all), 'nearest first once the device position is known');
+        $this->assertLessThan($all[1]['distance_meters'], $all[0]['distance_meters']);
+        $this->assertGreaterThanOrEqual(100, $all[0]['distance_meters']);
+        $this->as($this->ece)->getJson('/api/v1/map/memories?radius=7')->assertStatus(422);
     }
 }

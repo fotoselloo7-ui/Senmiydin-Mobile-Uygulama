@@ -76,9 +76,59 @@ class _MessagesContentState extends State<MessagesContent> {
               const SizedBox(height: Space.md),
               _MessageTabs(
                 labels: [text.messagesTabChats, text.messagesTabRequests],
+                badges: [0, store.connected ? store.pendingRequests : 0],
                 selected: tabIndex,
                 onChanged: (v) => setState(() => tabIndex = v),
               ),
+              // A stranger's first message waits in "İstekler": say so where the person is looking.
+              if (store.connected && !requestsTab && store.pendingRequests > 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: Space.md),
+                  child: Material(
+                    color: AppColors.surfaceLilac,
+                    borderRadius: AppShape.rounded,
+                    child: InkWell(
+                      key: const Key('messages-requests-banner'),
+                      borderRadius: AppShape.rounded,
+                      onTap: () => setState(() => tabIndex = 1),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: Space.md,
+                          vertical: 10,
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.mark_email_unread_outlined,
+                              color: AppColors.brandPurple,
+                              size: 22,
+                            ),
+                            const SizedBox(width: Space.sm),
+                            Expanded(
+                              child: Text(
+                                trf('{0} mesaj isteğin var', [
+                                  store.pendingRequests,
+                                ]),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13.5,
+                                  color: AppColors.navy,
+                                ),
+                              ),
+                            ),
+                            const Text(
+                              'Göster',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.brandPurple,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -427,6 +477,7 @@ class _ChatPageState extends State<ChatPage> {
                     ),
                     const SizedBox(width: 8),
                     IconButton.filled(
+                      style: AppButtons.filledIcon,
                       tooltip: tr('Mesajı gönder'),
                       onPressed: text.text.trim().isEmpty ? null : send,
                       icon: const Icon(Icons.send_rounded),
@@ -468,7 +519,9 @@ class SharePage extends StatelessWidget {
                   onTap: () {
                     store.send(
                       p.id,
-                      trf('Bu paylaşımı seninle paylaşmak istedim:\n\n{0}', [store.post(postId).text]),
+                      trf('Bu paylaşımı seninle paylaşmak istedim:\n\n{0}', [
+                        store.post(postId).text,
+                      ]),
                     );
                     Navigator.pushReplacementNamed(
                       context,
@@ -490,8 +543,12 @@ class _MessageTabs extends StatelessWidget {
     required this.labels,
     required this.selected,
     required this.onChanged,
+    this.badges = const [],
   });
   final List<String> labels;
+
+  /// A count shown on a tab (0 = none), e.g. the requests waiting in "İstekler".
+  final List<int> badges;
   final int selected;
   final ValueChanged<int> onChanged;
 
@@ -523,13 +580,46 @@ class _MessageTabs extends StatelessWidget {
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(11),
                   ),
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13.5,
-                      color: i == selected ? Colors.white : AppColors.navy,
-                    ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13.5,
+                            color: i == selected
+                                ? Colors.white
+                                : AppColors.navy,
+                          ),
+                        ),
+                      ),
+                      if (i < badges.length && badges[i] > 0) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          key: ValueKey('messages-tab-badge-$i'),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 1,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.encounterPink,
+                            borderRadius: BorderRadius.circular(AppShape.pill),
+                          ),
+                          child: Text(
+                            '${badges[i]}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ),

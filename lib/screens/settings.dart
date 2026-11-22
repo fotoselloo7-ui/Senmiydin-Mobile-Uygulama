@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -14,6 +16,7 @@ import '../data/memories_api.dart';
 import '../data/social_sign_in.dart';
 import '../data/models.dart';
 import '../widgets/account_action.dart';
+import '../widgets/chat_theme_sheet.dart';
 import '../widgets/common.dart';
 import '../widgets/location_ui.dart';
 import '../widgets/memory_widgets.dart';
@@ -90,6 +93,14 @@ class _SettingsPageState extends State<SettingsPage>
             Icons.interests_outlined,
             onTap: () => openPage(context, '/interests', false),
           ),
+          if (store.connected && store.mapNotes != null)
+            // Only your own notes: archive or delete them here (nobody can hide or remove another person's note).
+            SettingsRow(
+              'Harita Notlarım',
+              Icons.mail_outline_rounded,
+              subtitle: 'Notlarını arşivle veya sil',
+              onTap: () => openPage(context, '/my-letters'),
+            ),
           if (store.connected && store.account?.hasPassword == false)
             // A Google / Apple account has no app password; it can choose one (never the provider password).
             SettingsRow(
@@ -131,6 +142,15 @@ class _SettingsPageState extends State<SettingsPage>
             'Bildirim Ayarları',
             Icons.notifications_none,
             onTap: () => openPage(context, '/preferences', 'Bildirimler'),
+          ),
+          SettingsRow(
+            'Sohbet Teması',
+            Icons.palette_outlined,
+            subtitle: 'Mesaj balonu ve arka plan renkleri',
+            onTap: () {
+              unawaited(store.chatTheme.ensureLoaded(store.me.id.toString()));
+              showChatThemeSheet(context);
+            },
           ),
           SettingsRow(
             'Engellenen Kullanıcılar',
@@ -316,7 +336,8 @@ class _PreferencesPageState extends State<PreferencesPage>
     );
     if (chosen == null || !mounted) return;
     runAccountAction(
-      () => store.saveAccountProfile({'memory_default_visibility': chosen.value}),
+      () =>
+          store.saveAccountProfile({'memory_default_visibility': chosen.value}),
     );
   }
 

@@ -250,7 +250,7 @@ class PendingPhoto extends StatelessWidget {
   );
 }
 
-/// The compact bottom bar: [ + ] [ emoji ] [ input ] [ send ].
+/// The compact bottom bar: [ + ][ emoji ] [ slim input ] ( send | mic ).
 class ChatComposerBar extends StatelessWidget {
   const ChatComposerBar({
     super.key,
@@ -281,22 +281,24 @@ class ChatComposerBar extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        IconButton(
+        // The two tools sit close together so the input gets the room.
+        _ComposerTool(
           key: const Key('chat-attach'),
           tooltip: text.chatAttach,
-          icon: const Icon(Icons.add_circle_outline_rounded),
-          color: AppColors.blue,
+          icon: Icons.add_circle_outline_rounded,
+          alignment: Alignment.centerRight,
           onPressed: busy ? null : onAttach,
         ),
-        IconButton(
+        _ComposerTool(
           key: const Key('chat-emoji'),
           tooltip: text.chatEmoji,
-          icon: Icon(
-            emojiOpen ? Icons.keyboard_rounded : Icons.emoji_emotions_outlined,
-          ),
-          color: AppColors.blue,
+          icon: emojiOpen
+              ? Icons.keyboard_rounded
+              : Icons.emoji_emotions_outlined,
+          alignment: Alignment.centerLeft,
           onPressed: busy ? null : onEmoji,
         ),
+        const SizedBox(width: 4),
         Expanded(
           child: TextField(
             key: const Key('chat-input'),
@@ -306,11 +308,10 @@ class ChatComposerBar extends StatelessWidget {
             minLines: 1,
             maxLines: 5,
             maxLength: 2000,
+            textCapitalization: TextCapitalization.sentences,
+            style: const TextStyle(fontSize: 15, height: 1.3),
             onChanged: (_) => onChanged(),
-            decoration: InputDecoration(
-              hintText: text.chatWriteHint,
-              counterText: '',
-            ),
+            decoration: composerInputDecoration(text.chatWriteHint),
             onSubmitted: (_) => onSend(),
           ),
         ),
@@ -319,6 +320,7 @@ class ChatComposerBar extends StatelessWidget {
           IconButton.filled(
             key: const Key('chat-mic'),
             tooltip: tr('Sesli mesaj kaydet'),
+            style: AppButtons.filledIcon,
             onPressed: onMic,
             icon: const Icon(Icons.mic_rounded),
           )
@@ -326,15 +328,75 @@ class ChatComposerBar extends StatelessWidget {
           IconButton.filled(
             key: const Key('chat-send'),
             tooltip: text.chatSendTooltip,
+            style: AppButtons.filledIcon,
             onPressed: busy || !canSend ? null : onSend,
             icon: busy
                 ? const SizedBox.square(
                     dimension: 17,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
                   )
                 : const Icon(Icons.send_rounded),
           ),
       ],
     );
   }
+}
+
+/// The slim, long pill the message is typed into: a soft fill, no border until it is focused, rounded all the way.
+InputDecoration composerInputDecoration(String hint) {
+  const radius = BorderRadius.all(Radius.circular(24));
+  OutlineInputBorder border(Color color, double width) => OutlineInputBorder(
+    borderRadius: radius,
+    borderSide: color == Colors.transparent
+        ? BorderSide.none
+        : BorderSide(color: color, width: width),
+  );
+  return InputDecoration(
+    hintText: hint,
+    counterText: '',
+    isDense: true,
+    filled: true,
+    // White with a hairline so the pill reads on any chat backdrop colour.
+    fillColor: Colors.white,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+    border: border(AppColors.border, 1),
+    enabledBorder: border(AppColors.border, 1),
+    disabledBorder: border(Colors.transparent, 0),
+    focusedBorder: border(AppColors.primary, 1.3),
+  );
+}
+
+/// One of the two small tools left of the input (attach, emoji): a 40 x 44 target whose icon sits on the side facing the
+/// other tool, so the two icons are almost touching while each keeps its full touch target.
+class _ComposerTool extends StatelessWidget {
+  const _ComposerTool({
+    super.key,
+    required this.tooltip,
+    required this.icon,
+    required this.alignment,
+    required this.onPressed,
+  });
+  final String tooltip;
+  final IconData icon;
+  final AlignmentGeometry alignment;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    tooltip: tooltip,
+    icon: Icon(icon),
+    color: AppColors.blue,
+    onPressed: onPressed,
+    alignment: alignment,
+    padding: const EdgeInsets.symmetric(horizontal: 4),
+    iconSize: 24,
+    style: IconButton.styleFrom(
+      minimumSize: const Size(40, 44),
+      fixedSize: const Size(40, 44),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    ),
+  );
 }

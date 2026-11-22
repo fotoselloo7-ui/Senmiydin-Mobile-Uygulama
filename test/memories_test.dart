@@ -17,6 +17,10 @@ import 'package:senmiydin/data/memories_api.dart';
 import 'package:senmiydin/data/models.dart';
 import 'package:senmiydin/screens/map_notes.dart';
 import 'package:senmiydin/screens/memories.dart';
+import 'package:senmiydin/screens/memory_place_pick.dart';
+import 'package:senmiydin/widgets/common.dart' show Avatar;
+import 'package:senmiydin/widgets/home_memories.dart';
+import 'package:senmiydin/widgets/memories_map.dart';
 import 'package:senmiydin/screens/profile.dart';
 import 'package:senmiydin/screens/settings.dart';
 import 'package:senmiydin/widgets/map_note_widgets.dart';
@@ -39,6 +43,7 @@ Map<String, dynamic> memoryJson(
   String place = 'Alanya · Yaklaşık bölge',
   int width = 900,
   int height = 1600,
+  bool area = true,
 }) => {
   'id': id,
   'mine': mine,
@@ -53,6 +58,7 @@ Map<String, dynamic> memoryJson(
   'city': {'id': 1, 'name': 'Alanya', 'slug': 'alanya'},
   'place': null,
   'place_label': place,
+  'map_area': area ? {'lat': 36.54, 'lng': 32.0, 'radius_m': 1500} : null,
   'visibility': mine ? visibility : null,
   'is_hidden': mine ? hidden : null,
   'source_type': mine ? source : null,
@@ -102,6 +108,9 @@ class Backend {
   final memories = <Map<String, dynamic>>[];
   final requests = <http.Request>[];
   Map<String, dynamic>? prefill, existing;
+  // Where each memory's pin stands on the Anılar map (a memory without an entry has no place).
+  final points = <int, (double, double)>{};
+  final distances = <int, int>{};
   String memoryDefault = 'private';
   int nextId = 100;
   bool owner = true;
@@ -125,12 +134,74 @@ class Backend {
       memoryDefault = fields['memory_default_visibility'] as String? ?? memoryDefault;
       return ok(accountJson(memoryDefault: memoryDefault));
     }
+    if (path == '/map/memories' && r.method == 'GET') {
+      return ok({
+        'items': [
+          for (final m in memories)
+            if (points[m['id']] case final at?)
+              {
+                'id': m['id'],
+                'lat': at.$1,
+                'lng': at.$2,
+                'occurred_at': m['occurred_at'],
+                'place_label': m['place_label'],
+                'excerpt': m['body'],
+                'media_count': (m['media'] as List).length,
+                'cover_thumb': (m['media'] as List).isEmpty ? null : ((m['media'] as List).first as Map)['thumb_url'],
+                'cover_aspect': null,
+                'mine': m['mine'],
+                'visibility': m['visibility'],
+                'is_hidden': m['is_hidden'],
+                'author': {'id': 7, 'username': 'ada', 'name': 'Ada Test'},
+                'distance_meters': distances[m['id']],
+              },
+        ],
+        'location_required': false,
+      });
+    }
+    final mapRoute = RegExp(r'^/users/([^/]+)/memories/map$').firstMatch(path);
+    if (mapRoute != null && r.method == 'GET') {
+      final filter = r.url.queryParameters['filter'];
+      final pins = <Map<String, dynamic>>[], unlocated = <Map<String, dynamic>>[];
+      for (final m in memories) {
+        if (m['mine'] != (mapRoute.group(1) == 'demo') ||
+            (filter == 'visible' && m['is_hidden'] == true) ||
+            (filter == 'hidden' && m['is_hidden'] != true)) {
+          continue;
+        }
+        final at = points[m['id']];
+        if (at == null) {
+          unlocated.add(m);
+          continue;
+        }
+        final media = m['media'] as List;
+        pins.add({
+          'id': m['id'],
+          'lat': at.$1,
+          'lng': at.$2,
+          'occurred_at': m['occurred_at'],
+          'place_label': m['place_label'],
+          'excerpt': (m['body'] as String).length > 140 ? (m['body'] as String).substring(0, 140) : m['body'],
+          'media_count': media.length,
+          'cover_thumb': media.isEmpty ? null : (media.first as Map)['thumb_url'],
+          'cover_aspect': media.isEmpty ? null : (media.first as Map)['aspect_ratio'],
+          'mine': m['mine'],
+          'visibility': m['visibility'],
+          'is_hidden': m['is_hidden'],
+        });
+      }
+      return ok({'items': pins, 'unlocated': unlocated, 'unlocated_count': unlocated.length});
+    }
     final list = RegExp(r'^/users/([^/]+)/memories$').firstMatch(path);
     if (list != null && r.method == 'GET') {
       final page = int.parse(r.url.queryParameters['page'] ?? '1');
+      final filter = r.url.queryParameters['filter'];
       final all = [
         for (final m in memories)
-          if (m['mine'] == (list.group(1) == 'demo')) m,
+          if (m['mine'] == (list.group(1) == 'demo') &&
+              (filter != 'visible' || m['is_hidden'] != true) &&
+              (filter != 'hidden' || m['is_hidden'] == true))
+            m,
       ];
       final slice = all.skip((page - 1) * 20).take(20).toList();
       return ok({'items': slice, 'next_page': all.length > page * 20 ? page + 1 : null});
@@ -287,6 +358,7 @@ void main() {
             '/' => child,
             '/memory' => MemoryDetailPage(arg as int),
             '/memory-form' => MemoryFormPage(arg as MemoryFormArgs),
+            '/memory-pick' => MemoryPlacePickPage(arg as MemoryPickArgs),
             '/report' => Builder(builder: (context) {
               reportsOpened.add(arg as ReportTarget);
               return Scaffold(body: Text('report ${arg.type} ${arg.id}'));
@@ -359,8 +431,11 @@ void main() {
       await tester.ensureVisible(find.byKey(const Key('profile-tab-Anılar')));
       await tester.tap(find.byKey(const Key('profile-tab-Anılar')));
       await tester.pumpAndSettle();
-      expect(find.text('Profildeki anı'), findsOneWidget);
-      expect(backend.where('GET', r'/users/demo/memories'), hasLength(1));
+      // The tab is a map now: pins come from the map endpoint, the card list is not loaded at all.
+      expect(find.byKey(const Key('memories-map')), findsOneWidget);
+      expect(backend.where('GET', r'/users/demo/memories/map'), hasLength(1));
+      expect(backend.where('GET', r'/users/demo/memories$'), isEmpty);
+      expect(find.text('Konumsuz Anılar'), findsOneWidget, reason: 'This memory has no place, so it waits in the sheet.');
     });
 
     testWidgets('A card shows date, approximate place, short text and (owner only) the visibility', (tester) async {
@@ -372,7 +447,7 @@ void main() {
       await pumpStore(tester, backend, (s) => section(s));
       expect(find.byKey(const Key('memory-date-1')), findsOneWidget);
       expect(find.text('14 Ağustos 2026'), findsOneWidget);
-      expect(find.text('Alanya · Yaklaşık bölge'), findsOneWidget);
+      expect(find.text('Alanya'), findsOneWidget);
       expect(find.byKey(const Key('memory-visibility-1')), findsOneWidget);
       expect(find.text('Takipçilerim'), findsOneWidget);
       final body = tester.widget<Text>(find.textContaining('Uzun bir anı.'));
@@ -390,7 +465,7 @@ void main() {
       final backend = Backend()..memories.add(memoryJson(1, hidden: true));
       await pumpStore(tester, backend, (s) => section(s));
       expect(find.byKey(const Key('memory-hidden-1')), findsOneWidget);
-      expect(find.text('Gizli'), findsOneWidget);
+      expect(find.descendant(of: find.byKey(const Key('memory-hidden-1')), matching: find.text('Gizli')), findsOneWidget);
     });
 
     testWidgets('One photo is a single preview: no pager counter', (tester) async {
@@ -782,18 +857,20 @@ void main() {
       expect(body.containsKey('source_type'), isFalse, reason: 'Editing never involves the source.');
     });
 
-    testWidgets('Hide and show: two calls, the “Gizli” mark follows', (tester) async {
+    testWidgets('Hide and show live in the ⋮ menu: two calls, the “Gizli” mark follows', (tester) async {
       final backend = Backend()..memories.add(memoryJson(1));
       await pumpStore(tester, backend, (s) => const MemoryDetailPage(1));
       expect(find.byKey(const Key('memory-detail-hidden')), findsNothing);
-      await tester.ensureVisible(find.byKey(const Key('memory-hide')));
-      await tester.tap(find.byKey(const Key('memory-hide')));
+      expect(find.byKey(const Key('memory-hide')), findsNothing, reason: 'No big Gizle button on the page.');
+      await tester.tap(find.byKey(const Key('memory-detail-menu')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Gizle'));
       await tester.pumpAndSettle();
       expect(backend.where('POST', r'/memories/1/hide'), hasLength(1));
       expect(find.byKey(const Key('memory-detail-hidden')), findsOneWidget);
-      expect(find.text('Tekrar Göster'), findsOneWidget);
-      await tester.ensureVisible(find.byKey(const Key('memory-hide')));
-      await tester.tap(find.byKey(const Key('memory-hide')));
+      await tester.tap(find.byKey(const Key('memory-detail-menu')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Tekrar Göster'));
       await tester.pumpAndSettle();
       expect(backend.where('POST', r'/memories/1/unhide'), hasLength(1));
       expect(find.byKey(const Key('memory-detail-hidden')), findsNothing);
@@ -831,6 +908,73 @@ void main() {
       expect(backend.where('DELETE', r'/memories/1'), hasLength(1));
       expect(backend.requests.where((r) => r.url.path.contains('map-notes') || r.url.path.contains('/posts/')).where((r) => r.method == 'DELETE'), isEmpty);
       expect(find.text('aç'), findsOneWidget, reason: 'Back where it was opened from.');
+    });
+  });
+
+  group('Haritada Gör, filter and cover', () {
+    testWidgets('Haritada Gör opens the app map on the approximate AREA (a circle), only when the memory has one', (tester) async {
+      final backend = Backend()..memories.add(memoryJson(1));
+      late AppStore captured;
+      await pumpStore(tester, backend, (s) {
+        captured = s;
+        return const MemoryDetailPage(1);
+      });
+      expect(find.byKey(const Key('memory-see-on-map')), findsOneWidget);
+      expect(find.text('Haritada Gör'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('memory-see-on-map')));
+      await tester.pumpAndSettle();
+      expect(captured.mapFocus?.latitude, 36.54);
+      expect(captured.mapFocus?.longitude, 32.0);
+      expect(captured.mapFocusRadius, 1500);
+      // No coordinate is ever printed for the person.
+      expect(find.textContaining('36.5'), findsNothing);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      final none = Backend()..memories.add(memoryJson(2, area: false, place: ''));
+      await pumpStore(tester, none, (s) => const MemoryDetailPage(2));
+      expect(find.byKey(const Key('memory-see-on-map')), findsNothing);
+    });
+
+    testWidgets('The owner gets Tümü · Görünür · Gizli; the filter asks the server; others get no filter', (tester) async {
+      final backend = Backend()
+        ..memories.addAll([memoryJson(1, body: 'Açık anı'), memoryJson(2, body: 'Saklı anı', hidden: true)]);
+      await pumpStore(tester, backend, (s) => section(s));
+      expect(find.byKey(const Key('memory-filter')), findsOneWidget);
+      for (final label in ['Tümü', 'Görünür', 'Gizli']) {
+        expect(find.descendant(of: find.byKey(const Key('memory-filter')), matching: find.text(label)), findsOneWidget);
+      }
+      expect(find.text('Açık anı'), findsOneWidget);
+      expect(find.text('Saklı anı'), findsOneWidget);
+      await tester.tap(find.descendant(of: find.byKey(const Key('memory-filter')), matching: find.text('Gizli')));
+      await tester.pumpAndSettle();
+      expect(find.text('Açık anı'), findsNothing);
+      expect(find.text('Saklı anı'), findsOneWidget);
+      await tester.tap(find.descendant(of: find.byKey(const Key('memory-filter')), matching: find.text('Görünür')));
+      await tester.pumpAndSettle();
+      expect(find.text('Açık anı'), findsOneWidget);
+      expect(find.text('Saklı anı'), findsNothing);
+      expect(backend.where('GET', r'/memories$').map((r) => r.url.queryParameters['filter']), [null, 'hidden', 'visible']);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      final other = Backend()..memories.add(memoryJson(3, mine: false, body: 'Ada’nın anısı'));
+      await pumpStore(tester, other, (s) => section(s, own: false));
+      expect(find.byKey(const Key('memory-filter')), findsNothing, reason: 'Never on somebody else’s profile.');
+      expect(other.where('GET', r'/memories$').single.url.queryParameters.containsKey('filter'), isFalse);
+    });
+
+    testWidgets('The first photo of a memory is its cover: marked in the form, first in the card', (tester) async {
+      final backend = Backend()..memories.add(memoryJson(1, photos: 3));
+      await pumpStore(tester, backend, (s) => MemoryFormPage(MemoryFormArgs(edit: MemoryItem.fromJson(memoryJson(1, photos: 3), (j) => Person(id: 'a', name: 'n', handle: 'h', photo: '')))));
+      expect(find.byKey(const Key('memory-cover-badge')), findsOneWidget);
+      expect(find.text('Kapak'), findsOneWidget);
+      expect(tester.getRect(find.byKey(const Key('memory-cover-badge'))).left, lessThan(tester.getRect(find.byKey(const Key('memory-photo-remove-0'))).left));
+      // "Kapak yap" on the last photo moves it to the front; the layout sent on save says so.
+      expect(find.byKey(const Key('memory-make-cover-0')), findsNothing, reason: 'The cover itself has no such button.');
+      await tester.tap(find.byKey(const Key('memory-make-cover-2')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('memory-save')));
+      await tester.pumpAndSettle();
+      expect(backend.jsonBody(backend.where('POST', r'/memories/1$').single)['layout'], ['m12', 'm10', 'm11']);
     });
   });
 
@@ -915,7 +1059,294 @@ void main() {
       await pumpStore(tester, backend, (s) => const MemoryDetailPage(1));
       expect(texts().where(turkish.hasMatch), isEmpty, reason: '${texts()}');
       expect(find.text('Edit'), findsWidgets);
-      expect(find.text('Change Visibility'), findsOneWidget);
+      expect(find.text('Visibility'), findsOneWidget);
     });
+  });
+
+  group('Anılar map', () {
+    Widget profile(AppStore s) => Scaffold(body: ProfileContent(personId: s.me.id));
+
+    Future<void> openMap(WidgetTester tester) async {
+      await tester.ensureVisible(find.byKey(const Key('profile-tab-Anılar')));
+      await tester.tap(find.byKey(const Key('profile-tab-Anılar')));
+      await tester.pumpAndSettle();
+    }
+
+    Backend twelve() {
+      final backend = Backend();
+      for (var i = 1; i <= 6; i++) {
+        backend.memories.add(memoryJson(i, body: 'Anı numarası $i', photos: i == 2 ? 3 : (i % 2), visibility: i == 3 ? 'public' : 'private', hidden: i == 4));
+        backend.points[i] = (36.0 + i * 0.5, 30.0 + i * 0.5);
+      }
+      return backend;
+    }
+
+    testWidgets('Every placed memory is a small marker; a multi-photo memory carries its count, a photoless one the memory icon', (tester) async {
+      final backend = twelve();
+      await pumpStore(tester, backend, profile);
+      await openMap(tester);
+      expect(find.byKey(const Key('memories-map')), findsOneWidget);
+      for (var i = 1; i <= 6; i++) {
+        expect(find.byKey(ValueKey('memory-pin-$i')), findsOneWidget, reason: 'pin $i');
+      }
+      expect(find.byKey(const Key('memory-pin-count-2')), findsOneWidget);
+      expect(find.descendant(of: find.byKey(const Key('memory-pin-count-2')), matching: find.text('3')), findsOneWidget);
+      expect(find.byKey(const Key('memory-pin-count-1')), findsNothing, reason: 'A single photo has no badge.');
+      expect(find.descendant(of: find.byKey(const ValueKey('memory-pin-1')), matching: find.byType(Image)), findsOneWidget);
+      expect(find.descendant(of: find.byKey(const ValueKey('memory-pin-6')), matching: find.byIcon(Icons.auto_stories_rounded)), findsOneWidget);
+      // markers are drawn from thumbnails only
+      expect(backend.requests.where((r) => r.url.path.contains('memory-media') && !r.url.path.endsWith('/thumb')), isEmpty);
+    });
+
+    testWidgets('Tapping a marker previews it; the preview opens the existing memory', (tester) async {
+      final backend = twelve();
+      await pumpStore(tester, backend, profile);
+      await openMap(tester);
+      expect(find.byKey(const Key('memory-preview')), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('memory-pin-3')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('memory-preview')), findsOneWidget);
+      expect(find.descendant(of: find.byKey(const Key('memory-preview')), matching: find.text('14 Ağustos 2026')), findsOneWidget);
+      expect(find.descendant(of: find.byKey(const Key('memory-preview')), matching: find.text('Alanya')), findsOneWidget);
+      expect(find.descendant(of: find.byKey(const Key('memory-preview')), matching: find.text('Anı numarası 3')), findsOneWidget);
+      expect(find.byKey(const Key('memory-preview-visibility')), findsOneWidget, reason: 'The owner sees the visibility.');
+      await tester.tap(find.byKey(const Key('memory-preview-open')));
+      await tester.pumpAndSettle();
+      expect(find.byType(MemoryDetailPage), findsOneWidget);
+      expect(backend.where('GET', r'/memories/3$'), hasLength(1));
+      Navigator.of(tester.element(find.byType(MemoryDetailPage))).pop();
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('memories-map')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('memory-preview-close')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('memory-preview')), findsNothing);
+    });
+
+    testWidgets('Someone else’s map: only what the server returned, no owner controls, no visibility in the preview', (tester) async {
+      final backend = Backend()
+        ..memories.add(memoryJson(7, body: 'Ada’nın anısı', mine: false, photos: 1))
+        ..points[7] = (36.5, 32.0);
+      await pumpStore(tester, backend, (s) => Scaffold(body: MemoriesMap(username: 'ada', own: false)));
+      expect(find.byKey(const ValueKey('memory-pin-7')), findsOneWidget);
+      expect(find.byKey(const Key('memory-add')), findsNothing);
+      expect(find.byKey(const Key('memory-filter')), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('memory-pin-7')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('memory-preview')), findsOneWidget);
+      expect(find.byKey(const Key('memory-preview-visibility')), findsNothing);
+      expect(backend.where('GET', r'/users/ada/memories/map'), hasLength(1));
+    });
+
+
+    testWidgets('Harita → Anılar: everybody’s memories of the area as pins, with the author, and no owner controls', (tester) async {
+      final backend = Backend()
+        ..memories.addAll([memoryJson(7, body: 'Ada’nın anısı', mine: false, photos: 2), memoryJson(8, body: 'Benim anım', visibility: 'public')])
+        ..points[7] = (36.5, 32.0)
+        ..points[8] = (36.6, 32.3);
+      await pumpStore(tester, backend, (s) => const Scaffold(body: MemoriesMap.area()));
+      expect(backend.where('GET', r'/map/memories'), hasLength(1));
+      expect(backend.where('GET', r'/users/'), isEmpty, reason: 'No per-person request.');
+      expect(find.byKey(const ValueKey('memory-pin-7')), findsOneWidget);
+      expect(find.byKey(const ValueKey('memory-pin-8')), findsOneWidget);
+      expect(find.byKey(const Key('memory-add')), findsNothing);
+      expect(find.byKey(const Key('memory-filter')), findsNothing);
+      expect(find.byKey(const Key('memory-unlocated')), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('memory-pin-7')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('memory-preview-author')), findsOneWidget);
+      expect(find.text('Ada Test · @ada'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('memory-preview-open')));
+      await tester.pumpAndSettle();
+      expect(find.byType(MemoryDetailPage), findsOneWidget);
+    });
+
+    testWidgets('Home: Yakındaki Anılar shows the photo of a memory, or its author’s picture with a memory badge', (tester) async {
+      final backend = Backend()
+        ..memories.addAll([
+          memoryJson(7, body: 'Fotoğraflı', mine: false, photos: 1),
+          memoryJson(8, body: 'Fotoğrafsız', mine: false),
+        ])
+        ..points[7] = (36.5, 32.0)
+        ..points[8] = (36.6, 32.1);
+      await pumpStore(tester, backend, (s) => const Scaffold(body: HomeMemoriesStrip()));
+      expect(backend.where('GET', r'/map/memories'), hasLength(1));
+      expect(find.byKey(const Key('home-memories-add')), findsOneWidget);
+      expect(find.byKey(const Key('home-memory-7')), findsOneWidget);
+      expect(find.byKey(const Key('home-memory-8')), findsOneWidget);
+      expect(find.byKey(const Key('home-memory-badge-7')), findsNothing, reason: 'It has its own photo.');
+      expect(find.byKey(const Key('home-memory-badge-8')), findsOneWidget, reason: 'No photo: the author’s picture, marked as a memory.');
+      expect(find.descendant(of: find.byKey(const Key('home-memory-8')), matching: find.byType(Avatar)), findsOneWidget);
+      expect(find.descendant(of: find.byKey(const Key('home-memory-7')), matching: find.byType(Avatar)), findsNothing);
+      expect(find.text('Alanya'), findsNWidgets(2));
+      await tester.tap(find.byKey(const Key('home-memory-8')));
+      await tester.pumpAndSettle();
+      expect(find.byType(MemoryDetailPage), findsOneWidget);
+    });
+
+    testWidgets('Home: with the device position the strip keeps the server’s nearest-first order and shows the distance', (tester) async {
+      final backend = Backend()
+        ..memories.addAll([
+          memoryJson(7, body: 'Yakın', mine: false, photos: 1),
+          memoryJson(8, body: 'Uzak', mine: false, photos: 1),
+        ])
+        ..points[7] = (36.5, 32.0)
+        ..points[8] = (36.6, 32.1)
+        ..distances[7] = 500
+        ..distances[8] = 12400;
+      await pumpStore(tester, backend, (s) => const Scaffold(body: HomeMemoriesStrip()));
+      expect(find.text('500 m'), findsOneWidget);
+      expect(find.text('12,4 km'), findsOneWidget);
+      expect(find.text('Alanya'), findsNothing, reason: 'The distance replaces the place name.');
+      // The distance is a band along the lower rim of the circle: as wide as the photo, flush with its bottom edge.
+      final label = tester.getRect(find.byKey(const Key('home-memory-label-7')));
+      final photo = tester.getRect(find.descendant(of: find.byKey(const Key('home-memory-7')), matching: find.byType(ClipOval)));
+      expect(label.width, closeTo(photo.width, 1));
+      expect(label.bottom, closeTo(photo.bottom, 1));
+      final near = tester.getTopLeft(find.byKey(const Key('home-memory-7'))).dx;
+      final far = tester.getTopLeft(find.byKey(const Key('home-memory-8'))).dx;
+      expect(near, lessThan(far));
+    });
+
+    testWidgets('Home: the strip says so when nobody shared a memory in the area', (tester) async {
+      await pumpStore(tester, Backend(), (s) => const Scaffold(body: HomeMemoriesStrip()));
+      expect(find.byKey(const Key('home-memories-empty')), findsOneWidget);
+      expect(find.byKey(const Key('home-memories-add')), findsOneWidget);
+    });
+
+    testWidgets('Harita → Anılar with nothing in the area says so', (tester) async {
+      await pumpStore(tester, Backend(), (s) => const Scaffold(body: MemoriesMap.area()));
+      expect(find.text('Bu bölgede henüz paylaşılmış bir anı yok.'), findsOneWidget);
+    });
+
+    testWidgets('The owner’s Tümü · Görünür · Gizli chips ask the server; Gizli leaves only the hidden memory', (tester) async {
+      final backend = twelve();
+      await pumpStore(tester, backend, profile);
+      await openMap(tester);
+      expect(find.byKey(const Key('memory-filter')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('memory-filter-hidden')));
+      await tester.pumpAndSettle();
+      expect(backend.where('GET', r'/users/demo/memories/map').last.url.queryParameters['filter'], 'hidden');
+      expect(find.byKey(const ValueKey('memory-pin-4')), findsOneWidget);
+      expect(find.byKey(const ValueKey('memory-pin-1')), findsNothing);
+      await tester.tap(find.byKey(const Key('memory-filter-visible')));
+      await tester.pumpAndSettle();
+      expect(backend.where('GET', r'/users/demo/memories/map').last.url.queryParameters['filter'], 'visible');
+      expect(find.byKey(const ValueKey('memory-pin-4')), findsNothing);
+      expect(find.byKey(const ValueKey('memory-pin-1')), findsOneWidget);
+    });
+
+    testWidgets('Memories without a place wait behind a small “Konumsuz Anılar” button', (tester) async {
+      final backend = Backend()
+        ..memories.addAll([memoryJson(1, body: 'Yeri olan'), memoryJson(2, body: 'Yeri olmayan', area: false)])
+        ..points[1] = (36.5, 32.0);
+      await pumpStore(tester, backend, profile);
+      await openMap(tester);
+      expect(find.byKey(const ValueKey('memory-pin-1')), findsOneWidget);
+      expect(find.byKey(const Key('memory-unlocated')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('memory-unlocated')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('memory-unlocated-sheet')), findsOneWidget);
+      expect(find.text('Yeri olmayan'), findsOneWidget);
+      expect(find.byKey(const Key('memory-card-2')), findsOneWidget);
+    });
+
+    testWidgets('Memories that stand close together become a counted cluster; a stack on one spot opens as a list', (tester) async {
+      final backend = Backend();
+      for (var i = 1; i <= 5; i++) {
+        backend.memories.add(memoryJson(i, body: 'Aynı yer $i'));
+        backend.points[i] = (36.545, 32.0);
+      }
+      await pumpStore(tester, backend, profile);
+      await openMap(tester);
+      final cluster = find.byWidgetPredicate((w) => w.key is ValueKey && (w.key! as ValueKey).value.toString().startsWith('memory-cluster-'));
+      expect(cluster, findsOneWidget);
+      expect(find.descendant(of: cluster, matching: find.text('5')), findsOneWidget);
+      expect(find.byKey(const ValueKey('memory-pin-1')), findsNothing);
+      await tester.tap(cluster);
+      await tester.pumpAndSettle();
+      expect(find.text('5 Anı'), findsOneWidget);
+      expect(find.byKey(const Key('memory-group-3')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('memory-group-3')));
+      await tester.pumpAndSettle();
+      expect(find.byType(MemoryDetailPage), findsOneWidget);
+    });
+
+    testWidgets('+ Anı: pick the place under a fixed pin, then Fotoğraf Çek / Galeriden Seç / Fotoğrafsız Devam Et, then the form', (tester) async {
+      final backend = twelve();
+      await pumpStore(tester, backend, profile);
+      await openMap(tester);
+      await tester.tap(find.byKey(const Key('memory-add')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('memory-pick-map')), findsOneWidget);
+      expect(find.byKey(const Key('memory-pick-pin')), findsOneWidget);
+      expect(find.byKey(const Key('memory-pick-crosshair')), findsOneWidget);
+      expect(find.byKey(const Key('memory-pick-label')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('memory-pick-next')));
+      await tester.pumpAndSettle();
+      expect(find.text('Fotoğraf Ekle'), findsWidgets);
+      expect(find.byKey(const Key('memory-photo-camera')), findsOneWidget);
+      expect(find.byKey(const Key('memory-photo-gallery')), findsOneWidget);
+      expect(find.byKey(const Key('memory-photo-skip')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('memory-photo-skip')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('memory-text')), findsOneWidget);
+      expect(find.byKey(const Key('memory-place-row')), findsOneWidget, reason: 'The location stays changeable in the form.');
+      await tester.enterText(find.byKey(const Key('memory-text')), 'Haritadan seçtiğim yer');
+      await tester.tap(find.byKey(const Key('memory-save')));
+      await tester.pumpAndSettle();
+      final create = backend.where('POST', r'/memories$').single;
+      final body = backend.jsonBody(create);
+      expect(body['latitude'], isA<num>());
+      expect(body['longitude'], isA<num>());
+      expect(body.containsKey('city_id'), isFalse, reason: 'A picked spot replaces the home area: the server finds the area itself.');
+      expect(body['body'], 'Haritadan seçtiğim yer');
+    });
+
+    testWidgets('Galeriden Seç goes through the shared crop and lands in the form as photos', (tester) async {
+      final backend = Backend();
+      await pumpStore(tester, backend, profile);
+      await openMap(tester);
+      await tester.tap(find.byKey(const Key('memory-add')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('memory-pick-next')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('memory-photo-gallery')));
+      await tester.pump();
+      await confirmCrops(tester, 2);
+      expect(find.byKey(const Key('memory-text')), findsOneWidget);
+      expect(find.textContaining('Fotoğraflar (2/5)'), findsOneWidget);
+    });
+
+    testWidgets('Backing out of the pick screen changes nothing', (tester) async {
+      final backend = twelve();
+      await pumpStore(tester, backend, profile);
+      await openMap(tester);
+      await tester.tap(find.byKey(const Key('memory-add')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('memory-pick-back')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('memories-map')), findsOneWidget);
+      expect(backend.where('POST', r'/memories$'), isEmpty);
+    });
+
+    for (final (width, scale) in [(320.0, 1.0), (320.0, 1.5), (390.0, 1.5), (430.0, 1.0)]) {
+      testWidgets('The map, preview and sheets fit at $width dp, ${scale}x text', (tester) async {
+        final backend = Backend()
+          ..memories.addAll([
+            memoryJson(2, body: 'Uzun bir anı. ' * 30, photos: 3, visibility: 'followers', hidden: true),
+            memoryJson(9, body: 'Yeri olmayan ' * 20, area: false),
+          ])
+          ..points[2] = (36.545, 32.0);
+        await pumpStore(tester, backend, profile, width: width, scale: scale);
+        await openMap(tester);
+        await tester.tap(find.byKey(const ValueKey('memory-pin-2')));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('memory-preview-open')), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.tap(find.byKey(const Key('memory-unlocated')));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      });
+    }
   });
 }

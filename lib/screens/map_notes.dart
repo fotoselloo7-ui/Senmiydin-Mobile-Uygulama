@@ -74,7 +74,10 @@ class _MapNotePointPageState extends State<MapNotePointPage> {
                 child: Text(
                   count == 0
                       ? (place.isEmpty ? widget.label : place)
-                      : trf('{0} · {1} not', [place.isEmpty ? widget.label : place, count]),
+                      : trf('{0} · {1} not', [
+                          place.isEmpty ? widget.label : place,
+                          count,
+                        ]),
                   textAlign: TextAlign.center,
                   style: AppTypography.secondaryBody,
                 ),
@@ -388,7 +391,8 @@ class _MapNoteDetailPageState extends State<MapNoteDetailPage>
                                 ),
                                 label: Text(tr('Paylaş')),
                               ),
-                            if (item.mine && StoreScope.of(context).memories != null)
+                            if (item.mine &&
+                                StoreScope.of(context).memories != null)
                               TextButton.icon(
                                 key: const Key('memory-map-note'),
                                 onPressed: busy
@@ -579,6 +583,7 @@ class _MapNoteDetailPageState extends State<MapNoteDetailPage>
                 ),
                 const SizedBox(width: 8),
                 IconButton.filled(
+                  style: AppButtons.filledIcon,
                   key: const Key('send-map-note-reply'),
                   tooltip: tr('Yanıtı gönder'),
                   onPressed: sending || text.text.trim().isEmpty ? null : send,
@@ -595,7 +600,9 @@ class _MapNoteDetailPageState extends State<MapNoteDetailPage>
               Padding(
                 padding: const EdgeInsets.only(top: 6),
                 child: Text(
-                  trf('{0} Yazdığın metin korunur; tekrar deneyebilirsin.', [sendError]),
+                  trf('{0} Yazdığın metin korunur; tekrar deneyebilirsin.', [
+                    sendError,
+                  ]),
                   style: const TextStyle(color: AppColors.danger, fontSize: 12),
                 ),
               ),
@@ -834,12 +841,9 @@ class _MapNoteComposePageState extends State<MapNoteComposePage>
                 style: AppTypography.metadata,
               ),
             ),
-            const SectionHeader(
-              'Yaklaşık yer',
-              icon: Icons.location_on_outlined,
-            ),
+            const SectionHeader('Notun yeri', icon: Icons.location_on_outlined),
             const Text(
-              'Haritayı kaydırarak mor noktayı notun yerine getir. Not, seçtiğin noktaya yakın yaklaşık bir bölgeye bırakılır; kesin adres paylaşılmaz.',
+              'Haritayı kaydırarak mor noktayı notun yerine getir. Not, tam olarak seçtiğin noktaya bırakılır.',
               style: AppTypography.metadata,
             ),
             const SizedBox(height: Space.sm),
@@ -885,7 +889,7 @@ class _MapNoteComposePageState extends State<MapNoteComposePage>
                               Icons.mail_outline_rounded,
                               size: 34,
                               color: AppColors.brandPurple,
-                              semanticLabel: tr('Seçilen yaklaşık yer'),
+                              semanticLabel: tr('Seçilen yer'),
                             ),
                           ),
                           Container(

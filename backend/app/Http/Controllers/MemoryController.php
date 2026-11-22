@@ -38,11 +38,124 @@ class MemoryController extends Controller
         $viewer = $request->user();
         $owner = Blocks::exclude(User::where('account_status', 'active'), $viewer->id, 'users.id')
             ->where('username', Str::lower($username))->firstOrFail();
+        // Owner-only convenience filter (Tümü / Görünür / Gizli). Who may see what is still decided by visibleTo().
+        $filter = $owner->id === $viewer->id ? $request->query('filter') : null;
         $page = Memory::visibleTo($viewer)->where('memories.user_id', $owner->id)->with(self::WITH)
+            ->when($filter === 'visible', fn (Builder $q) => $q->where('memories.is_hidden', false))
+            ->when($filter === 'hidden', fn (Builder $q) => $q->where('memories.is_hidden', true))
             ->orderByDesc('memories.occurred_at')->orderByDesc('memories.id')
             ->simplePaginate((int) config('memories.page_size'));
 
         return ApiResponse::page($page, MemoryResource::class);
+    }
+
+    /**
+     * The map of a person's memories: every memory the viewer may see (the same visibleTo() rules as the list), each as a
+     * light marker (cover thumbnail, coarse point, a short excerpt). `bounds` = south,west,north,east keeps only the
+     * markers in view. Memories with no place at all come back separately as `unlocated`.
+     */
+    public function map(Request $request, string $username): JsonResponse
+    {
+        $data = $request->validate([
+            'bounds' => ['sometimes', 'regex:/^-?\d{1,3}(\.\d+)?,-?\d{1,3}(\.\d+)?,-?\d{1,3}(\.\d+)?,-?\d{1,3}(\.\d+)?$/'],
+            'filter' => ['sometimes', Rule::in(['all', 'visible', 'hidden'])],
+        ]);
+        $viewer = $request->user();
+        $owner = Blocks::exclude(User::where('account_status', 'active'), $viewer->id, 'users.id')
+            ->where('username', Str::lower($username))->firstOrFail();
+        $filter = $owner->id === $viewer->id ? ($data['filter'] ?? 'all') : 'all';
+        $memories = Memory::visibleTo($viewer)->where('memories.user_id', $owner->id)->with(['media', 'city', 'place'])
+            ->when($filter === 'visible', fn (Builder $q) => $q->where('memories.is_hidden', false))
+            ->when($filter === 'hidden', fn (Builder $q) => $q->where('memories.is_hidden', true))
+            ->orderByDesc('memories.occurred_at')->orderByDesc('memories.id')->limit(500)->get();
+        $bounds = isset($data['bounds']) ? array_map('floatval', explode(',', $data['bounds'])) : null;
+        $items = [];
+        $unlocated = [];
+        foreach ($memories as $memory) {
+            $point = \App\Memories\MapArea::marker($memory);
+            if ($point === null) {
+                $unlocated[] = $memory;
+
+                continue;
+            }
+            if ($bounds && ($point['lat'] < $bounds[0] || $point['lat'] > $bounds[2] || $point['lng'] < $bounds[1] || $point['lng'] > $bounds[3])) {
+                continue;
+            }
+            $items[] = $this->pin($memory, $viewer, $point);
+        }
+
+        return ApiResponse::ok([
+            'items' => $items,
+            'unlocated' => MemoryResource::collection(collect($unlocated)->take(50)->values()),
+            'unlocated_count' => count($unlocated),
+        ]);
+    }
+
+    /** One memory as a light map marker: cover thumbnail, coarse point, short excerpt (the owner also gets visibility). */
+    private function pin(Memory $memory, User $viewer, array $point): array
+    {
+        $mine = $memory->user_id === $viewer->id;
+        $cover = $memory->media->first();
+
+        return [
+            'id' => $memory->id, 'lat' => $point['lat'], 'lng' => $point['lng'],
+            'occurred_at' => $memory->occurred_at->toISOString(),
+            'place_label' => $memory->place_label ? ApiResponse::localize((string) $memory->place_label) : $memory->city?->name,
+            'excerpt' => Str::limit(trim((string) $memory->body), 140),
+            'media_count' => $memory->media->count(),
+            'cover_thumb' => $cover ? route('memories.thumb', ['media' => $cover->id], false) : null,
+            'cover_aspect' => $cover?->aspect_ratio,
+            'mine' => $mine,
+            'visibility' => $mine ? $memory->visibility : null,
+            'is_hidden' => $mine ? (bool) $memory->is_hidden : null,
+        ];
+    }
+
+    /**
+     * The memories of everybody around the viewer, on the Harita page (the Anılar tab next to İnsanlar / Paylaşımlar /
+     * Notlar): only the viewer's own area (city, optionally a 5 / 10 / 25 km radius around the device) — never the whole
+     * country or world. Exactly the visibleTo() rules decide what is returned (public, followers, area, the viewer's own);
+     * hidden memories never show here. Markers carry the author so the app can say whose memory it is.
+     */
+    public function around(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'city_id' => ['sometimes', 'integer', Rule::exists('cities', 'id')->where('is_active', true)],
+            'radius' => ['sometimes', 'integer', Rule::in([5000, 10000, 25000])],
+            'use_location' => ['sometimes', 'boolean'],
+        ]);
+        $viewer = $request->user();
+        $origin = ($data['use_location'] ?? true) ? \App\Location\LocationData::active($viewer) : null;
+        $city = \App\Location\LocationData::city($viewer, $origin, $data['city_id'] ?? null);
+        if (isset($data['radius']) && ! $origin) {
+            return ApiResponse::ok(['items' => [], 'location_required' => true]);
+        }
+        // Antalya (a province) covers all of its districts; Alanya (a district) only itself.
+        $memories = Memory::visibleTo($viewer)->whereIn('memories.city_id', City::coveredIds($city))->where('memories.is_hidden', false)
+            ->with(self::WITH)->orderByDesc('memories.occurred_at')->orderByDesc('memories.id')
+            ->limit((int) config('memories.map_limit', 300))->get();
+        $items = [];
+        foreach ($memories as $memory) {
+            $point = \App\Memories\MapArea::marker($memory);
+            if ($point === null) {
+                continue;
+            }
+            $distance = $origin ? Geo::distance((float) $origin->latitude, (float) $origin->longitude, $point['lat'], $point['lng']) : null;
+            if (isset($data['radius']) && $distance > $data['radius']) {
+                continue;
+            }
+            $items[] = $this->pin($memory, $viewer, $point) + ['distance_meters' => Geo::publicDistance($distance), 'author' => $memory->author ? [
+                'id' => $memory->author->id, 'username' => $memory->author->username, 'name' => $memory->author->name,
+                'avatar' => $memory->author->avatar ? route('avatars.show', ['filename' => basename($memory->author->avatar)], false) : null,
+            ] : null];
+        }
+
+        // With the device position the nearest memories come first; otherwise the newest (the query order).
+        if ($origin) {
+            usort($items, fn ($a, $b) => $a['distance_meters'] <=> $b['distance_meters']);
+        }
+
+        return ApiResponse::ok(['items' => $items, 'location_required' => false]);
     }
 
     public function show(Request $request, int $memory): JsonResponse
@@ -74,6 +187,8 @@ class MemoryController extends Controller
                 'city' => $city?->only('id', 'name', 'slug'),
                 'place' => $place?->summary(),
                 'place_label' => $source['place_label'] ? ApiResponse::localize((string) $source['place_label']) : $city?->name,
+                // False for a post that only has a city: the app then asks for a spot on the map first.
+                'has_point' => $source['latitude'] !== null || $source['place_id'] !== null,
                 'visibility' => $visibility,
                 'media' => array_map(fn ($media) => ['ref' => $media['ref'], 'url' => $media['url'], 'width' => $media['width'], 'height' => $media['height']], $source['media']),
             ],
@@ -158,7 +273,7 @@ class MemoryController extends Controller
                 if (isset($data['occurred_at'])) {
                     $attributes['occurred_at'] = \Illuminate\Support\Carbon::parse($data['occurred_at'])->utc();
                 }
-                if (isset($data['place_id']) || isset($data['city_id'])) {
+                if (isset($data['place_id']) || isset($data['city_id']) || isset($data['latitude'])) {
                     $attributes += $this->placeFields($data, null);
                 }
                 $layout = $request->has('layout') ? ($data['layout'] ?? []) : [
@@ -279,6 +394,10 @@ class MemoryController extends Controller
         return [
             'body' => ['sometimes', 'nullable', 'string', 'max:'.config('memories.max_body')],
             ...PlaceController::rules(required: false),
+            // A spot picked on the map (snapped to the memory grid before it is stored) and its optional place name.
+            'latitude' => ['nullable', 'numeric', 'between:-90,90', 'required_with:longitude'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
+            'place_label' => ['sometimes', 'nullable', 'string', 'max:120'],
             'visibility' => ['sometimes', Rule::in(Memory::VISIBILITIES)],
             // The final photo order: "m<id>" a photo the memory already has, "s<id>" a photo of the source it is made
             // from, "n<index>" a new upload (media[<index>]).
@@ -316,6 +435,22 @@ class MemoryController extends Controller
     private function placeFields(array $data, ?array $source): array
     {
         $grid = (float) config('memories.location_grid');
+        if (isset($data['latitude'], $data['longitude'])) {
+            // A spot picked on the map: only its snapped point is kept. The area comes from the bundled boundaries, else
+            // from the area the app sent, else from the person's home area.
+            $city = (int) ($data['city_id'] ?? 0) ?: (int) (app(\App\Location\CityResolver::class)->resolve((float) $data['latitude'], (float) $data['longitude']) ?? request()->user()->city_id);
+            $name = trim(strip_tags((string) ($data['place_label'] ?? ''))) ?: (string) City::whereKey($city)->value('name');
+
+            return ['city_id' => $city, 'place_id' => $data['place_id'] ?? null,
+                'place_label' => mb_substr($name, 0, 255),
+                'approx_latitude' => Geo::grid((float) $data['latitude'], $grid), 'approx_longitude' => Geo::grid((float) $data['longitude'], $grid)];
+        }
+        // A map note keeps a finer point (~50 m); the memory only ever keeps its own coarser grid (~550 m).
+        if ($source) {
+            foreach (['latitude', 'longitude'] as $axis) {
+                $source[$axis] = $source[$axis] === null ? null : Geo::grid((float) $source[$axis], $grid);
+            }
+        }
         if (! empty($data['place_id'])) {
             $place = Place::with('city')->findOrFail($data['place_id']);
 

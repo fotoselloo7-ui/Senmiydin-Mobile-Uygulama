@@ -234,8 +234,12 @@ class CommunicationApi {
   }
 
   Future<void> hide(int id) => social.delete('conversations/$id');
-  Future<void> deleteMessage(int id, int message) =>
-      social.delete('conversations/$id/messages/$message');
+  /// [everyone]: the sender takes the message back for both people; otherwise it only leaves the caller's own view.
+  Future<void> deleteMessage(int id, int message, {bool everyone = false}) =>
+      social.delete(
+        'conversations/$id/messages/$message',
+        query: everyone ? {'scope': 'everyone'} : null,
+      );
 
   Future<SocialPage<InboxNotification>> inbox(int page, bool unread) async =>
       (await social.page(

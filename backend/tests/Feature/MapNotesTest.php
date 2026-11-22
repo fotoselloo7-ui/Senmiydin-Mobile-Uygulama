@@ -72,7 +72,7 @@ class MapNotesTest extends TestCase
             ['user_id'], ['city_id', 'latitude', 'longitude', 'accuracy', 'recorded_at', 'visibility', 'updated_at']);
     }
 
-    public function test_create_note_snaps_to_the_server_grid_expires_in_seven_days_and_never_leaks_the_raw_point(): void
+    public function test_a_note_is_left_exactly_where_the_writer_put_the_pin_and_expires_in_seven_days(): void
     {
         $response = $this->as($this->ada)->postJson('/api/v1/map-notes', [
             'body' => '  Bugün burada seni gördüm.  ', 'is_anonymous' => false, 'city_id' => $this->alanya,
@@ -80,37 +80,22 @@ class MapNotesTest extends TestCase
         ])->assertCreated();
         $data = $response->json('data');
         $this->assertSame('Bugün burada seni gördüm.', $data['body']);
-        $this->assertEquals(36.5445, $data['latitude']);
-        $this->assertEquals(32.002, $data['longitude']);
+        $this->assertEquals(36.5446, $data['latitude']);
+        $this->assertEquals(32.0021, $data['longitude']);
         $this->assertSame(now()->addDays(7)->toISOString(), $data['expires_at']);
-        $this->assertStringNotContainsString('36.5446', $response->getContent());
-        $this->assertStringNotContainsString('32.0021', $response->getContent());
         $row = DB::table('map_notes')->first();
-        $this->assertEquals(36.5445, (float) $row->approx_latitude);
-        $this->assertEquals(32.002, (float) $row->approx_longitude);
+        $this->assertEquals(36.5446, (float) $row->approx_latitude);
+        $this->assertEquals(32.0021, (float) $row->approx_longitude);
         $this->assertSame(0, DB::table('posts')->count(), 'A map note is never a post.');
         $this->assertSame(0, DB::table('app_notifications')->count());
         // Notes never enter the home feed.
         $this->as($this->ece)->getJson('/api/v1/feed')->assertOk()->assertJsonCount(0, 'data.items');
     }
 
-    public function test_notes_use_their_own_fine_grid_and_stay_within_the_stated_distance_of_the_selected_point(): void
+    public function test_notes_are_stored_on_the_exact_point_down_to_the_column_precision(): void
     {
-        $grid = (float) config('map_notes.location_grid');
-        $this->assertSame(0.0005, $grid);
+        $this->assertSame(0.00001, (float) config('map_notes.location_grid'));
         $this->assertSame(0.005, (float) config('location.post_grid'), 'Ordinary posts keep their coarse privacy grid.');
-        $this->assertNotSame($grid, (float) config('location.post_grid'));
-
-        // The cell is 50-100 m across, measured on real coordinates in Alanya (36.5 N).
-        $north = \App\Location\Geo::distance(36.545, 32.0, 36.545 + $grid, 32.0);
-        $east = \App\Location\Geo::distance(36.545, 32.0, 36.545, 32.0 + $grid);
-        $this->assertGreaterThanOrEqual(50, $north);
-        $this->assertLessThanOrEqual(100, $north);
-        $this->assertGreaterThanOrEqual(40, $east);
-        $this->assertLessThanOrEqual(100, $east);
-        // Half a cell diagonally is the worst case the snap can move a selection (~36 m here).
-        $worst = hypot($north / 2, $east / 2);
-        $this->assertLessThan(40, $worst);
 
         $this->as($this->ada);
         $checked = 0;
@@ -128,32 +113,25 @@ class MapNotesTest extends TestCase
                 $created->assertCreated();
                 $stored = DB::table('map_notes')->orderByDesc('id')->first();
                 $distance = \App\Location\Geo::distance($lat, $lng, (float) $stored->approx_latitude, (float) $stored->approx_longitude);
-                $this->assertLessThanOrEqual($worst + 1, $distance, "Selection ({$lat}, {$lng}) moved {$distance} m");
+                $this->assertLessThanOrEqual(1.0, $distance, "Selection ({$lat}, {$lng}) moved {$distance} m");
                 $this->assertEqualsWithDelta($created->json('data.latitude'), (float) $stored->approx_latitude, 0.000001);
                 $this->assertEqualsWithDelta($created->json('data.longitude'), (float) $stored->approx_longitude, 0.000001);
-                $this->assertEqualsWithDelta(0.0, fmod(round((float) $stored->approx_latitude / $grid, 6), 1.0), 0.0001);
-                $this->assertStringNotContainsString((string) $lat, json_encode($created->json()));
                 $checked++;
             }
         }
         $this->assertGreaterThan(10, $checked);
     }
 
-    public function test_the_reported_placement_case_snaps_to_a_nearby_point_where_the_old_grid_moved_it_hundreds_of_metres(): void
+    public function test_the_reported_placement_case_is_left_where_the_pin_was_not_hundreds_of_metres_away(): void
     {
         // Real device values from the Pixel 6a reproduction: selected (36.43841, 32.20663).
         [$lat, $lng] = [36.438407, 32.206634];
-        $old = [\App\Location\Geo::grid($lat, 0.005), \App\Location\Geo::grid($lng, 0.005)];
-        $this->assertSame([36.44, 32.205], $old);
-        $oldShift = \App\Location\Geo::distance($lat, $lng, $old[0], $old[1]);
-        $this->assertGreaterThan(200, $oldShift, 'The coarse post grid displaced this selection by about 230 m.');
-
         $data = $this->as($this->ada)->postJson('/api/v1/map-notes', ['body' => 'Yer testi', 'city_id' => $this->alanya,
             'latitude' => $lat, 'longitude' => $lng, 'request_id' => (string) Str::uuid()])->assertCreated()->json('data');
-        $this->assertEquals(36.4385, $data['latitude']);
-        $this->assertEquals(32.2065, $data['longitude']);
-        $this->assertSame('36.43850_32.20650', $data['group']);
-        $this->assertLessThan(25, \App\Location\Geo::distance($lat, $lng, $data['latitude'], $data['longitude']));
+        $this->assertEquals(36.43841, $data['latitude']);
+        $this->assertEquals(32.20663, $data['longitude']);
+        $this->assertSame('36.43841_32.20663', $data['group']);
+        $this->assertLessThan(1.5, \App\Location\Geo::distance($lat, $lng, $data['latitude'], $data['longitude']));
 
         $markers = $this->getJson('/api/v1/map/notes?city_id='.$this->alanya)->assertOk()->json('data.items');
         $this->assertCount(1, $markers);
@@ -163,11 +141,11 @@ class MapNotesTest extends TestCase
         $this->getJson('/api/v1/map/notes/'.$data['group'])->assertOk()->assertJsonPath('data.items.0.id', $data['id']);
     }
 
-    public function test_grouping_follows_the_fine_grid_and_notes_stored_on_the_old_coarse_grid_keep_working(): void
+    public function test_notes_on_one_exact_point_group_together_and_notes_stored_on_the_old_coarse_grid_keep_working(): void
     {
-        // Two selections inside one cell, one in the neighbouring cell.
+        // Two notes on the very same point, one a little further.
         $this->note($this->ada, ['latitude' => 36.54510, 'longitude' => 32.00110]);
-        $this->note($this->ece, ['latitude' => 36.54520, 'longitude' => 32.00120]);
+        $this->note($this->ece, ['latitude' => 36.54510, 'longitude' => 32.00110]);
         $this->note($this->ece, ['latitude' => 36.54610, 'longitude' => 32.00110]);
         // A note created before this change sits on a multiple of the old 0.005 grid.
         DB::table('map_notes')->insert(['user_id' => $this->kaan->id, 'city_id' => $this->alanya, 'body' => 'Eski ızgara',
@@ -176,10 +154,10 @@ class MapNotesTest extends TestCase
 
         $items = collect($this->as($this->kaan)->getJson('/api/v1/map/notes?city_id='.$this->alanya)->assertOk()->json('data.items'))->keyBy('group');
         $this->assertCount(3, $items);
-        $this->assertSame(2, $items['36.54500_32.00100']['count']);
-        $this->assertSame(1, $items['36.54600_32.00100']['count']);
+        $this->assertSame(2, $items['36.54510_32.00110']['count']);
+        $this->assertSame(1, $items['36.54610_32.00110']['count']);
         $this->assertSame(1, $items['36.55500_32.00500']['count']);
-        $this->getJson('/api/v1/map/notes/36.54500_32.00100')->assertJsonPath('data.count', 2)->assertJsonCount(2, 'data.items');
+        $this->getJson('/api/v1/map/notes/36.54510_32.00110')->assertJsonPath('data.count', 2)->assertJsonCount(2, 'data.items');
         $this->getJson('/api/v1/map/notes/36.55500_32.00500')->assertJsonPath('data.count', 1);
         $this->assertSame(['moment', 'confession', 'thought', 'travel', 'encounter'], \App\Models\Post::TYPES);
     }
@@ -237,7 +215,8 @@ class MapNotesTest extends TestCase
         foreach (['ada', 'Ada Test', 'ada@example.test'] as $needle) {
             $this->assertStringNotContainsString($needle, $response->getContent());
         }
-        $point = $this->getJson('/api/v1/map/notes/36.56000_32.00200')->assertOk();
+        $point = $this->getJson('/api/v1/map/notes/36.56010_32.00210')->assertOk();
+        $this->assertSame(1, $point->json('data.count'), 'The anonymous note is on that exact point.');
         foreach (['ada', 'Ada Test', 'user_id'] as $needle) {
             $this->assertStringNotContainsString($needle, $point->getContent());
         }
@@ -246,7 +225,7 @@ class MapNotesTest extends TestCase
 
     public function test_map_groups_notes_by_approximate_grid_point_and_lists_them_newest_first_with_pagination(): void
     {
-        foreach ([[36.54510, 32.00110], [36.54520, 32.00120], [36.54490, 32.00090]] as $i => [$lat, $lng]) {
+        foreach ([[36.54500, 32.00100], [36.54500, 32.00100], [36.54500, 32.00100]] as $i => [$lat, $lng]) {
             Carbon::setTestNow(now()->addMinutes(5));
             $this->note($i % 2 ? $this->ece : $this->ada, ['latitude' => $lat, 'longitude' => $lng, 'body' => 'Not '.($i + 1)]);
         }
@@ -257,7 +236,7 @@ class MapNotesTest extends TestCase
         $this->assertCount(2, $map['items']);
         $groups = collect($map['items'])->keyBy('group');
         $this->assertSame(3, $groups['36.54500_32.00100']['count']);
-        $this->assertSame(1, $groups['36.60200_32.10200']['count']);
+        $this->assertSame(1, $groups['36.60210_32.10190']['count']);
         foreach ($map['items'] as $marker) {
             $this->assertEqualsCanonicalizing(['group', 'latitude', 'longitude', 'count', 'newest_at', 'distance_meters'], array_keys($marker));
         }

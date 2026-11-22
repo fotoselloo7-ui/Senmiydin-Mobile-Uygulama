@@ -54,7 +54,11 @@ class CommunicationApiTest extends TestCase
             ->assertJsonPath('data.items.0.id', $id)->assertJsonPath('data.items.0.outgoing', false)
             ->assertJsonPath('data.items.0.unread', 1)->assertJsonPath('data.items.0.last_message.body', 'Merhaba');
         $this->getJson('/api/v1/notifications')->assertJsonPath('data.items.0.type', 'message_request');
-        $this->postJson("$chat/request/accept")->assertOk()->assertJsonPath('data.status', 'active');
+        // the stranger's first message is also counted as a request waiting in "İstekler" (the sender never has one)
+        $this->getJson('/api/v1/unread-counts')->assertJsonPath('data.requests', 1)->assertJsonPath('data.messages', 1);
+        $this->asUser($this->demo)->getJson('/api/v1/unread-counts')->assertJsonPath('data.requests', 0);
+        $this->asUser($this->elif)->postJson("$chat/request/accept")->assertOk()->assertJsonPath('data.status', 'active');
+        $this->getJson('/api/v1/unread-counts')->assertJsonPath('data.requests', 0);
         $this->postJson("$chat/request/accept")->assertOk();
         $this->getJson('/api/v1/conversations?requests=0')->assertJsonPath('data.items.0.id', $id);
         $this->assertDatabaseCount('conversations', 1);
@@ -115,7 +119,7 @@ class CommunicationApiTest extends TestCase
         $this->asUser($this->third)->get($data['image'])->assertNotFound();
         $this->asUser($this->elif)->get($data['image'])->assertOk()->assertHeader('Content-Type', 'image/jpeg');
         $item = "/api/v1/conversations/$id/messages/".$data['id'];
-        $this->deleteJson($item)->assertForbidden();
+        $this->deleteJson("$item?scope=everyone")->assertForbidden();
         $this->asUser($this->demo)->deleteJson($item)->assertOk();
         $this->get($data['image'])->assertNotFound();
         $this->asUser($this->elif)->get($data['image'])->assertOk();
@@ -236,6 +240,33 @@ class CommunicationApiTest extends TestCase
         }
         $this->assertDatabaseCount('reports', 4);
         $this->assertDatabaseHas('reports', ['target_type' => 'message', 'target_id' => $message, 'status' => 'pending']);
+    }
+
+    public function test_a_sender_can_take_a_message_back_and_a_receiver_can_remove_it_from_their_own_view(): void
+    {
+        $id = $this->activeChat();
+        $mine = $this->send($this->demo, $this->elif, 'Yanlış kişiye yazdım')->json('data.message.id');
+        $theirs = $this->send($this->elif, $this->demo, 'Bu bir cevap')->json('data.message.id');
+        $ids = fn (User $who) => collect($this->asUser($who)->getJson("/api/v1/conversations/$id/messages")->assertOk()->json('data.items'))->pluck('id')->all();
+        $this->assertContains($mine, $ids($this->elif));
+
+        // The receiver can only remove it from their own view; it stays for the sender, and they cannot take it back for everyone.
+        $this->asUser($this->elif)->deleteJson("/api/v1/conversations/$id/messages/$mine?scope=everyone")->assertForbidden();
+        $this->asUser($this->elif)->deleteJson("/api/v1/conversations/$id/messages/$mine")->assertOk();
+        $this->assertNotContains($mine, $ids($this->elif));
+        $this->assertContains($mine, $ids($this->demo));
+
+        // The sender takes a message back for everyone: neither side sees it afterwards.
+        $this->asUser($this->demo)->deleteJson("/api/v1/conversations/$id/messages/$theirs?scope=everyone")->assertForbidden();
+        $own = $this->send($this->demo, $this->elif, 'Bunu geri alıyorum')->json('data.message.id');
+        $this->assertContains($own, $ids($this->elif));
+        $this->asUser($this->demo)->deleteJson("/api/v1/conversations/$id/messages/$own?scope=everyone")->assertOk();
+        $this->assertNotContains($own, $ids($this->elif));
+        $this->assertNotContains($own, $ids($this->demo));
+        $this->assertNotNull(\App\Models\Message::find($own)->recalled_at);
+        // A recalled message is never counted as unread.
+        $this->assertDatabaseHas('messages', ['id' => $own, 'sender_id' => $this->demo->id]);
+        $this->asUser($this->elif)->getJson('/api/v1/unread-counts')->assertOk();
     }
 
     public function test_device_registration_push_preferences_and_logout(): void

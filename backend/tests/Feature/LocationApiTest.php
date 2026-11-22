@@ -120,6 +120,12 @@ class LocationApiTest extends TestCase
             ->assertJsonPath('data.items.0.location_label', 'Alanya')
             ->assertJsonMissingPath('data.items.0.approx_latitude')
             ->assertJsonMissingPath('data.items.0.latitude');
+        // The same approximate grid point the map shows (never an exact position), only for a post that has a place.
+        $this->asUser($viewer)->getJson('/api/v1/feed?sort=nearby')
+            ->assertJsonPath('data.items.0.map_point.latitude', 36.545)->assertJsonPath('data.items.0.map_point.longitude', 32.005)
+            ->assertJsonPath('data.items.2.map_point', null);
+        $this->asUser($viewer)->getJson("/api/v1/posts/$near")->assertOk()
+            ->assertJsonPath('data.map_point.latitude', 36.545)->assertJsonPath('data.map_point.longitude', 32.005);
         $this->asUser($viewer)->getJson('/api/v1/feed?sort=nearby&radius=5000')->assertJsonCount(1, 'data.items');
         $this->asUser($viewer)->getJson('/api/v1/feed?sort=nearby&radius=10000')->assertJsonCount(2, 'data.items');
         $this->asUser($viewer)->getJson('/api/v1/feed')->assertJsonCount(3, 'data.items');
