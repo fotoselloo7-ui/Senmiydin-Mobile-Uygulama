@@ -726,6 +726,12 @@ class _AuthPageState extends State<AuthPage> with AccountAction<AuthPage> {
   /// Google / Apple already verified who this is: the form only completes the profile (no password, no e-mail).
   bool get completingSocial => widget.social != null;
 
+  /// The provider proof (Google token, Apple one-time code) is only accepted for a few minutes. A person who reads the
+  /// terms for longer signs in with the provider once more instead of hitting a failure at the end.
+  Map<String, Object?>? _renewedFields;
+  DateTime _credentialAt = DateTime.now();
+  static const _credentialLife = Duration(minutes: 4);
+
   @override
   void initState() {
     super.initState();
@@ -815,23 +821,45 @@ class _AuthPageState extends State<AuthPage> with AccountAction<AuthPage> {
       _run(() async {
         if (widget.register) {
           final username = handle.text.trim().replaceFirst(RegExp(r'^@'), '');
-          await store.signIn(
-            completingSocial ? 'social/${widget.social!.provider}' : 'register',
-            {
-              ...?widget.social?.fields,
-              // E-mail sign-up has no name field: the display name starts as the username and is completed in the
-              // profile step. A social sign-up starts from the provider name, which the person may change here.
-              'name': name.text.trim().isEmpty ? username : name.text.trim(),
-              'username': username,
-              'email': email.text.trim(),
-              // Google / Apple accounts need no password; the provider password is never asked for.
-              if (!completingSocial) 'password': password.text,
-              'birth_date': birthday!.toIso8601String().split('T').first,
-              'city_id': place!.city.id,
-              'place_id': ?place!.placeId,
-              'accepted_terms': accepted,
-            },
-          );
+          if (completingSocial &&
+              DateTime.now().difference(_credentialAt) > _credentialLife) {
+            final again = await SocialSignIn.authenticate(
+              widget.social!.provider == 'apple' ? 'Apple' : 'Google',
+              store.auth!,
+            );
+            // Cancelled in the provider sheet: the form stays as it is.
+            if (again == null) return;
+            _renewedFields = again.fields;
+            _credentialAt = DateTime.now();
+          }
+          try {
+            await store.signIn(
+              completingSocial
+                  ? 'social/${widget.social!.provider}'
+                  : 'register',
+              {
+                ...?(_renewedFields ?? widget.social?.fields),
+                // E-mail sign-up has no name field: the display name starts as the username and is completed in the
+                // profile step. A social sign-up starts from the provider name, which the person may change here.
+                'name': name.text.trim().isEmpty ? username : name.text.trim(),
+                'username': username,
+                'email': email.text.trim(),
+                // Google / Apple accounts need no password; the provider password is never asked for.
+                if (!completingSocial) 'password': password.text,
+                'birth_date': birthday!.toIso8601String().split('T').first,
+                'city_id': place!.city.id,
+                'place_id': ?place!.placeId,
+                'accepted_terms': accepted,
+              },
+            );
+          } on ApiFailure {
+            // Apple's one-time code and nonce are used up by the first attempt, even when the form itself was rejected
+            // (a taken username, say). The next try signs in with Apple again rather than failing with a vague error.
+            if (completingSocial && widget.social!.provider == 'apple') {
+              _credentialAt = DateTime.fromMillisecondsSinceEpoch(0);
+            }
+            rethrow;
+          }
           if (completingSocial) {
             unawaited(importProviderPhoto(store, widget.social!.photoUrl));
           }
@@ -1244,7 +1272,9 @@ class _AuthPageState extends State<AuthPage> with AccountAction<AuthPage> {
                   ? 'Adını yaz.'
                   : (v!.trim().length > 100
                         ? 'Adın en fazla 100 karakter olabilir.'
-                        : null),
+                        : (!_CompleteProfilePageState._hasFullName(v)
+                              ? 'Adını ve soyadını birlikte yaz. Örnek: Elif Bozkurt'
+                              : null)),
             ),
             AuthField(
               'Kullanıcı Adı',
@@ -1406,6 +1436,10 @@ class _CompleteProfilePageState extends State<CompleteProfilePage>
   ChosenPlace? chosen;
   late Set<String> connections;
   bool visible = true, suggest = true, initialized = false, leaving = false;
+
+  /// Setup only: e-mail sign-up has no name field (the name starts as the username), and a Google / Apple name can be a
+  /// first name alone. Decided once, so the fields do not disappear while the person types.
+  bool askName = false, askHandle = false;
   late Object originalForm;
   Object get formValue => (
     name.text,
@@ -1435,6 +1469,12 @@ class _CompleteProfilePageState extends State<CompleteProfilePage>
     occupation = TextEditingController(text: me.occupation);
     name = TextEditingController(text: me.name);
     handle = TextEditingController(text: me.handle);
+    if (!widget.edit) {
+      askName = !_hasFullName(me.name);
+      askHandle = !_validHandle(me.handle);
+      // A name that is only the username ("deniz.kaya") is not a name: start empty instead of keeping it.
+      if (askName && me.name.trim() == me.handle.trim()) name.text = '';
+    }
     city = store.account?.place?.label ?? me.city;
     photo = me.photo;
     visible = me.visible;
@@ -1457,14 +1497,18 @@ class _CompleteProfilePageState extends State<CompleteProfilePage>
     super.dispose();
   }
 
+  static bool _hasFullName(String value) =>
+      value.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).length >= 2;
+  static bool _validHandle(String value) =>
+      RegExp(r'^[a-zA-Z0-9_\.]{3,24}$').hasMatch(value.trim());
+
   void save() {
-    if (name.text.trim().isEmpty ||
-        !RegExp(r'^[a-zA-Z0-9_\.]{3,24}$').hasMatch(handle.text.trim())) {
+    if (name.text.trim().isEmpty || !_validHandle(handle.text)) {
       toast(context, 'Adını ve geçerli bir kullanıcı adını gir.');
       return;
     }
     // People are shown by their real name everywhere ("İsim Soyisim"): a first name alone is not enough.
-    if (name.text.trim().split(RegExp(r'\s+')).length < 2) {
+    if (!_hasFullName(name.text)) {
       toast(context, 'Adını ve soyadını birlikte yaz. Örnek: Elif Bozkurt');
       return;
     }
@@ -1736,9 +1780,11 @@ class _CompleteProfilePageState extends State<CompleteProfilePage>
                     : 'Değiştir veya kaldır',
                 onTap: busy ? null : () => changeCover(store),
               ),
-            Field('Ad Soyad', Icons.person_outline, controller: name),
-            Field('Kullanıcı Adı', Icons.alternate_email, controller: handle),
           ],
+          if (widget.edit || askName)
+            Field('Ad Soyad', Icons.person_outline, controller: name),
+          if (widget.edit || askHandle)
+            Field('Kullanıcı Adı', Icons.alternate_email, controller: handle),
           Field(
             'Kısa Biyografi',
             Icons.edit_outlined,

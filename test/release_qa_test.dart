@@ -478,6 +478,44 @@ void main() {
       expect(find.text('welcome'), findsOneWidget);
     });
 
+    testWidgets('a name without a surname (e-mail sign-up) is asked for in setup instead of failing silently', (tester) async {
+      tall(tester);
+      final store = AppStore();
+      addTearDown(store.dispose);
+      store.me
+        ..name = 'deniz.kaya'
+        ..handle = 'deniz.kaya';
+      await tester.pumpWidget(app(store, const CompleteProfilePage(), routes: setupRoutes()));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(TextField, 'Ad Soyad'), findsOneWidget, reason: 'the missing name is asked for');
+      expect(find.widgetWithText(TextField, 'Kullanıcı Adı'), findsNothing, reason: 'a valid username is not asked again');
+      final field = tester.widget<TextField>(find.widgetWithText(TextField, 'Ad Soyad'));
+      expect(field.controller!.text, isEmpty, reason: 'the username is not a name');
+
+      await tester.enterText(find.widgetWithText(TextField, 'Ad Soyad'), 'Deniz');
+      await tester.tap(find.text('Devam Et'));
+      await tester.pumpAndSettle();
+      expect(find.text('Hobilerini Seç'), findsNothing, reason: 'a first name alone does not continue');
+
+      await tester.enterText(find.widgetWithText(TextField, 'Ad Soyad'), 'Deniz Kaya');
+      await tester.tap(find.text('Devam Et'));
+      await tester.pumpAndSettle();
+      expect(find.text('Hobilerini Seç'), findsOneWidget);
+      expect(store.me.name, 'Deniz Kaya');
+    });
+
+    testWidgets('a complete name is not asked for again in setup', (tester) async {
+      tall(tester);
+      final store = AppStore();
+      addTearDown(store.dispose);
+      store.me
+        ..name = 'Elif Bozkurt'
+        ..handle = 'elif.bozkurt';
+      await tester.pumpWidget(app(store, const CompleteProfilePage(), routes: setupRoutes()));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(TextField, 'Ad Soyad'), findsNothing);
+    });
+
     testWidgets('reopened in the middle of setup, Back opens the previous step instead of a dead end', (tester) async {
       tall(tester);
       final store = AppStore();
