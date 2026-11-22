@@ -1,7 +1,7 @@
 name: senmiydin
 description: SenMiydin? Şehir odaklı mobil paylaşım uygulaması.
 publish_to: none
-version: 0.1.0+11
+version: 0.1.0+12
 environment:
   sdk: ^3.13.3
 dependencies:
